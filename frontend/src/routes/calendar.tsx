@@ -104,6 +104,16 @@ function CalendarContent({ householdId }: { householdId: string }) {
     })
   }
 
+  function jumpToDate(date: Date): void {
+    // Find the first Monday on or after the given date so the
+    // week-strip month label matches the target month
+    const d = new Date(date)
+    d.setHours(0, 0, 0, 0)
+    while (d.getDay() !== 1) d.setDate(d.getDate() + 1)
+    setWeekStart(d)
+    setSelectedDate(d)
+  }
+
   const selectedLabel = formatSelectedLabel(selectedDate)
 
   return (
@@ -116,6 +126,7 @@ function CalendarContent({ householdId }: { householdId: string }) {
           selectedDate={selectedDate}
           onSelectDate={setSelectedDate}
           onNavigate={navigateWeek}
+          onJumpToDate={jumpToDate}
           occurrences={occurrences}
         />
       </Card>

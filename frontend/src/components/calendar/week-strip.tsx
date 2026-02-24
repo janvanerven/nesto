@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { EventOccurrence } from '@/utils/recurrence'
 
 interface WeekStripProps {
@@ -5,17 +6,28 @@ interface WeekStripProps {
   selectedDate: Date
   onSelectDate: (date: Date) => void
   onNavigate: (direction: -1 | 1) => void
+  onJumpToDate: (date: Date) => void
   occurrences: EventOccurrence[]
 }
 
 const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-export function WeekStrip({ weekStart, selectedDate, onSelectDate, onNavigate, occurrences }: WeekStripProps) {
+export function WeekStrip({ weekStart, selectedDate, onSelectDate, onNavigate, onJumpToDate, occurrences }: WeekStripProps) {
   const days = getDaysOfWeek(weekStart)
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
+  const [showPicker, setShowPicker] = useState(false)
+  const [pickerYear, setPickerYear] = useState(weekStart.getFullYear())
+
   const monthLabel = weekStart.toLocaleDateString('en', { month: 'long', year: 'numeric' })
+
+  function handleMonthSelect(month: number) {
+    const target = new Date(pickerYear, month, 1)
+    setShowPicker(false)
+    onJumpToDate(target)
+  }
 
   return (
     <div>
@@ -30,7 +42,12 @@ export function WeekStrip({ weekStart, selectedDate, onSelectDate, onNavigate, o
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
-        <h2 className="text-lg font-bold text-text">{monthLabel}</h2>
+        <button
+          onClick={() => { setPickerYear(weekStart.getFullYear()); setShowPicker(!showPicker) }}
+          className="text-lg font-bold text-text hover:text-primary transition-colors"
+        >
+          {monthLabel}
+        </button>
         <button
           onClick={() => onNavigate(1)}
           className="w-9 h-9 rounded-full flex items-center justify-center text-text-muted hover:bg-text/5 transition-colors"
@@ -41,6 +58,48 @@ export function WeekStrip({ weekStart, selectedDate, onSelectDate, onNavigate, o
           </svg>
         </button>
       </div>
+
+      {/* Month/year picker */}
+      {showPicker && (
+        <div className="mb-3">
+          <div className="flex items-center justify-between mb-2">
+            <button
+              onClick={() => setPickerYear((y) => y - 1)}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-text/5 transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+            <span className="text-sm font-bold text-text">{pickerYear}</span>
+            <button
+              onClick={() => setPickerYear((y) => y + 1)}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-text/5 transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
+          </div>
+          <div className="grid grid-cols-4 gap-1.5">
+            {MONTH_NAMES.map((name, i) => {
+              const isCurrent = pickerYear === weekStart.getFullYear() && i === weekStart.getMonth()
+              return (
+                <button
+                  key={name}
+                  onClick={() => handleMonthSelect(i)}
+                  className={`
+                    py-2 rounded-xl text-sm font-medium transition-all
+                    ${isCurrent ? 'bg-primary text-white' : 'bg-text/5 text-text-muted hover:bg-text/10'}
+                  `}
+                >
+                  {name}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Day cells */}
       <div className="grid grid-cols-7 gap-1">
