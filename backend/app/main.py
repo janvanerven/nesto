@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import auth, events, households, tasks
+from app.routers import auth, events, households, shopping_lists, tasks
 
 
 @asynccontextmanager
@@ -34,6 +34,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(events.router)
 app.include_router(households.router)
+app.include_router(shopping_lists.router)
 app.include_router(tasks.router)
 
 
