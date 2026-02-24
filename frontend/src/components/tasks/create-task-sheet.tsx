@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Button, Input, Avatar } from '@/components/ui'
 import type { TaskCreate } from '@/api/tasks'
 import type { HouseholdMember } from '@/api/households'
@@ -17,6 +17,7 @@ export function CreateReminderSheet({ open, onClose, onSubmit, isPending, member
   const [priority, setPriority] = useState(3)
   const [assignedTo, setAssignedTo] = useState<string | null>(null)
   const [dueDate, setDueDate] = useState<string | null>(null)
+  const dateInputRef = useRef<HTMLInputElement>(null)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -101,7 +102,7 @@ export function CreateReminderSheet({ open, onClose, onSubmit, isPending, member
               {/* Due date quick-pick */}
               <div>
                 <label className="text-sm font-medium text-text-muted mb-2 block">Due date</label>
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex gap-2 flex-wrap relative">
                   {getDateOptions().map((opt) => (
                     <button
                       key={opt.value}
@@ -118,9 +119,11 @@ export function CreateReminderSheet({ open, onClose, onSubmit, isPending, member
                       {opt.label}
                     </button>
                   ))}
-                  <label
+                  <button
+                    type="button"
+                    onClick={() => dateInputRef.current?.showPicker()}
                     className={`
-                      px-3 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer
+                      px-3 py-1.5 rounded-full text-sm font-medium transition-all
                       ${dueDate && !getDateOptions().some(o => o.value === dueDate)
                         ? 'bg-primary text-white shadow-md'
                         : 'bg-text/5 text-text-muted'
@@ -130,12 +133,13 @@ export function CreateReminderSheet({ open, onClose, onSubmit, isPending, member
                     {dueDate && !getDateOptions().some(o => o.value === dueDate)
                       ? new Date(dueDate + 'T00:00:00').toLocaleDateString('en', { month: 'short', day: 'numeric' })
                       : 'Pick date'}
-                    <input
-                      type="date"
-                      className="sr-only"
-                      onChange={(e) => setDueDate(e.target.value || null)}
-                    />
-                  </label>
+                  </button>
+                  <input
+                    ref={dateInputRef}
+                    type="date"
+                    className="absolute opacity-0 pointer-events-none"
+                    onChange={(e) => setDueDate(e.target.value || null)}
+                  />
                 </div>
               </div>
 
