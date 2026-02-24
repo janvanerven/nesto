@@ -16,6 +16,7 @@ export function CreateReminderSheet({ open, onClose, onSubmit, isPending, member
   const [title, setTitle] = useState('')
   const [priority, setPriority] = useState(3)
   const [assignedTo, setAssignedTo] = useState<string | null>(null)
+  const [dueDate, setDueDate] = useState<string | null>(null)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -24,10 +25,12 @@ export function CreateReminderSheet({ open, onClose, onSubmit, isPending, member
       title: title.trim(),
       priority,
       assigned_to: assignedTo || undefined,
+      due_date: dueDate || undefined,
     })
     setTitle('')
     setPriority(3)
     setAssignedTo(null)
+    setDueDate(null)
   }
 
   const priorities = [
@@ -95,6 +98,47 @@ export function CreateReminderSheet({ open, onClose, onSubmit, isPending, member
                 </div>
               )}
 
+              {/* Due date quick-pick */}
+              <div>
+                <label className="text-sm font-medium text-text-muted mb-2 block">Due date</label>
+                <div className="flex gap-2 flex-wrap">
+                  {getDateOptions().map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setDueDate(dueDate === opt.value ? null : opt.value)}
+                      className={`
+                        px-3 py-1.5 rounded-full text-sm font-medium transition-all
+                        ${dueDate === opt.value
+                          ? 'bg-primary text-white shadow-md'
+                          : 'bg-text/5 text-text-muted'
+                        }
+                      `}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                  <label
+                    className={`
+                      px-3 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer
+                      ${dueDate && !getDateOptions().some(o => o.value === dueDate)
+                        ? 'bg-primary text-white shadow-md'
+                        : 'bg-text/5 text-text-muted'
+                      }
+                    `}
+                  >
+                    {dueDate && !getDateOptions().some(o => o.value === dueDate)
+                      ? new Date(dueDate + 'T00:00:00').toLocaleDateString('en', { month: 'short', day: 'numeric' })
+                      : 'Pick date'}
+                    <input
+                      type="date"
+                      className="sr-only"
+                      onChange={(e) => setDueDate(e.target.value || null)}
+                    />
+                  </label>
+                </div>
+              </div>
+
               {/* Priority selector */}
               <div>
                 <label className="text-sm font-medium text-text-muted mb-2 block">Priority</label>
@@ -127,4 +171,19 @@ export function CreateReminderSheet({ open, onClose, onSubmit, isPending, member
       )}
     </AnimatePresence>
   )
+}
+
+function getDateOptions(): { label: string; value: string }[] {
+  const today = new Date()
+  const fmt = (d: Date) => d.toISOString().split('T')[0]
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const nextWeek = new Date(today)
+  nextWeek.setDate(nextWeek.getDate() + 7)
+
+  return [
+    { label: 'Today', value: fmt(today) },
+    { label: 'Tomorrow', value: fmt(tomorrow) },
+    { label: 'Next week', value: fmt(nextWeek) },
+  ]
 }
