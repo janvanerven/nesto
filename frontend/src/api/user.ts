@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { apiFetch } from './client'
+import { apiFetch, hasToken } from './client'
 
 export interface User {
   id: string
@@ -14,5 +14,6 @@ export function useCurrentUser() {
   return useQuery({
     queryKey: ['user', 'me'],
     queryFn: () => apiFetch<User>('/auth/me'),
+    enabled: hasToken(),
   })
 }

@@ -3,7 +3,8 @@ WORKDIR /app
 RUN pip install uv
 COPY pyproject.toml .
 RUN uv pip install --system .
-RUN adduser --disabled-password --gecos '' --uid 1000 appuser
+RUN adduser --disabled-password --gecos '' --uid 1000 appuser && \
+    mkdir -p /app/data && chown -R appuser:appuser /app/data
 
 FROM base AS dev
 COPY . .

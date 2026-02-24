@@ -13,6 +13,10 @@ export function setTokenGetter(getter: () => string | undefined) {
   getToken = getter
 }
 
+export function hasToken(): boolean {
+  return !!getToken?.()
+}
+
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken?.()
   const headers: Record<string, string> = {

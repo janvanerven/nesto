@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiFetch } from './client'
+import { apiFetch, hasToken } from './client'
 
 export interface Household {
   id: string
@@ -17,6 +17,7 @@ export function useHouseholds() {
   return useQuery({
     queryKey: ['households'],
     queryFn: () => apiFetch<Household[]>('/households'),
+    enabled: hasToken(),
   })
 }
 
