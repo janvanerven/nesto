@@ -16,20 +16,21 @@ backend/app/
   main.py          # FastAPI app, CORS, router registration
   config.py        # Pydantic Settings with validators
   database.py      # Async SQLAlchemy engine, session, SQLite pragmas
-  auth.py          # JWT decode, JWKS caching with asyncio.Lock, user auto-upsert
+  auth.py          # JWT decode, JWKS caching with asyncio.Lock, user auto-upsert, token logging
   models/          # SQLAlchemy ORM (user, household, task)
   schemas/         # Pydantic request/response models with validation
-  routers/         # API routes: /api/auth, /api/households, /api/households/{id}/tasks
+  routers/         # API routes: /api/auth, /api/households, /api/households/{id}/tasks, /api/households/{id}/members
   services/        # Business logic (user_service, household_service, task_service)
 backend/alembic/   # Async migrations
 backend/tests/     # pytest-asyncio tests
 
 frontend/src/
-  routes/          # TanStack Router file-based routes (__root, index, login, callback, tasks, etc.)
-  api/             # apiFetch client with token refresh, React Query hooks per domain
+  routes/          # TanStack Router file-based routes (__root, index, login, callback, tasks, onboarding, settings, calendar)
+  api/             # apiFetch client with token refresh + session expiry, React Query hooks per domain
   auth/            # OIDC config and provider
-  components/      # ui/ (Button, Card, Input, Avatar), layout/ (bottom-nav), tasks/
-  stores/          # Zustand stores
+  components/      # ui/ (Button, Card, Input, Avatar, Fab, PriorityDot), layout/ (bottom-nav), tasks/ (task-card, create-task-sheet)
+  stores/          # Zustand stores (auth-store, theme-store)
+  styles/          # Tailwind CSS v4 theme with light/dark mode
 ```
 
 ## Running
@@ -49,8 +50,12 @@ docker compose -f docker-compose.prod.yml up  # Prod: nginx:8080
 - **IDs:** Text/UUID strings, generated with `uuid.uuid4()`
 - **Task updates:** Explicit field allowlist (`_UPDATABLE_FIELDS`), no mass-assignment
 - **Invite codes:** Single-use, deleted after consumption, 7-day expiry
-- **Token refresh:** API client retries 401s with silent OIDC refresh
+- **Token refresh:** API client deduplicates concurrent refresh calls; redirects to OIDC login on session expiry
 - **Queries:** React Query hooks gate on `hasToken()` to avoid pre-auth 401s
+- **UI terminology:** "Reminders" in UI (backed by `tasks` table in DB)
+- **Font:** Outfit (Google Fonts, variable weight 300-700)
+- **Dark mode:** System preference by default, manual toggle in settings, stored in localStorage (`nesto-theme`)
+- **Onboarding:** First name step → household create/join. First name stored on user model.
 
 ## Testing
 
@@ -70,6 +75,18 @@ cd backend && pytest tests/  # asyncio_mode = "auto"
 ## Database
 
 SQLite with WAL mode, async via aiosqlite. Tables: users, households, household_members, household_invites, tasks. Alembic for migrations.
+
+User model includes: id, email, display_name, first_name (nullable), avatar_url, created_at, last_login.
+
+## API Endpoints
+
+- `GET/PATCH /api/auth/me` — Current user info / update first_name
+- `GET/POST /api/households` — List/create households
+- `POST /api/households/join` — Join via invite code
+- `POST /api/households/{id}/invite` — Generate invite code
+- `GET /api/households/{id}/members` — List household members
+- `GET/POST /api/households/{id}/tasks` — List/create tasks (reminders)
+- `PATCH/DELETE /api/households/{id}/tasks/{taskId}` — Update/delete task
 
 ## Environment Variables
 
