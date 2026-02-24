@@ -36,9 +36,8 @@ async def invite(
     return InviteResponse(code=inv.id, expires_at=inv.expires_at)
 
 
-@router.post("/{household_id}/join", response_model=HouseholdResponse)
+@router.post("/join", response_model=HouseholdResponse)
 async def join(
-    household_id: str,
     body: JoinRequest,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),

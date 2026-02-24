@@ -16,11 +16,13 @@ async def get_tasks(
     status: str | None = Query(None),
     priority: int | None = Query(None),
     assigned_to: str | None = Query(None),
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     await get_household(db, household_id, user_id)
-    return await list_tasks(db, household_id, status=status, priority=priority, assigned_to=assigned_to)
+    return await list_tasks(db, household_id, status=status, priority=priority, assigned_to=assigned_to, limit=limit, offset=offset)
 
 
 @router.post("", response_model=TaskResponse, status_code=201)
@@ -31,7 +33,7 @@ async def create(
     db: AsyncSession = Depends(get_db),
 ):
     await get_household(db, household_id, user_id)
-    return await create_task(db, household_id, user_id, **body.model_dump())
+    return await create_task(db, household_id, user_id, body)
 
 
 @router.patch("/{task_id}", response_model=TaskResponse)
@@ -43,7 +45,7 @@ async def update(
     db: AsyncSession = Depends(get_db),
 ):
     await get_household(db, household_id, user_id)
-    return await update_task(db, task_id, household_id, **body.model_dump(exclude_unset=True))
+    return await update_task(db, task_id, household_id, body)
 
 
 @router.delete("/{task_id}", status_code=204)

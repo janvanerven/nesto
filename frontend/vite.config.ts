@@ -37,8 +37,9 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
+    allowedHosts: ['localhost', 'nestodev.intrareto.com'],
     proxy: {
-      '/api': 'http://localhost:8000',
+      '/api': 'http://backend:8000',
     },
   },
 })

@@ -104,7 +104,7 @@ function JoinHousehold({ onBack }: { onBack: () => void }) {
     e.preventDefault()
     if (!code.trim()) return
     // The code IS the invite ID, household_id is embedded in the invite
-    await joinMutation.mutateAsync({ householdId: '_', code: code.trim() })
+    await joinMutation.mutateAsync(code.trim())
     navigate({ to: '/' })
   }
 

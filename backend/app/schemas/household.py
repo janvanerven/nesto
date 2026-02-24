@@ -1,10 +1,10 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class HouseholdCreate(BaseModel):
-    name: str
+    name: str = Field(min_length=1, max_length=100)
 
 
 class HouseholdResponse(BaseModel):
@@ -22,4 +22,4 @@ class InviteResponse(BaseModel):
 
 
 class JoinRequest(BaseModel):
-    code: str
+    code: str = Field(min_length=1, max_length=100)

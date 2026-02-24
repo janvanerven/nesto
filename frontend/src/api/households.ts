@@ -35,8 +35,8 @@ export function useCreateHousehold() {
 export function useJoinHousehold() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ householdId, code }: { householdId: string; code: string }) =>
-      apiFetch<Household>(`/households/${householdId}/join`, {
+    mutationFn: (code: string) =>
+      apiFetch<Household>('/households/join', {
         method: 'POST',
         body: JSON.stringify({ code }),
       }),

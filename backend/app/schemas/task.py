@@ -1,25 +1,26 @@
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
 
 class TaskCreate(BaseModel):
-    title: str
-    description: str | None = None
+    title: str = Field(min_length=1, max_length=500)
+    description: str | None = Field(default=None, max_length=5000)
     priority: int = Field(default=3, ge=1, le=4)
     assigned_to: str | None = None
     due_date: date | None = None
-    category: str | None = None
+    category: str | None = Field(default=None, max_length=100)
 
 
 class TaskUpdate(BaseModel):
-    title: str | None = None
-    description: str | None = None
-    status: str | None = None
+    title: str | None = Field(default=None, min_length=1, max_length=500)
+    description: str | None = Field(default=None, max_length=5000)
+    status: Literal["pending", "in_progress", "done"] | None = None
     priority: int | None = Field(default=None, ge=1, le=4)
     assigned_to: str | None = None
     due_date: date | None = None
-    category: str | None = None
+    category: str | None = Field(default=None, max_length=100)
 
 
 class TaskResponse(BaseModel):

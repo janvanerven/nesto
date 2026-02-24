@@ -83,6 +83,10 @@ async def join_household(db: AsyncSession, code: str, user_id: str) -> Household
 
     member = HouseholdMember(household_id=invite.household_id, user_id=user_id)
     db.add(member)
+
+    # Mark invite as consumed (single-use)
+    await db.delete(invite)
+
     await db.commit()
 
     result = await db.execute(select(Household).where(Household.id == invite.household_id))
