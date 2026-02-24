@@ -50,3 +50,18 @@ export function useCreateInvite(householdId: string) {
     mutationFn: () => apiFetch<InviteResponse>(`/households/${householdId}/invite`, { method: 'POST' }),
   })
 }
+
+export interface HouseholdMember {
+  id: string
+  display_name: string
+  first_name: string | null
+  avatar_url: string | null
+}
+
+export function useHouseholdMembers(householdId: string) {
+  return useQuery({
+    queryKey: ['households', householdId, 'members'],
+    queryFn: () => apiFetch<HouseholdMember[]>(`/households/${householdId}/members`),
+    enabled: !!householdId && hasToken(),
+  })
+}
