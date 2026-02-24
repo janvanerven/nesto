@@ -17,6 +17,7 @@ import { Route as ListsRouteImport } from './routes/lists'
 import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ListsIndexRouteImport } from './routes/lists.index'
 import { Route as ListsListIdRouteImport } from './routes/lists.$listId'
 
 const TasksRoute = TasksRouteImport.update({
@@ -59,6 +60,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ListsIndexRoute = ListsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ListsRoute,
+} as any)
 const ListsListIdRoute = ListsListIdRouteImport.update({
   id: '/$listId',
   path: '/$listId',
@@ -75,17 +81,18 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
   '/lists/$listId': typeof ListsListIdRoute
+  '/lists/': typeof ListsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/callback': typeof CallbackRoute
-  '/lists': typeof ListsRouteWithChildren
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
   '/lists/$listId': typeof ListsListIdRoute
+  '/lists': typeof ListsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -98,6 +105,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
   '/lists/$listId': typeof ListsListIdRoute
+  '/lists/': typeof ListsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -111,17 +119,18 @@ export interface FileRouteTypes {
     | '/settings'
     | '/tasks'
     | '/lists/$listId'
+    | '/lists/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/calendar'
     | '/callback'
-    | '/lists'
     | '/login'
     | '/onboarding'
     | '/settings'
     | '/tasks'
     | '/lists/$listId'
+    | '/lists'
   id:
     | '__root__'
     | '/'
@@ -133,6 +142,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/tasks'
     | '/lists/$listId'
+    | '/lists/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -204,6 +214,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lists/': {
+      id: '/lists/'
+      path: '/'
+      fullPath: '/lists/'
+      preLoaderRoute: typeof ListsIndexRouteImport
+      parentRoute: typeof ListsRoute
+    }
     '/lists/$listId': {
       id: '/lists/$listId'
       path: '/$listId'
@@ -216,10 +233,12 @@ declare module '@tanstack/react-router' {
 
 interface ListsRouteChildren {
   ListsListIdRoute: typeof ListsListIdRoute
+  ListsIndexRoute: typeof ListsIndexRoute
 }
 
 const ListsRouteChildren: ListsRouteChildren = {
   ListsListIdRoute: ListsListIdRoute,
+  ListsIndexRoute: ListsIndexRoute,
 }
 
 const ListsRouteWithChildren = ListsRoute._addFileChildren(ListsRouteChildren)
