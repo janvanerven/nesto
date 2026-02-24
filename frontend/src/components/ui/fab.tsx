@@ -1,7 +1,6 @@
-import { motion } from 'framer-motion'
-import { type ButtonHTMLAttributes } from 'react'
+import { motion, type HTMLMotionProps } from 'framer-motion'
 
-interface FabProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface FabProps extends HTMLMotionProps<'button'> {
   pulse?: boolean
 }
 
