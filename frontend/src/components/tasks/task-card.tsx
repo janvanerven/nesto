@@ -12,7 +12,7 @@ export function TaskCard({ task, onComplete, onDelete }: TaskCardProps) {
 
   return (
     <Card className={isDone ? 'opacity-60' : ''}>
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-3">
         {/* Complete button */}
         <button
           onClick={() => onComplete(task.id)}
@@ -34,7 +34,7 @@ export function TaskCard({ task, onComplete, onDelete }: TaskCardProps) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <PriorityDot priority={task.priority} />
-            <p className={`font-semibold text-text truncate ${isDone ? 'line-through text-text-muted' : ''}`}>
+            <p className={`font-semibold text-text ${isDone ? 'line-through text-text-muted' : ''}`}>
               {task.title}
             </p>
           </div>
