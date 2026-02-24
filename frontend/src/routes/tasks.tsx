@@ -6,7 +6,9 @@ import { useHouseholds, useHouseholdMembers } from '@/api/households'
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '@/api/tasks'
 import { TaskCard } from '@/components/tasks/task-card'
 import { CreateReminderSheet } from '@/components/tasks/create-task-sheet'
+import { EditReminderSheet } from '@/components/tasks/edit-task-sheet'
 import { Fab, Card } from '@/components/ui'
+import type { Task } from '@/api/tasks'
 
 export const Route = createFileRoute('/tasks')({
   component: TasksPage,
@@ -16,6 +18,7 @@ function TasksPage() {
   const auth = useAuth()
   const { data: households } = useHouseholds()
   const [showCreate, setShowCreate] = useState(false)
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [filter, setFilter] = useState<'all' | 'pending' | 'done'>('all')
 
   if (!auth.isAuthenticated) return <Navigate to="/login" />
@@ -30,6 +33,8 @@ function TasksPage() {
       setFilter={setFilter}
       showCreate={showCreate}
       setShowCreate={setShowCreate}
+      editingTask={editingTask}
+      setEditingTask={setEditingTask}
     />
   )
 }
@@ -40,12 +45,16 @@ function TasksContent({
   setFilter,
   showCreate,
   setShowCreate,
+  editingTask,
+  setEditingTask,
 }: {
   householdId: string
   filter: 'all' | 'pending' | 'done'
   setFilter: (f: 'all' | 'pending' | 'done') => void
   showCreate: boolean
   setShowCreate: (v: boolean) => void
+  editingTask: Task | null
+  setEditingTask: (t: Task | null) => void
 }) {
   const statusFilter = filter === 'all' ? undefined : filter === 'done' ? 'done' : 'pending'
   const { data: tasks, isLoading } = useTasks(householdId, { status: statusFilter })
@@ -115,6 +124,7 @@ function TasksContent({
                   task={task}
                   onComplete={(id) => updateMutation.mutate({ taskId: id, status: 'done' })}
                   onDelete={(id) => deleteMutation.mutate(id)}
+                  onEdit={(t) => setEditingTask(t)}
                 />
               </motion.div>
             ))}
@@ -126,6 +136,23 @@ function TasksContent({
       <Fab pulse={!tasks?.length} onClick={() => setShowCreate(true)}>
         +
       </Fab>
+
+      {/* Edit sheet */}
+      <EditReminderSheet
+        task={editingTask}
+        open={!!editingTask}
+        onClose={() => setEditingTask(null)}
+        onSubmit={async (update) => {
+          await updateMutation.mutateAsync(update)
+          setEditingTask(null)
+        }}
+        onDelete={async (id) => {
+          await deleteMutation.mutateAsync(id)
+          setEditingTask(null)
+        }}
+        isPending={updateMutation.isPending || deleteMutation.isPending}
+        members={members}
+      />
 
       {/* Create sheet */}
       <CreateReminderSheet

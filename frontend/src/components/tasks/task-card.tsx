@@ -5,9 +5,10 @@ interface TaskCardProps {
   task: Task
   onComplete: (id: string) => void
   onDelete: (id: string) => void
+  onEdit?: (task: Task) => void
 }
 
-export function TaskCard({ task, onComplete, onDelete }: TaskCardProps) {
+export function TaskCard({ task, onComplete, onDelete, onEdit }: TaskCardProps) {
   const isDone = task.status === 'done'
 
   return (
@@ -30,8 +31,11 @@ export function TaskCard({ task, onComplete, onDelete }: TaskCardProps) {
           </svg>
         </button>
 
-        {/* Content */}
-        <div className="flex-1 min-w-0">
+        {/* Content — tappable to edit */}
+        <div
+          className="flex-1 min-w-0 cursor-pointer"
+          onClick={() => onEdit?.(task)}
+        >
           <div className="flex items-center gap-2">
             <PriorityDot priority={task.priority} />
             <p className={`font-semibold text-text ${isDone ? 'line-through text-text-muted' : ''}`}>
@@ -39,9 +43,19 @@ export function TaskCard({ task, onComplete, onDelete }: TaskCardProps) {
             </p>
           </div>
           {task.due_date && (
-            <p className="text-xs text-text-muted mt-1 ml-4">
-              {formatDueDate(task.due_date)}
-            </p>
+            <div className="flex items-center gap-2 mt-1 ml-4">
+              <p className="text-xs text-text-muted">
+                {formatDueDate(task.due_date)}
+              </p>
+              {task.recurrence_rule && (
+                <span className="inline-flex items-center gap-1 text-xs text-text-muted bg-text/5 px-1.5 py-0.5 rounded-full">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 2l4 4-4 4" /><path d="M3 11v-1a4 4 0 014-4h14" /><path d="M7 22l-4-4 4-4" /><path d="M21 13v1a4 4 0 01-4 4H3" />
+                  </svg>
+                  {formatRecurrence(task.recurrence_rule, task.recurrence_interval)}
+                </span>
+              )}
+            </div>
           )}
         </div>
 
@@ -58,6 +72,18 @@ export function TaskCard({ task, onComplete, onDelete }: TaskCardProps) {
       </div>
     </Card>
   )
+}
+
+function formatRecurrence(rule: string, interval: number): string {
+  const labels: Record<string, [string, string]> = {
+    daily: ['Daily', 'days'],
+    weekly: ['Weekly', 'weeks'],
+    monthly: ['Monthly', 'months'],
+    yearly: ['Yearly', 'years'],
+  }
+  const [single, plural] = labels[rule] ?? ['', '']
+  if (interval === 1) return single
+  return `${interval} ${plural}`
 }
 
 function formatDueDate(dateStr: string): string {

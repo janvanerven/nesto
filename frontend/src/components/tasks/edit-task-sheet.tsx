@@ -1,8 +1,18 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { Button, Input, Avatar } from '@/components/ui'
-import type { TaskCreate } from '@/api/tasks'
+import type { Task, TaskUpdate } from '@/api/tasks'
 import type { HouseholdMember } from '@/api/households'
+
+interface EditReminderSheetProps {
+  task: Task | null
+  open: boolean
+  onClose: () => void
+  onSubmit: (update: TaskUpdate & { taskId: string }) => void
+  onDelete: (taskId: string) => void
+  isPending: boolean
+  members: HouseholdMember[]
+}
 
 const RECURRENCE_OPTIONS = [
   { label: 'None', value: null },
@@ -19,44 +29,82 @@ function recurrenceUnit(rule: string): string {
   return 'year'
 }
 
-interface CreateReminderSheetProps {
-  open: boolean
-  onClose: () => void
-  onSubmit: (task: TaskCreate) => void
-  isPending: boolean
-  members: HouseholdMember[]
+function getDateOptions(): { label: string; value: string }[] {
+  const today = new Date()
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const nextWeek = new Date(today)
+  nextWeek.setDate(nextWeek.getDate() + 7)
+
+  return [
+    { label: 'Today', value: fmt(today) },
+    { label: 'Tomorrow', value: fmt(tomorrow) },
+    { label: 'Next week', value: fmt(nextWeek) },
+  ]
 }
 
-export function CreateReminderSheet({ open, onClose, onSubmit, isPending, members }: CreateReminderSheetProps) {
+export function EditReminderSheet({
+  task,
+  open,
+  onClose,
+  onSubmit,
+  onDelete,
+  isPending,
+  members,
+}: EditReminderSheetProps) {
   const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
   const [priority, setPriority] = useState(3)
   const [assignedTo, setAssignedTo] = useState<string | null>(null)
   const [dueDate, setDueDate] = useState<string | null>(null)
   const [recurrence, setRecurrence] = useState<string | null>(null)
   const [recurrenceInterval, setRecurrenceInterval] = useState(1)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const dateInputRef = useRef<HTMLInputElement>(null)
-  const isCustomDate = dueDate && !getDateOptions().some(o => o.value === dueDate)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (!task) return
+    setTitle(task.title)
+    setDescription(task.description ?? '')
+    setPriority(task.priority)
+    setAssignedTo(task.assigned_to)
+    setDueDate(task.due_date)
+    setRecurrence(task.recurrence_rule)
+    setRecurrenceInterval(task.recurrence_interval ?? 1)
+    setConfirmDelete(false)
+  }, [task])
+
+  if (!task) return null
+
+  const isCustomDate = dueDate && !getDateOptions().some((o) => o.value === dueDate)
+
+  function handleSubmit(e: React.FormEvent): void {
     e.preventDefault()
-    if (!title.trim()) return
-    const task: TaskCreate = {
+    if (!task || !title.trim()) return
+
+    const update: TaskUpdate & { taskId: string } = {
+      taskId: task.id,
       title: title.trim(),
+      description: description.trim() || undefined,
       priority,
-      assigned_to: assignedTo || undefined,
-      due_date: dueDate || undefined,
+      assigned_to: assignedTo ?? undefined,
+      due_date: dueDate ?? undefined,
+      recurrence_rule: dueDate && recurrence ? recurrence : undefined,
+      recurrence_interval: dueDate && recurrence ? recurrenceInterval : undefined,
     }
-    if (dueDate && recurrence) {
-      task.recurrence_rule = recurrence
-      task.recurrence_interval = recurrenceInterval
+
+    onSubmit(update)
+  }
+
+  function handleDeleteClick(): void {
+    if (!task) return
+    if (confirmDelete) {
+      onDelete(task.id)
+    } else {
+      setConfirmDelete(true)
     }
-    onSubmit(task)
-    setTitle('')
-    setPriority(3)
-    setAssignedTo(null)
-    setDueDate(null)
-    setRecurrence(null)
-    setRecurrenceInterval(1)
   }
 
   const priorities = [
@@ -65,6 +113,8 @@ export function CreateReminderSheet({ open, onClose, onSubmit, isPending, member
     { value: 3, label: 'Normal', color: 'bg-priority-normal' },
     { value: 4, label: 'Low', color: 'bg-priority-low' },
   ]
+
+  const canSubmit = title.trim() && !isPending
 
   return (
     <AnimatePresence>
@@ -82,18 +132,41 @@ export function CreateReminderSheet({ open, onClose, onSubmit, isPending, member
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-3xl p-6 pb-[env(safe-area-inset-bottom)] z-50 max-w-lg mx-auto"
+            className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-3xl p-6 pb-[env(safe-area-inset-bottom)] z-50 max-w-lg mx-auto max-h-[85vh] overflow-y-auto"
           >
             <div className="w-12 h-1.5 bg-text/10 rounded-full mx-auto mb-6" />
-            <h2 className="text-xl font-bold text-text mb-4">New reminder</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-text">Edit reminder</h2>
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-1.5 -mr-1.5 rounded-full text-text-muted hover:bg-text/5 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <Input
-                label="What do you want to be reminded of?"
+                label="Reminder"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                autoFocus
               />
+
+              {/* Description */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-text-muted">Details</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                  className="px-4 py-3 rounded-[var(--radius-input)] border-2 border-text/10 bg-surface text-text placeholder:text-text-muted/50 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200 resize-none"
+                  placeholder="Add a description..."
+                />
+              </div>
 
               {/* Assignee picker */}
               {members.length > 0 && (
@@ -236,28 +309,31 @@ export function CreateReminderSheet({ open, onClose, onSubmit, isPending, member
                 </div>
               </div>
 
-              <Button type="submit" disabled={!title.trim() || isPending}>
-                {isPending ? 'Adding...' : 'Add reminder'}
-              </Button>
+              {/* Recurring reminder note */}
+              {task.recurrence_rule && (
+                <p className="text-xs text-text-muted">
+                  Changes apply to all future occurrences of this recurring reminder.
+                </p>
+              )}
+
+              {/* Action buttons */}
+              <div className="flex gap-3">
+                <Button type="submit" disabled={!canSubmit} className="flex-1">
+                  {isPending ? 'Saving...' : 'Save changes'}
+                </Button>
+                <Button
+                  type="button"
+                  variant={confirmDelete ? 'danger' : 'ghost'}
+                  onClick={handleDeleteClick}
+                  disabled={isPending}
+                >
+                  {confirmDelete ? 'Confirm' : 'Delete'}
+                </Button>
+              </div>
             </form>
           </motion.div>
         </>
       )}
     </AnimatePresence>
   )
-}
-
-function getDateOptions(): { label: string; value: string }[] {
-  const today = new Date()
-  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  const tomorrow = new Date(today)
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  const nextWeek = new Date(today)
-  nextWeek.setDate(nextWeek.getDate() + 7)
-
-  return [
-    { label: 'Today', value: fmt(today) },
-    { label: 'Tomorrow', value: fmt(tomorrow) },
-    { label: 'Next week', value: fmt(nextWeek) },
-  ]
 }
