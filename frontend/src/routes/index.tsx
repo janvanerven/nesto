@@ -40,9 +40,9 @@ function DashboardPage() {
       <div className="flex items-center justify-between mt-2 mb-6">
         <div>
           <h1 className="text-2xl font-extrabold text-text">
-            {getGreeting()}, {user?.display_name?.split(' ')[0] || 'there'}
+            {getGreeting()}, {user?.first_name || user?.display_name?.split(' ')[0] || 'there'}
           </h1>
-          <p className="text-text-muted text-sm mt-0.5">{household.name}</p>
+          <p className="text-xl font-semibold text-text mt-1">{household.name}</p>
         </div>
         <Avatar name={user?.display_name || '?'} src={user?.avatar_url} />
       </div>
@@ -82,7 +82,7 @@ function TaskSummary({ householdId }: { householdId: string }) {
 
       {/* Recent tasks */}
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-bold text-text">Upcoming tasks</h2>
+        <h2 className="text-lg font-bold text-text">Upcoming reminders</h2>
         <Link to="/tasks" className="text-sm font-medium text-primary">
           View all
         </Link>
@@ -106,7 +106,6 @@ function TaskSummary({ householdId }: { householdId: string }) {
                     <p className="font-semibold text-text truncate">{task.title}</p>
                     <p className="text-sm text-text-muted mt-0.5">
                       {task.due_date ? `Due ${task.due_date}` : 'No due date'}
-                      {task.category && ` · ${task.category}`}
                     </p>
                   </div>
                 </div>
