@@ -31,6 +31,12 @@ class EventUpdate(BaseModel):
     recurrence_interval: int | None = Field(default=None, ge=1, le=365)
     recurrence_end: date | None = None
 
+    @model_validator(mode="after")
+    def validate_times(self):
+        if self.start_time and self.end_time and self.end_time <= self.start_time:
+            raise ValueError("end_time must be after start_time")
+        return self
+
 
 class EventResponse(BaseModel):
     id: str

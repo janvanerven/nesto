@@ -21,23 +21,34 @@ async def list_shopping_lists(
     household_id: str,
     status: str | None = None,
 ) -> list[dict]:
-    query = select(ShoppingList).where(ShoppingList.household_id == household_id)
+    # Count items per list in a single subquery to avoid N+1
+    item_counts = (
+        select(
+            ShoppingItem.list_id,
+            func.count(ShoppingItem.id).label("item_count"),
+            func.count(ShoppingItem.id).filter(ShoppingItem.checked == True).label("checked_count"),  # noqa: E712
+        )
+        .group_by(ShoppingItem.list_id)
+        .subquery()
+    )
+
+    query = (
+        select(
+            ShoppingList,
+            func.coalesce(item_counts.c.item_count, 0).label("item_count"),
+            func.coalesce(item_counts.c.checked_count, 0).label("checked_count"),
+        )
+        .outerjoin(item_counts, ShoppingList.id == item_counts.c.list_id)
+        .where(ShoppingList.household_id == household_id)
+    )
     if status:
         query = query.where(ShoppingList.status == status)
     query = query.order_by(ShoppingList.priority.asc(), ShoppingList.created_at.desc())
     result = await db.execute(query)
-    lists = list(result.scalars().all())
 
     out = []
-    for sl in lists:
-        counts = await db.execute(
-            select(
-                func.count(ShoppingItem.id),
-                func.count(ShoppingItem.id).filter(ShoppingItem.checked == True),
-            ).where(ShoppingItem.list_id == sl.id)
-        )
-        total, checked = counts.one()
-        d = {
+    for sl, total, checked in result.all():
+        out.append({
             "id": sl.id,
             "household_id": sl.household_id,
             "name": sl.name,
@@ -48,8 +59,7 @@ async def list_shopping_lists(
             "updated_at": sl.updated_at,
             "item_count": total,
             "checked_count": checked,
-        }
-        out.append(d)
+        })
     return out
 
 

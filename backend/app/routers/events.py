@@ -21,7 +21,7 @@ async def get_events(
     db: AsyncSession = Depends(get_db),
 ):
     await get_household(db, household_id, user_id)
-    return await list_events(db, household_id)
+    return await list_events(db, household_id, start=start, end=end)
 
 
 @router.post("", response_model=EventResponse, status_code=201)

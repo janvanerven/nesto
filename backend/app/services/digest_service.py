@@ -1,3 +1,4 @@
+import html
 import logging
 import math
 from datetime import date, datetime, time, timedelta
@@ -40,12 +41,22 @@ def _advance_date(current: datetime, rule: str, interval: int, anchor: datetime)
             candidate += timedelta(days=1)
         # Advance to the correct week
         candidate += timedelta(weeks=anchor_week - 1)
-        # If we overflowed the month, recurse
+        # If we overflowed the month, skip to next interval (no recursion)
         if candidate.month != month:
-            return _advance_date(candidate, rule, interval, anchor)
+            next_month = month + interval
+            next_year = year + (next_month - 1) // 12
+            next_month = (next_month - 1) % 12 + 1
+            candidate = candidate.replace(year=next_year, month=next_month, day=1)
+            while candidate.weekday() != anchor_dow:
+                candidate += timedelta(days=1)
+            candidate += timedelta(weeks=anchor_week - 1)
         return candidate
     elif rule == "yearly":
-        return current.replace(year=current.year + interval)
+        # Handle leap year: Feb 29 → Feb 28 in non-leap years
+        try:
+            return current.replace(year=current.year + interval)
+        except ValueError:
+            return current.replace(year=current.year + interval, day=28)
     return current
 
 
@@ -271,12 +282,8 @@ def render_digest_html(user: User, digest_data: list[dict], period: str) -> str:
 
 
 def _esc(text: str) -> str:
-    """Minimal HTML escaping."""
-    return (text
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-            .replace('"', "&quot;"))
+    """HTML-escape user content."""
+    return html.escape(text)
 
 
 # ---------------------------------------------------------------------------

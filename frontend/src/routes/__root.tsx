@@ -1,4 +1,4 @@
-import { createRootRoute, Outlet } from '@tanstack/react-router'
+import { createRootRoute, Outlet, useLocation } from '@tanstack/react-router'
 import { useAuth } from 'react-oidc-context'
 import { useEffect } from 'react'
 import { setTokenGetter, setTokenRefresher, setSessionExpiredHandler } from '@/api/client'
@@ -13,6 +13,7 @@ const SHELL_EXCLUDED = ['/login', '/callback']
 
 function RootComponent() {
   const auth = useAuth()
+  const location = useLocation()
 
   useEffect(() => {
     setTokenGetter(() => auth.user?.access_token)
@@ -25,44 +26,7 @@ function RootComponent() {
     })
   }, [auth.user, auth.signinSilent, auth.signinRedirect])
 
-  // Log OIDC token lifecycle events and diagnostics
-  useEffect(() => {
-    if (auth.user) {
-      const expiresAt = auth.user.expires_at
-      const now = Math.floor(Date.now() / 1000)
-      const remaining = expiresAt ? expiresAt - now : 'unknown'
-      console.log('[OIDC] Token info:', {
-        hasAccessToken: !!auth.user.access_token,
-        hasRefreshToken: !!auth.user.refresh_token,
-        expiresAt: expiresAt ? new Date(expiresAt * 1000).toISOString() : 'unknown',
-        remainingSeconds: remaining,
-        tokenType: auth.user.token_type,
-        scopes: auth.user.scope,
-      })
-    }
-  }, [auth.user])
-
-  useEffect(() => {
-    const mgr = auth.events
-    if (!mgr) return
-    const onExpiring = () => console.log('[OIDC] Access token expiring soon, automatic renewal should fire')
-    const onExpired = () => console.warn('[OIDC] Access token expired — renewal did not complete in time')
-    const onError = (err: Error) => console.error('[OIDC] Silent renew error:', err.message)
-    const onLoaded = () => console.log('[OIDC] User loaded — token refreshed successfully')
-    mgr.addAccessTokenExpiring(onExpiring)
-    mgr.addAccessTokenExpired(onExpired)
-    mgr.addSilentRenewError(onError)
-    mgr.addUserLoaded(onLoaded)
-    return () => {
-      mgr.removeAccessTokenExpiring(onExpiring)
-      mgr.removeAccessTokenExpired(onExpired)
-      mgr.removeSilentRenewError(onError)
-      mgr.removeUserLoaded(onLoaded)
-    }
-  }, [auth.events])
-
-  const pathname = window.location.pathname
-  const showShell = !SHELL_EXCLUDED.includes(pathname) && auth.isAuthenticated
+  const showShell = !SHELL_EXCLUDED.includes(location.pathname) && auth.isAuthenticated
 
   if (!showShell) {
     return <Outlet />

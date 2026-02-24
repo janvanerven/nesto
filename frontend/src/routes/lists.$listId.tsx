@@ -85,6 +85,7 @@ function ListDetailContent({ householdId, listId }: { householdId: string; listI
         <button
           onClick={() => navigate({ to: '/lists' })}
           className="p-1.5 -ml-1.5 rounded-full text-text-muted hover:bg-text/5 transition-colors"
+          aria-label="Back to lists"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M15 18l-6-6 6-6" />
@@ -96,6 +97,7 @@ function ListDetailContent({ householdId, listId }: { householdId: string; listI
         <button
           onClick={() => setShowEdit(true)}
           className="p-1.5 -mr-1.5 rounded-full text-text-muted hover:bg-text/5 transition-colors"
+          aria-label="Edit list"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />

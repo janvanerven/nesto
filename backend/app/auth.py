@@ -24,12 +24,19 @@ _JWKS_CACHE_TTL = 86400  # 24 hours
 
 async def _get_jwks() -> dict[str, Any]:
     global _jwks_cache, _jwks_cache_time
+
+    # Fast path: return cached value without acquiring lock
+    now = time.time()
+    if _jwks_cache and (now - _jwks_cache_time) < _JWKS_CACHE_TTL:
+        return _jwks_cache
+
     async with _jwks_lock:
+        # Double-check after acquiring lock
         now = time.time()
         if _jwks_cache and (now - _jwks_cache_time) < _JWKS_CACHE_TTL:
             return _jwks_cache
 
-        async with httpx.AsyncClient(follow_redirects=True) as client:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=10.0) as client:
             issuer = settings.oidc_issuer_url.rstrip("/")
             discovery_url = f"{issuer}/.well-known/openid-configuration"
             discovery = await client.get(discovery_url)

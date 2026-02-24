@@ -13,7 +13,9 @@ export const Route = createFileRoute('/settings')({
 function resizeImage(file: File, maxSize: number): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image()
+    const blobUrl = URL.createObjectURL(file)
     img.onload = () => {
+      URL.revokeObjectURL(blobUrl)
       const canvas = document.createElement('canvas')
       canvas.width = maxSize
       canvas.height = maxSize
@@ -24,8 +26,11 @@ function resizeImage(file: File, maxSize: number): Promise<string> {
       ctx.drawImage(img, sx, sy, min, min, 0, 0, maxSize, maxSize)
       resolve(canvas.toDataURL('image/jpeg', 0.85))
     }
-    img.onerror = reject
-    img.src = URL.createObjectURL(file)
+    img.onerror = () => {
+      URL.revokeObjectURL(blobUrl)
+      reject(new Error('Failed to load image'))
+    }
+    img.src = blobUrl
   })
 }
 

@@ -16,10 +16,23 @@ _UPDATABLE_FIELDS = {
 async def list_events(
     db: AsyncSession,
     household_id: str,
+    start: "date | None" = None,
+    end: "date | None" = None,
 ) -> list[Event]:
+    from datetime import datetime, time
     query = select(Event).where(
         Event.household_id == household_id,
-    ).order_by(Event.start_time.asc())
+    )
+    if start and end:
+        range_start = datetime.combine(start, time.min)
+        range_end = datetime.combine(end, time.max)
+        # Include events that overlap the range OR have recurrence (need client expansion)
+        query = query.where(
+            (Event.recurrence_rule.isnot(None)) | (
+                (Event.end_time >= range_start) & (Event.start_time <= range_end)
+            )
+        )
+    query = query.order_by(Event.start_time.asc())
     result = await db.execute(query)
     return list(result.scalars().all())
 
