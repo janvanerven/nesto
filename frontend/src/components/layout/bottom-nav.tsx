@@ -5,6 +5,7 @@ const tabs = [
   { to: '/' as const, label: 'Home', icon: HomeIcon },
   { to: '/tasks' as const, label: 'Reminders', icon: CheckIcon },
   { to: '/calendar' as const, label: 'Calendar', icon: CalendarIcon },
+  { to: '/lists' as const, label: 'Lists', icon: ListIcon },
   { to: '/settings' as const, label: 'More', icon: SettingsIcon },
 ]
 
@@ -66,6 +67,15 @@ function CalendarIcon({ active }: { active: boolean }) {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  )
+}
+
+function ListIcon({ active }: { active: boolean }) {
+  const color = active ? '#6C5CE7' : '#636E72'
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 5h11M9 12h11M9 19h11M5 5v.01M5 12v.01M5 19v.01" />
     </svg>
   )
 }
