@@ -32,6 +32,20 @@ class Settings(BaseSettings):
             )
         return v
 
+    @field_validator("oidc_issuer_url")
+    @classmethod
+    def validate_oidc_issuer(cls, v: str) -> str:
+        if not v:
+            raise ValueError("OIDC_ISSUER_URL must be set")
+        return v
+
+    @field_validator("oidc_client_id")
+    @classmethod
+    def validate_oidc_client_id(cls, v: str) -> str:
+        if not v:
+            raise ValueError("OIDC_CLIENT_ID must be set")
+        return v
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
 

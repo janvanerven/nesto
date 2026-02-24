@@ -2,7 +2,7 @@ import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,7 +24,7 @@ async def _digest_scheduler_loop():
     while True:
         try:
             await asyncio.sleep(60)
-            now = datetime.now()
+            now = datetime.now(timezone.utc)
             today = now.date()
 
             # Daily digest: configured hour, minute 0
