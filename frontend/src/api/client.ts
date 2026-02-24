@@ -8,9 +8,14 @@ export class ApiError extends Error {
 }
 
 let getToken: (() => string | undefined) | null = null
+let refreshToken: (() => Promise<string | undefined>) | null = null
 
 export function setTokenGetter(getter: () => string | undefined) {
   getToken = getter
+}
+
+export function setTokenRefresher(refresher: () => Promise<string | undefined>) {
+  refreshToken = refresher
 }
 
 export function hasToken(): boolean {
@@ -18,7 +23,7 @@ export function hasToken(): boolean {
 }
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getToken?.()
+  let token = getToken?.()
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
@@ -27,7 +32,20 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     headers['Authorization'] = `Bearer ${token}`
   }
 
-  const response = await fetch(`/api${path}`, { ...options, headers })
+  let response = await fetch(`/api${path}`, { ...options, headers })
+
+  // If 401 and we have a refresh mechanism, try refreshing the token once
+  if (response.status === 401 && refreshToken) {
+    try {
+      const newToken = await refreshToken()
+      if (newToken && newToken !== token) {
+        headers['Authorization'] = `Bearer ${newToken}`
+        response = await fetch(`/api${path}`, { ...options, headers })
+      }
+    } catch {
+      // Refresh failed, fall through to original 401
+    }
+  }
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({ detail: response.statusText }))
