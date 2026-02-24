@@ -49,6 +49,7 @@ function ListDetailContent({ householdId, listId }: { householdId: string; listI
   const [newItemName, setNewItemName] = useState('')
   const [newItemQty, setNewItemQty] = useState('')
   const [showEdit, setShowEdit] = useState(false)
+  const [confirmComplete, setConfirmComplete] = useState(false)
 
   function handleAddItem(e: React.FormEvent) {
     e.preventDefault()
@@ -59,8 +60,16 @@ function ListDetailContent({ householdId, listId }: { householdId: string; listI
   }
 
   async function handleComplete() {
+    if (!confirmComplete) {
+      setConfirmComplete(true)
+      return
+    }
     await completeListMutation.mutateAsync(listId)
     navigate({ to: '/lists' })
+  }
+
+  async function handleReopen() {
+    await updateListMutation.mutateAsync({ listId, status: 'active' })
   }
 
   async function handleDelete(id: string) {
@@ -190,15 +199,32 @@ function ListDetailContent({ householdId, listId }: { householdId: string; listI
         </motion.div>
       )}
 
-      {/* Complete list button */}
+      {/* Complete / Reopen list button */}
       {items && items.length > 0 && list?.status === 'active' && (
         <div className="mt-6">
           <Button
             onClick={handleComplete}
+            variant={confirmComplete ? 'danger' : 'primary'}
             disabled={completeListMutation.isPending}
             className="w-full"
           >
-            {completeListMutation.isPending ? 'Completing...' : 'Complete list'}
+            {completeListMutation.isPending
+              ? 'Completing...'
+              : confirmComplete
+                ? 'Tap again to confirm'
+                : 'Complete list'}
+          </Button>
+        </div>
+      )}
+      {list?.status === 'archived' && (
+        <div className="mt-6">
+          <Button
+            onClick={handleReopen}
+            variant="ghost"
+            disabled={updateListMutation.isPending}
+            className="w-full"
+          >
+            {updateListMutation.isPending ? 'Reopening...' : 'Reopen list'}
           </Button>
         </div>
       )}
