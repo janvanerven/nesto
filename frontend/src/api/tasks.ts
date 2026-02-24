@@ -13,6 +13,10 @@ export interface Task {
   due_date: string | null
   completed_at: string | null
   category: string | null
+  recurrence_rule: string | null
+  recurrence_interval: number
+  recurrence_end: string | null
+  last_completed_at: string | null
   created_at: string
   updated_at: string
 }
@@ -23,6 +27,9 @@ export interface TaskCreate {
   priority?: number
   assigned_to?: string
   due_date?: string
+  recurrence_rule?: string
+  recurrence_interval?: number
+  recurrence_end?: string
 }
 
 export interface TaskUpdate {
@@ -33,6 +40,9 @@ export interface TaskUpdate {
   assigned_to?: string
   due_date?: string
   category?: string
+  recurrence_rule?: string
+  recurrence_interval?: number
+  recurrence_end?: string
 }
 
 export function useTasks(householdId: string, filters?: { status?: string; priority?: number; assigned_to?: string }) {

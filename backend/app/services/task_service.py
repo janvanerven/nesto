@@ -1,5 +1,6 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from dateutil.relativedelta import relativedelta
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -8,7 +9,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.task import Task
 from app.schemas.task import TaskCreate, TaskUpdate
 
-_UPDATABLE_FIELDS = {"title", "description", "status", "priority", "assigned_to", "due_date", "category"}
+_UPDATABLE_FIELDS = {
+    "title", "description", "status", "priority", "assigned_to", "due_date",
+    "category", "recurrence_rule", "recurrence_interval", "recurrence_end",
+}
+
+
+def _advance_due_date(current_due: date, rule: str, interval: int) -> date:
+    if rule == "daily":
+        return current_due + relativedelta(days=interval)
+    if rule == "weekly":
+        return current_due + relativedelta(weeks=interval)
+    if rule == "monthly":
+        return current_due + relativedelta(months=interval)
+    if rule == "yearly":
+        return current_due + relativedelta(years=interval)
+    return current_due
 
 
 async def list_tasks(
@@ -59,9 +75,21 @@ async def update_task(db: AsyncSession, task_id: str, household_id: str, data: T
         if key in _UPDATABLE_FIELDS:
             setattr(task, key, value)
 
-    # Auto-set completed_at
-    if updates.get("status") == "done" and not task.completed_at:
-        task.completed_at = datetime.now(timezone.utc)
+    # Handle completion with recurrence auto-regeneration
+    if updates.get("status") == "done":
+        if task.recurrence_rule and task.due_date:
+            next_due = _advance_due_date(task.due_date, task.recurrence_rule, task.recurrence_interval)
+            # If recurrence_end is set and next date exceeds it, complete normally
+            if task.recurrence_end and next_due > task.recurrence_end:
+                task.completed_at = datetime.now(timezone.utc)
+            else:
+                # Advance due date and reset to pending
+                task.due_date = next_due
+                task.last_completed_at = datetime.now(timezone.utc)
+                task.status = "pending"
+                task.completed_at = None
+        elif not task.completed_at:
+            task.completed_at = datetime.now(timezone.utc)
     elif updates.get("status") and updates["status"] != "done":
         task.completed_at = None
 

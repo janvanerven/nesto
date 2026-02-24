@@ -11,6 +11,9 @@ class TaskCreate(BaseModel):
     assigned_to: str | None = None
     due_date: date | None = None
     category: str | None = Field(default=None, max_length=100)
+    recurrence_rule: Literal["daily", "weekly", "monthly", "yearly"] | None = None
+    recurrence_interval: int = Field(default=1, ge=1, le=99)
+    recurrence_end: date | None = None
 
 
 class TaskUpdate(BaseModel):
@@ -21,6 +24,9 @@ class TaskUpdate(BaseModel):
     assigned_to: str | None = None
     due_date: date | None = None
     category: str | None = Field(default=None, max_length=100)
+    recurrence_rule: Literal["daily", "weekly", "monthly", "yearly"] | None = None
+    recurrence_interval: int | None = Field(default=None, ge=1, le=99)
+    recurrence_end: date | None = None
 
 
 class TaskResponse(BaseModel):
@@ -35,6 +41,10 @@ class TaskResponse(BaseModel):
     due_date: date | None
     completed_at: datetime | None
     category: str | None
+    recurrence_rule: str | None
+    recurrence_interval: int
+    recurrence_end: date | None
+    last_completed_at: datetime | None
     created_at: datetime
     updated_at: datetime
 
