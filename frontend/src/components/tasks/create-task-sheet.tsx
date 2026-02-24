@@ -73,7 +73,7 @@ export function CreateReminderSheet({ open, onClose, onSubmit, isPending, member
               {members.length > 0 && (
                 <div>
                   <label className="text-sm font-medium text-text-muted mb-2 block">Assign to</label>
-                  <div className="flex gap-3 overflow-x-auto pb-1">
+                  <div className="flex gap-3 overflow-x-auto py-1">
                     {members.map((m) => (
                       <button
                         key={m.id}
