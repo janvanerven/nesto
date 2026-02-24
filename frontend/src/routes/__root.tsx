@@ -25,6 +25,26 @@ function RootComponent() {
     })
   }, [auth.user, auth.signinSilent, auth.signinRedirect])
 
+  // Log OIDC token lifecycle events for debugging
+  useEffect(() => {
+    const mgr = auth.events
+    if (!mgr) return
+    const onExpiring = () => console.log('[OIDC] Access token expiring soon, automatic renewal should fire')
+    const onExpired = () => console.warn('[OIDC] Access token expired — renewal did not complete in time')
+    const onError = (err: Error) => console.error('[OIDC] Silent renew error:', err.message)
+    const onLoaded = () => console.log('[OIDC] User loaded — token refreshed successfully')
+    mgr.addAccessTokenExpiring(onExpiring)
+    mgr.addAccessTokenExpired(onExpired)
+    mgr.addSilentRenewError(onError)
+    mgr.addUserLoaded(onLoaded)
+    return () => {
+      mgr.removeAccessTokenExpiring(onExpiring)
+      mgr.removeAccessTokenExpired(onExpired)
+      mgr.removeSilentRenewError(onError)
+      mgr.removeUserLoaded(onLoaded)
+    }
+  }, [auth.events])
+
   const pathname = window.location.pathname
   const showShell = !SHELL_EXCLUDED.includes(pathname) && auth.isAuthenticated
 

@@ -24,8 +24,38 @@ export function setSessionExpiredHandler(handler: () => void) {
   onSessionExpired = handler
 }
 
+// Read user data directly from OIDC sessionStorage (source of truth,
+// always fresher than the React state closure)
+function getStoredOidcUser(): { access_token?: string; expires_at?: number } | null {
+  for (let i = 0; i < sessionStorage.length; i++) {
+    const key = sessionStorage.key(i)
+    if (key?.startsWith('oidc.user:')) {
+      try {
+        return JSON.parse(sessionStorage.getItem(key)!)
+      } catch {
+        return null
+      }
+    }
+  }
+  return null
+}
+
+// Get the freshest token: prefer sessionStorage over React state
+function getFreshToken(): string | undefined {
+  const stored = getStoredOidcUser()
+  if (stored?.access_token) return stored.access_token
+  return getToken?.()
+}
+
+// True if token will expire within the next 30 seconds
+function isTokenExpiring(): boolean {
+  const stored = getStoredOidcUser()
+  if (!stored?.expires_at) return false
+  return stored.expires_at < Date.now() / 1000 + 30
+}
+
 export function hasToken(): boolean {
-  return !!getToken?.()
+  return !!getFreshToken()
 }
 
 async function doRefresh(): Promise<string | undefined> {
@@ -39,7 +69,17 @@ async function doRefresh(): Promise<string | undefined> {
 }
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  let token = getToken?.()
+  // Pre-flight: proactively refresh if token expires within 30s
+  if (isTokenExpiring() && refreshToken) {
+    try {
+      await doRefresh()
+    } catch {
+      onSessionExpired?.()
+      throw new ApiError(401, 'Session expired')
+    }
+  }
+
+  let token = getFreshToken()
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
@@ -50,7 +90,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
 
   let response = await fetch(`/api${path}`, { ...options, headers })
 
-  // If 401, try refreshing the token once (deduplicated across concurrent requests)
+  // Safety net: if we still get 401, try one refresh cycle
   if (response.status === 401 && refreshToken) {
     try {
       const newToken = await doRefresh()
@@ -59,8 +99,8 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
         response = await fetch(`/api${path}`, { ...options, headers })
       }
     } catch {
-      // Refresh failed — session is expired, redirect to re-authenticate
       onSessionExpired?.()
+      throw new ApiError(401, 'Session expired')
     }
   }
 
