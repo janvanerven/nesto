@@ -23,7 +23,6 @@ export interface TaskCreate {
   priority?: number
   assigned_to?: string
   due_date?: string
-  category?: string
 }
 
 export interface TaskUpdate {

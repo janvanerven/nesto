@@ -1,34 +1,33 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState } from 'react'
-import { Button, Input } from '@/components/ui'
+import { Button, Input, Avatar } from '@/components/ui'
 import type { TaskCreate } from '@/api/tasks'
+import type { HouseholdMember } from '@/api/households'
 
-interface CreateTaskSheetProps {
+interface CreateReminderSheetProps {
   open: boolean
   onClose: () => void
   onSubmit: (task: TaskCreate) => void
   isPending: boolean
+  members: HouseholdMember[]
 }
 
-export function CreateTaskSheet({ open, onClose, onSubmit, isPending }: CreateTaskSheetProps) {
+export function CreateReminderSheet({ open, onClose, onSubmit, isPending, members }: CreateReminderSheetProps) {
   const [title, setTitle] = useState('')
-  const [category, setCategory] = useState('')
   const [priority, setPriority] = useState(3)
-  const [dueDate, setDueDate] = useState('')
+  const [assignedTo, setAssignedTo] = useState<string | null>(null)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim()) return
     onSubmit({
       title: title.trim(),
-      category: category.trim() || undefined,
       priority,
-      due_date: dueDate || undefined,
+      assigned_to: assignedTo || undefined,
     })
     setTitle('')
-    setCategory('')
     setPriority(3)
-    setDueDate('')
+    setAssignedTo(null)
   }
 
   const priorities = [
@@ -42,7 +41,6 @@ export function CreateTaskSheet({ open, onClose, onSubmit, isPending }: CreateTa
     <AnimatePresence>
       {open && (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -50,8 +48,6 @@ export function CreateTaskSheet({ open, onClose, onSubmit, isPending }: CreateTa
             className="fixed inset-0 bg-black/30 z-40"
             onClick={onClose}
           />
-
-          {/* Sheet */}
           <motion.div
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
@@ -60,7 +56,7 @@ export function CreateTaskSheet({ open, onClose, onSubmit, isPending }: CreateTa
             className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-3xl p-6 pb-[env(safe-area-inset-bottom)] z-50 max-w-lg mx-auto"
           >
             <div className="w-12 h-1.5 bg-text/10 rounded-full mx-auto mb-6" />
-            <h2 className="text-xl font-bold text-text mb-4">New task</h2>
+            <h2 className="text-xl font-bold text-text mb-4">New reminder</h2>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <Input
@@ -69,18 +65,35 @@ export function CreateTaskSheet({ open, onClose, onSubmit, isPending }: CreateTa
                 onChange={(e) => setTitle(e.target.value)}
                 autoFocus
               />
-              <Input
-                label="Category"
-                placeholder="e.g. kitchen, shopping"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-              />
-              <Input
-                label="Due date"
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-              />
+
+              {/* Assignee picker */}
+              {members.length > 0 && (
+                <div>
+                  <label className="text-sm font-medium text-text-muted mb-2 block">Assign to</label>
+                  <div className="flex gap-3 overflow-x-auto pb-1">
+                    {members.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setAssignedTo(assignedTo === m.id ? null : m.id)}
+                        className={`flex flex-col items-center gap-1 min-w-[3.5rem] transition-all ${
+                          assignedTo === m.id ? 'opacity-100 scale-105' : 'opacity-50'
+                        }`}
+                      >
+                        <Avatar
+                          name={m.display_name}
+                          src={m.avatar_url}
+                          size="md"
+                          ring={assignedTo === m.id}
+                        />
+                        <span className="text-xs text-text-muted truncate w-full text-center">
+                          {m.first_name || m.display_name.split(' ')[0]}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Priority selector */}
               <div>
@@ -106,7 +119,7 @@ export function CreateTaskSheet({ open, onClose, onSubmit, isPending }: CreateTa
               </div>
 
               <Button type="submit" disabled={!title.trim() || isPending}>
-                {isPending ? 'Adding...' : 'Add task'}
+                {isPending ? 'Adding...' : 'Add reminder'}
               </Button>
             </form>
           </motion.div>

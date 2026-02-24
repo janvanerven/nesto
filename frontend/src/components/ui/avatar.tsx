@@ -3,6 +3,7 @@ interface AvatarProps {
   name: string
   size?: 'sm' | 'md' | 'lg'
   ringColor?: string
+  ring?: boolean
 }
 
 const sizeMap = { sm: 'w-8 h-8 text-xs', md: 'w-10 h-10 text-sm', lg: 'w-14 h-14 text-lg' }
@@ -23,13 +24,13 @@ function hashColor(name: string): string {
   return colors[Math.abs(hash) % colors.length]
 }
 
-export function Avatar({ src, name, size = 'md', ringColor }: AvatarProps) {
+export function Avatar({ src, name, size = 'md', ringColor, ring: showRing = true }: AvatarProps) {
   const ring = ringColor || hashColor(name)
 
   return (
     <div
-      className={`${sizeMap[size]} rounded-full flex items-center justify-center font-bold ring-2 overflow-hidden`}
-      style={{ ringColor: ring, '--tw-ring-color': ring } as React.CSSProperties}
+      className={`${sizeMap[size]} rounded-full flex items-center justify-center font-bold ${showRing ? 'ring-2' : ''} overflow-hidden`}
+      style={showRing ? { ringColor: ring, '--tw-ring-color': ring } as React.CSSProperties : undefined}
     >
       {src ? (
         <img src={src} alt={name} className="w-full h-full object-cover" />

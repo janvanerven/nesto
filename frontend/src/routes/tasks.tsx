@@ -2,10 +2,10 @@ import { createFileRoute, Navigate } from '@tanstack/react-router'
 import { useAuth } from 'react-oidc-context'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useHouseholds } from '@/api/households'
+import { useHouseholds, useHouseholdMembers } from '@/api/households'
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '@/api/tasks'
 import { TaskCard } from '@/components/tasks/task-card'
-import { CreateTaskSheet } from '@/components/tasks/create-task-sheet'
+import { CreateReminderSheet } from '@/components/tasks/create-task-sheet'
 import { Fab, Card } from '@/components/ui'
 
 export const Route = createFileRoute('/tasks')({
@@ -49,6 +49,7 @@ function TasksContent({
 }) {
   const statusFilter = filter === 'all' ? undefined : filter === 'done' ? 'done' : 'pending'
   const { data: tasks, isLoading } = useTasks(householdId, { status: statusFilter })
+  const { data: members = [] } = useHouseholdMembers(householdId)
   const createMutation = useCreateTask(householdId)
   const updateMutation = useUpdateTask(householdId)
   const deleteMutation = useDeleteTask(householdId)
@@ -61,7 +62,7 @@ function TasksContent({
 
   return (
     <div className="pb-4">
-      <h1 className="text-2xl font-extrabold text-text mt-2 mb-4">Tasks</h1>
+      <h1 className="text-2xl font-extrabold text-text mt-2 mb-4">Reminders</h1>
 
       {/* Filter tabs */}
       <div className="flex gap-2 mb-4">
@@ -93,10 +94,10 @@ function TasksContent({
         <Card className="text-center py-8">
           <p className="text-4xl mb-3">&#10024;</p>
           <p className="font-semibold text-text">
-            {filter === 'done' ? 'No completed tasks yet' : 'No tasks yet'}
+            {filter === 'done' ? 'No completed reminders yet' : 'No reminders yet'}
           </p>
           <p className="text-sm text-text-muted mt-1">
-            {filter === 'done' ? 'Complete some tasks to see them here.' : 'Tap + to add your first task.'}
+            {filter === 'done' ? 'Complete some reminders to see them here.' : 'Tap + to add your first reminder.'}
           </p>
         </Card>
       ) : (
@@ -127,7 +128,7 @@ function TasksContent({
       </Fab>
 
       {/* Create sheet */}
-      <CreateTaskSheet
+      <CreateReminderSheet
         open={showCreate}
         onClose={() => setShowCreate(false)}
         onSubmit={async (task) => {
@@ -135,6 +136,7 @@ function TasksContent({
           setShowCreate(false)
         }}
         isPending={createMutation.isPending}
+        members={members}
       />
     </div>
   )

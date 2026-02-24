@@ -54,11 +54,6 @@ export function TaskCard({ task, onComplete, onDelete }: TaskCardProps) {
                 {task.due_date && (
                   <span className="text-xs text-text-muted">{task.due_date}</span>
                 )}
-                {task.category && (
-                  <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                    {task.category}
-                  </span>
-                )}
               </div>
             </div>
           </div>

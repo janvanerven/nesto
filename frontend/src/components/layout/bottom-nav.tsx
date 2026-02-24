@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 
 const tabs = [
   { to: '/' as const, label: 'Home', icon: HomeIcon },
-  { to: '/tasks' as const, label: 'Tasks', icon: CheckIcon },
+  { to: '/tasks' as const, label: 'Reminders', icon: CheckIcon },
   { to: '/calendar' as const, label: 'Calendar', icon: CalendarIcon },
   { to: '/settings' as const, label: 'More', icon: SettingsIcon },
 ]
