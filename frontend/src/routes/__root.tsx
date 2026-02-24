@@ -25,7 +25,23 @@ function RootComponent() {
     })
   }, [auth.user, auth.signinSilent, auth.signinRedirect])
 
-  // Log OIDC token lifecycle events for debugging
+  // Log OIDC token lifecycle events and diagnostics
+  useEffect(() => {
+    if (auth.user) {
+      const expiresAt = auth.user.expires_at
+      const now = Math.floor(Date.now() / 1000)
+      const remaining = expiresAt ? expiresAt - now : 'unknown'
+      console.log('[OIDC] Token info:', {
+        hasAccessToken: !!auth.user.access_token,
+        hasRefreshToken: !!auth.user.refresh_token,
+        expiresAt: expiresAt ? new Date(expiresAt * 1000).toISOString() : 'unknown',
+        remainingSeconds: remaining,
+        tokenType: auth.user.token_type,
+        scopes: auth.user.scope,
+      })
+    }
+  }, [auth.user])
+
   useEffect(() => {
     const mgr = auth.events
     if (!mgr) return

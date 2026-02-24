@@ -126,7 +126,19 @@ export function EditEventSheet({
             className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-3xl p-6 pb-[env(safe-area-inset-bottom)] z-50 max-w-lg mx-auto max-h-[85vh] overflow-y-auto"
           >
             <div className="w-12 h-1.5 bg-text/10 rounded-full mx-auto mb-6" />
-            <h2 className="text-xl font-bold text-text mb-4">Edit event</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-text">Edit event</h2>
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-1.5 -mr-1.5 rounded-full text-text-muted hover:bg-text/5 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <Input
@@ -151,39 +163,31 @@ export function EditEventSheet({
               <div>
                 <label className="text-sm font-medium text-text-muted mb-2 block">Time</label>
                 <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => startTimeRef.current?.showPicker()}
-                    className="flex-1 px-4 py-2.5 rounded-xl border-2 border-text/10 bg-surface text-text text-sm font-medium text-center transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  >
+                  <label className="relative flex-1 px-4 py-2.5 rounded-xl border-2 border-text/10 bg-surface text-text text-sm font-medium text-center transition-all cursor-pointer">
                     Start: {startTime || '--:--'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => endTimeRef.current?.showPicker()}
-                    className="flex-1 px-4 py-2.5 rounded-xl border-2 border-text/10 bg-surface text-text text-sm font-medium text-center transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  >
+                    <input
+                      ref={startTimeRef}
+                      type="time"
+                      value={startTime}
+                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                      onChange={(e) => {
+                        if (e.target.value) setStartTime(e.target.value)
+                      }}
+                    />
+                  </label>
+                  <label className="relative flex-1 px-4 py-2.5 rounded-xl border-2 border-text/10 bg-surface text-text text-sm font-medium text-center transition-all cursor-pointer">
                     End: {endTime || '--:--'}
-                  </button>
+                    <input
+                      ref={endTimeRef}
+                      type="time"
+                      value={endTime}
+                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                      onChange={(e) => {
+                        if (e.target.value) setEndTime(e.target.value)
+                      }}
+                    />
+                  </label>
                 </div>
-                <input
-                  ref={startTimeRef}
-                  type="time"
-                  value={startTime}
-                  className="absolute opacity-0 pointer-events-none"
-                  onChange={(e) => {
-                    if (e.target.value) setStartTime(e.target.value)
-                  }}
-                />
-                <input
-                  ref={endTimeRef}
-                  type="time"
-                  value={endTime}
-                  className="absolute opacity-0 pointer-events-none"
-                  onChange={(e) => {
-                    if (e.target.value) setEndTime(e.target.value)
-                  }}
-                />
               </div>
 
               {/* Recurrence toggle pills */}

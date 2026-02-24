@@ -235,11 +235,9 @@ export function CreateEventSheet({
                       {opt.label}
                     </button>
                   ))}
-                  <button
-                    type="button"
-                    onClick={() => dateInputRef.current?.showPicker()}
+                  <label
                     className={`
-                      px-3 py-1.5 rounded-full text-sm font-medium transition-all
+                      relative px-3 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer
                       ${isCustomDate
                         ? 'bg-primary text-white shadow-md'
                         : 'bg-text/5 text-text-muted'
@@ -252,15 +250,15 @@ export function CreateEventSheet({
                           day: 'numeric',
                         })
                       : 'Pick date'}
-                  </button>
-                  <input
-                    ref={dateInputRef}
-                    type="date"
-                    className="absolute opacity-0 pointer-events-none"
-                    onChange={(e) => {
-                      if (e.target.value) setEventDate(e.target.value)
-                    }}
-                  />
+                    <input
+                      ref={dateInputRef}
+                      type="date"
+                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                      onChange={(e) => {
+                        if (e.target.value) setEventDate(e.target.value)
+                      }}
+                    />
+                  </label>
                 </div>
               </div>
 
@@ -289,11 +287,9 @@ export function CreateEventSheet({
                       {preset.label}
                     </button>
                   ))}
-                  <button
-                    type="button"
-                    onClick={() => timeInputRef.current?.showPicker()}
+                  <label
                     className={`
-                      px-3 py-1.5 rounded-full text-sm font-medium transition-all
+                      relative px-3 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer
                       ${customStart || (startTime && !isPresetTime)
                         ? 'bg-primary text-white shadow-md'
                         : 'bg-text/5 text-text-muted'
@@ -301,18 +297,18 @@ export function CreateEventSheet({
                     `}
                   >
                     {customStart || (startTime && !isPresetTime) ? startTime : 'Custom'}
-                  </button>
-                  <input
-                    ref={timeInputRef}
-                    type="time"
-                    className="absolute opacity-0 pointer-events-none"
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        setStartTime(e.target.value)
-                        setCustomStart(true)
-                      }
-                    }}
-                  />
+                    <input
+                      ref={timeInputRef}
+                      type="time"
+                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          setStartTime(e.target.value)
+                          setCustomStart(true)
+                        }
+                      }}
+                    />
+                  </label>
                 </div>
               </div>
 
@@ -343,11 +339,9 @@ export function CreateEventSheet({
                         {preset.label}
                       </button>
                     ))}
-                    <button
-                      type="button"
-                      onClick={() => endTimeInputRef.current?.showPicker()}
+                    <label
                       className={`
-                        px-3 py-1.5 rounded-full text-sm font-medium transition-all
+                        relative px-3 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer
                         ${customDuration
                           ? 'bg-primary text-white shadow-md'
                           : 'bg-text/5 text-text-muted'
@@ -357,19 +351,19 @@ export function CreateEventSheet({
                       {customDuration && customEndTime
                         ? `Until ${customEndTime}`
                         : 'Custom'}
-                    </button>
-                    <input
-                      ref={endTimeInputRef}
-                      type="time"
-                      className="absolute opacity-0 pointer-events-none"
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          setCustomEndTime(e.target.value)
-                          setCustomDuration(true)
-                          setDurationMinutes(null)
-                        }
-                      }}
-                    />
+                      <input
+                        ref={endTimeInputRef}
+                        type="time"
+                        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            setCustomEndTime(e.target.value)
+                            setCustomDuration(true)
+                            setDurationMinutes(null)
+                          }
+                        }}
+                      />
+                    </label>
                   </div>
                 </div>
               )}
