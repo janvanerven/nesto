@@ -73,7 +73,7 @@ function TasksContent({
               px-4 py-2 rounded-full text-sm font-medium transition-all
               ${filter === f.key
                 ? 'bg-primary text-white'
-                : 'bg-black/5 text-text-muted hover:bg-black/10'
+                : 'bg-text/5 text-text-muted hover:bg-text/10'
               }
             `}
           >

@@ -1,8 +1,9 @@
 import { createRootRoute, Outlet } from '@tanstack/react-router'
 import { useAuth } from 'react-oidc-context'
 import { useEffect } from 'react'
-import { setTokenGetter, setTokenRefresher } from '@/api/client'
+import { setTokenGetter, setTokenRefresher, setSessionExpiredHandler } from '@/api/client'
 import { BottomNav } from '@/components/layout/bottom-nav'
+import '@/stores/theme-store'
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -19,7 +20,10 @@ function RootComponent() {
       const user = await auth.signinSilent()
       return user?.access_token
     })
-  }, [auth.user, auth.signinSilent])
+    setSessionExpiredHandler(() => {
+      auth.signinRedirect()
+    })
+  }, [auth.user, auth.signinSilent, auth.signinRedirect])
 
   const pathname = window.location.pathname
   const showShell = !SHELL_EXCLUDED.includes(pathname) && auth.isAuthenticated

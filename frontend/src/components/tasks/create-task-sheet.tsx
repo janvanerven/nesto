@@ -59,7 +59,7 @@ export function CreateTaskSheet({ open, onClose, onSubmit, isPending }: CreateTa
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-3xl p-6 pb-[env(safe-area-inset-bottom)] z-50 max-w-lg mx-auto"
           >
-            <div className="w-12 h-1.5 bg-black/10 rounded-full mx-auto mb-6" />
+            <div className="w-12 h-1.5 bg-text/10 rounded-full mx-auto mb-6" />
             <h2 className="text-xl font-bold text-text mb-4">New task</h2>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -95,7 +95,7 @@ export function CreateTaskSheet({ open, onClose, onSubmit, isPending }: CreateTa
                         flex-1 py-2 rounded-xl text-sm font-medium transition-all
                         ${priority === p.value
                           ? `${p.color} text-white shadow-md`
-                          : 'bg-black/5 text-text-muted'
+                          : 'bg-text/5 text-text-muted'
                         }
                       `}
                     >

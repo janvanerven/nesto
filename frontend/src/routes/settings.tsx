@@ -4,6 +4,7 @@ import { useCurrentUser } from '@/api/user'
 import { useHouseholds, useCreateInvite } from '@/api/households'
 import { Avatar, Button, Card } from '@/components/ui'
 import { useState } from 'react'
+import { useThemeStore } from '@/stores/theme-store'
 
 export const Route = createFileRoute('/settings')({
   component: SettingsPage,
@@ -42,6 +43,12 @@ function SettingsPage() {
         </Card>
       )}
 
+      {/* Appearance */}
+      <Card className="mb-4">
+        <h2 className="font-bold text-text mb-3">Appearance</h2>
+        <ThemeToggle />
+      </Card>
+
       {/* Sign out */}
       <Button variant="ghost" className="w-full" onClick={() => auth.signoutRedirect()}>
         Sign out
@@ -71,6 +78,35 @@ function InviteSection({ householdId }: { householdId: string }) {
           {inviteMutation.isPending ? 'Generating...' : 'Invite member'}
         </Button>
       )}
+    </div>
+  )
+}
+
+function ThemeToggle() {
+  const { mode, setMode } = useThemeStore()
+  const options: { value: 'system' | 'light' | 'dark'; label: string }[] = [
+    { value: 'system', label: 'System' },
+    { value: 'light', label: 'Light' },
+    { value: 'dark', label: 'Dark' },
+  ]
+
+  return (
+    <div className="flex gap-2">
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          onClick={() => setMode(opt.value)}
+          className={`
+            flex-1 py-2 rounded-xl text-sm font-medium transition-all
+            ${mode === opt.value
+              ? 'bg-primary text-white shadow-md'
+              : 'bg-text/5 text-text-muted'
+            }
+          `}
+        >
+          {opt.label}
+        </button>
+      ))}
     </div>
   )
 }

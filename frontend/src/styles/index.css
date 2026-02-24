@@ -48,3 +48,16 @@ body {
   margin: 0;
   min-height: 100dvh;
 }
+
+.dark {
+  --color-surface: #1E1E2E;
+  --color-background: #141420;
+  --color-text: #E8E8EE;
+  --color-text-muted: #9CA3AF;
+  --color-primary: #8B7CF0;
+  --color-primary-light: #A499F7;
+  --color-primary-dark: #6C5CE7;
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-fab: 0 4px 12px rgba(139, 124, 240, 0.4);
+}
