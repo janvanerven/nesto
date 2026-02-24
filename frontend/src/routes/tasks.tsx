@@ -19,7 +19,7 @@ function TasksPage() {
   const { data: households } = useHouseholds()
   const [showCreate, setShowCreate] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
-  const [filter, setFilter] = useState<'all' | 'pending' | 'done'>('all')
+  const [filter, setFilter] = useState<'pending' | 'done'>('pending')
 
   if (!auth.isAuthenticated) return <Navigate to="/login" />
   if (!households?.length) return <Navigate to="/onboarding" />
@@ -49,24 +49,29 @@ function TasksContent({
   setEditingTask,
 }: {
   householdId: string
-  filter: 'all' | 'pending' | 'done'
-  setFilter: (f: 'all' | 'pending' | 'done') => void
+  filter: 'pending' | 'done'
+  setFilter: (f: 'pending' | 'done') => void
   showCreate: boolean
   setShowCreate: (v: boolean) => void
   editingTask: Task | null
   setEditingTask: (t: Task | null) => void
 }) {
-  const statusFilter = filter === 'all' ? undefined : filter === 'done' ? 'done' : 'pending'
-  const { data: tasks, isLoading } = useTasks(householdId, { status: statusFilter })
+  const { data: tasks, isLoading } = useTasks(householdId, { status: filter })
   const { data: members = [] } = useHouseholdMembers(householdId)
   const createMutation = useCreateTask(householdId)
   const updateMutation = useUpdateTask(householdId)
   const deleteMutation = useDeleteTask(householdId)
 
+  const sortedTasks = tasks?.slice().sort((a, b) => {
+    if (!a.due_date && !b.due_date) return 0
+    if (!a.due_date) return 1
+    if (!b.due_date) return -1
+    return a.due_date.localeCompare(b.due_date)
+  })
+
   const filters = [
-    { key: 'all' as const, label: 'All' },
     { key: 'pending' as const, label: 'Active' },
-    { key: 'done' as const, label: 'Done' },
+    { key: 'done' as const, label: 'Completed' },
   ]
 
   return (
@@ -99,11 +104,11 @@ function TasksContent({
             <div key={i} className="h-20 bg-surface rounded-[var(--radius-card)] animate-pulse" />
           ))}
         </div>
-      ) : !tasks?.length ? (
+      ) : !sortedTasks?.length ? (
         <Card className="text-center py-8">
           <p className="text-4xl mb-3">&#10024;</p>
           <p className="font-semibold text-text">
-            {filter === 'done' ? 'No completed reminders yet' : 'No reminders yet'}
+            {filter === 'done' ? 'No completed reminders' : 'No reminders yet'}
           </p>
           <p className="text-sm text-text-muted mt-1">
             {filter === 'done' ? 'Complete some reminders to see them here.' : 'Tap + to add your first reminder.'}
@@ -112,7 +117,7 @@ function TasksContent({
       ) : (
         <motion.div className="space-y-3">
           <AnimatePresence>
-            {tasks.map((task, i) => (
+            {sortedTasks.map((task, i) => (
               <motion.div
                 key={task.id}
                 initial={{ opacity: 0, y: 10 }}
@@ -133,7 +138,7 @@ function TasksContent({
       )}
 
       {/* FAB */}
-      <Fab pulse={!tasks?.length} onClick={() => setShowCreate(true)}>
+      <Fab pulse={!sortedTasks?.length} onClick={() => setShowCreate(true)}>
         +
       </Fab>
 
