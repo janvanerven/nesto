@@ -21,7 +21,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           id={inputId}
           className={`
             h-12 px-4 rounded-[var(--radius-input)]
-            border-2 border-black/10
+            border-2 border-text/10
             bg-surface text-text
             placeholder:text-text-muted/50
             focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20
