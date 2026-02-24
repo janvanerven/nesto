@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+@theme {
+  /* Colors */
+  --color-primary: #6C5CE7;
+  --color-primary-light: #8B7CF0;
+  --color-primary-dark: #5A4BD1;
+  --color-secondary: #00CEC9;
+  --color-secondary-light: #33D9D5;
+  --color-accent: #FF6B6B;
+  --color-accent-light: #FF8787;
+  --color-success: #00B894;
+  --color-warning: #FDCB6E;
+  --color-surface: #FFFFFF;
+  --color-background: #F8F7FF;
+  --color-text: #2D3436;
+  --color-text-muted: #636E72;
+
+  /* Priority colors */
+  --color-priority-urgent: #FF6B6B;
+  --color-priority-high: #FDCB6E;
+  --color-priority-normal: #6C5CE7;
+  --color-priority-low: #B2BEC3;
+
+  /* Typography */
+  --font-family-sans: 'Inter', 'InterVariable', system-ui, sans-serif;
+
+  /* Radius */
+  --radius-card: 16px;
+  --radius-button: 9999px;
+  --radius-input: 12px;
+
+  /* Shadows */
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.1);
+  --shadow-fab: 0 4px 12px rgba(108, 92, 231, 0.4);
+}
+
+html {
+  font-family: var(--font-family-sans);
+  background-color: var(--color-background);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+}
