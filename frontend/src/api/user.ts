@@ -22,7 +22,7 @@ export function useCurrentUser() {
 export function useUpdateUser() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { first_name: string }) =>
+    mutationFn: (data: { first_name?: string; avatar_url?: string | null }) =>
       apiFetch<User>('/auth/me', {
         method: 'PATCH',
         body: JSON.stringify(data),

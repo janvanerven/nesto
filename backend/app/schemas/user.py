@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class UserResponse(BaseModel):
@@ -16,4 +16,12 @@ class UserResponse(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    first_name: str = Field(min_length=1, max_length=50)
+    first_name: str | None = Field(default=None, min_length=1, max_length=50)
+    avatar_url: str | None = None
+
+    @field_validator("avatar_url")
+    @classmethod
+    def validate_avatar_size(cls, v: str | None) -> str | None:
+        if v is not None and len(v) > 500_000:
+            raise ValueError("avatar_url must be under 500KB")
+        return v

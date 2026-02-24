@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import decode_token
 from app.database import get_db
 from app.schemas.user import UserResponse, UserUpdate
-from app.services.user_service import upsert_user, update_user_first_name
+from app.services.user_service import upsert_user, update_user
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -36,4 +36,4 @@ async def update_me(
     sub = token.get("sub")
     if not sub:
         raise HTTPException(status_code=401, detail="Token missing subject")
-    return await update_user_first_name(db, sub, body.first_name)
+    return await update_user(db, sub, body)

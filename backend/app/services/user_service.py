@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
+from app.schemas.user import UserUpdate
 
 
 async def upsert_user(db: AsyncSession, sub: str, email: str, name: str, avatar: str | None = None) -> User:
@@ -14,7 +15,8 @@ async def upsert_user(db: AsyncSession, sub: str, email: str, name: str, avatar:
     if user:
         user.email = email
         user.display_name = name
-        user.avatar_url = avatar
+        if not user.avatar_url:
+            user.avatar_url = avatar
         user.last_login = datetime.now(timezone.utc)
     else:
         user = User(
@@ -35,12 +37,13 @@ async def get_user(db: AsyncSession, user_id: str) -> User | None:
     return result.scalar_one_or_none()
 
 
-async def update_user_first_name(db: AsyncSession, user_id: str, first_name: str) -> User:
+async def update_user(db: AsyncSession, user_id: str, data: UserUpdate) -> User:
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    user.first_name = first_name
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(user, field, value)
     await db.commit()
     await db.refresh(user)
     return user

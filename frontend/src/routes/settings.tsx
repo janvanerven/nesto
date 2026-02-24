@@ -1,14 +1,33 @@
 import { createFileRoute, Navigate } from '@tanstack/react-router'
 import { useAuth } from 'react-oidc-context'
 import { useCurrentUser, useUpdateUser } from '@/api/user'
-import { useHouseholds, useCreateInvite } from '@/api/households'
+import { useHouseholds, useCreateInvite, useUpdateHousehold } from '@/api/households'
 import { Avatar, Button, Card, Input } from '@/components/ui'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useThemeStore } from '@/stores/theme-store'
 
 export const Route = createFileRoute('/settings')({
   component: SettingsPage,
 })
+
+function resizeImage(file: File, maxSize: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = maxSize
+      canvas.height = maxSize
+      const ctx = canvas.getContext('2d')!
+      const min = Math.min(img.width, img.height)
+      const sx = (img.width - min) / 2
+      const sy = (img.height - min) / 2
+      ctx.drawImage(img, sx, sy, min, min, 0, 0, maxSize, maxSize)
+      resolve(canvas.toDataURL('image/jpeg', 0.85))
+    }
+    img.onerror = reject
+    img.src = URL.createObjectURL(file)
+  })
+}
 
 function SettingsPage() {
   const auth = useAuth()
@@ -26,7 +45,10 @@ function SettingsPage() {
       {/* Profile */}
       <Card className="mb-4">
         <div className="flex items-center gap-4 mb-4">
-          <Avatar name={user?.display_name || '?'} src={user?.avatar_url} size="lg" />
+          <AvatarUpload
+            name={user?.display_name || '?'}
+            src={user?.avatar_url}
+          />
           <div>
             <p className="font-bold text-lg text-text">{user?.first_name || user?.display_name}</p>
             <p className="text-sm text-text-muted">{user?.email}</p>
@@ -39,7 +61,7 @@ function SettingsPage() {
       {household && (
         <Card className="mb-4">
           <h2 className="font-bold text-text mb-3">Household</h2>
-          <p className="text-text-muted mb-4">{household.name}</p>
+          <EditHouseholdNameSection householdId={household.id} currentName={household.name} />
           <InviteSection householdId={household.id} />
         </Card>
       )}
@@ -55,6 +77,41 @@ function SettingsPage() {
         Sign out
       </Button>
     </div>
+  )
+}
+
+function AvatarUpload({ name, src }: { name: string; src?: string | null }) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const updateUser = useUpdateUser()
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const dataUrl = await resizeImage(file, 256)
+    await updateUser.mutateAsync({ avatar_url: dataUrl })
+    e.target.value = ''
+  }
+
+  return (
+    <button
+      type="button"
+      className="relative shrink-0"
+      onClick={() => fileRef.current?.click()}
+    >
+      <Avatar name={name} src={src} size="lg" />
+      <span className="absolute bottom-0 right-0 bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-md">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+          <path fillRule="evenodd" d="M1 8a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 018.07 3h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0016.07 6H17a2 2 0 012 2v7a2 2 0 01-2 2H3a2 2 0 01-2-2V8zm13.5 3a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM10 14a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+        </svg>
+      </span>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFile}
+      />
+    </button>
   )
 }
 
@@ -79,6 +136,47 @@ function InviteSection({ householdId }: { householdId: string }) {
           {inviteMutation.isPending ? 'Generating...' : 'Invite member'}
         </Button>
       )}
+    </div>
+  )
+}
+
+function EditHouseholdNameSection({ householdId, currentName }: { householdId: string; currentName: string }) {
+  const [editing, setEditing] = useState(false)
+  const [name, setName] = useState(currentName)
+  const updateHousehold = useUpdateHousehold(householdId)
+
+  const handleSave = async () => {
+    if (!name.trim()) return
+    await updateHousehold.mutateAsync(name.trim())
+    setEditing(false)
+  }
+
+  if (!editing) {
+    return (
+      <button
+        onClick={() => { setName(currentName); setEditing(true) }}
+        className="text-text-muted mb-4 block"
+      >
+        {currentName}
+      </button>
+    )
+  }
+
+  return (
+    <div className="flex gap-2 mb-4">
+      <Input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Household name"
+        className="flex-1 !h-10 !text-sm"
+        autoFocus
+      />
+      <Button size="sm" onClick={handleSave} disabled={!name.trim() || updateHousehold.isPending}>
+        {updateHousehold.isPending ? '...' : 'Save'}
+      </Button>
+      <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+        Cancel
+      </Button>
     </div>
   )
 }

@@ -46,6 +46,14 @@ async def get_household(db: AsyncSession, household_id: str, user_id: str) -> Ho
     return household
 
 
+async def update_household(db: AsyncSession, household_id: str, user_id: str, name: str) -> Household:
+    household = await get_household(db, household_id, user_id)
+    household.name = name
+    await db.commit()
+    await db.refresh(household)
+    return household
+
+
 async def create_invite(db: AsyncSession, household_id: str, user_id: str) -> HouseholdInvite:
     # Verify membership
     await get_household(db, household_id, user_id)

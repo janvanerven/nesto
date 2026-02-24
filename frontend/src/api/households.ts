@@ -58,6 +58,18 @@ export interface HouseholdMember {
   avatar_url: string | null
 }
 
+export function useUpdateHousehold(householdId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) =>
+      apiFetch<Household>(`/households/${householdId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ name }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['households'] }),
+  })
+}
+
 export function useHouseholdMembers(householdId: string) {
   return useQuery({
     queryKey: ['households', householdId, 'members'],

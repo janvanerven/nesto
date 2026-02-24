@@ -16,6 +16,10 @@ class HouseholdResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class HouseholdUpdate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+
+
 class InviteResponse(BaseModel):
     code: str
     expires_at: datetime
