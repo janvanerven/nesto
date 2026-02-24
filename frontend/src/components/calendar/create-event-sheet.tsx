@@ -33,11 +33,18 @@ const RECURRENCE_OPTIONS = [
 ] as const
 
 function formatDate(d: Date): string {
-  return d.toISOString().split('T')[0]
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 function isSameDay(a: Date, b: Date): boolean {
-  return formatDate(a) === formatDate(b)
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  )
 }
 
 function addMinutes(timeStr: string, minutes: number): string {

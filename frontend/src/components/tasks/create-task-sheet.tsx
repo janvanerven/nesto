@@ -179,7 +179,7 @@ export function CreateReminderSheet({ open, onClose, onSubmit, isPending, member
 
 function getDateOptions(): { label: string; value: string }[] {
   const today = new Date()
-  const fmt = (d: Date) => d.toISOString().split('T')[0]
+  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   const tomorrow = new Date(today)
   tomorrow.setDate(tomorrow.getDate() + 1)
   const nextWeek = new Date(today)

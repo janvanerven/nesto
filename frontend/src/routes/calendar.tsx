@@ -65,13 +65,13 @@ function CalendarContent({ householdId }: { householdId: string }) {
   const fetchStart = useMemo(() => {
     const d = new Date(weekStart)
     d.setDate(d.getDate() - 7)
-    return d.toISOString().split('T')[0]
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   }, [weekStart])
 
   const fetchEnd = useMemo(() => {
     const d = new Date(weekStart)
     d.setDate(d.getDate() + 14)
-    return d.toISOString().split('T')[0]
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   }, [weekStart])
 
   const { data: events = [], isLoading } = useEvents(householdId, fetchStart, fetchEnd)

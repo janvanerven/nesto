@@ -67,7 +67,8 @@ function TaskSummary({ householdId }: { householdId: string }) {
   }
 
   const pendingTasks = tasks?.filter((t) => t.status !== 'done') || []
-  const todayStr = new Date().toISOString().split('T')[0]
+  const now = new Date()
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   const todayTasks = pendingTasks.filter((t) => t.due_date === todayStr)
   const overdueTasks = pendingTasks.filter((t) => t.due_date && t.due_date < todayStr)
 
