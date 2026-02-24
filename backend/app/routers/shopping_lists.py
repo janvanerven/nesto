@@ -97,7 +97,7 @@ async def create_item(
     db: AsyncSession = Depends(get_db),
 ):
     await get_household(db, household_id, user_id)
-    return await svc.create_item(db, list_id, household_id, body)
+    return await svc.create_item(db, list_id, household_id, body, user_id=user_id)
 
 
 @router.patch("/{list_id}/items/{item_id}", response_model=ShoppingItemResponse)

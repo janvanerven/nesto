@@ -159,6 +159,17 @@ export function EditEventSheet({
                 />
               </div>
 
+              {/* Date picker */}
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-text-muted">Date</span>
+                <input
+                  type="date"
+                  value={eventDate}
+                  onChange={(e) => { if (e.target.value) setEventDate(e.target.value) }}
+                  className="px-4 py-2.5 rounded-[var(--radius-input)] border-2 border-text/10 bg-surface text-text text-sm font-medium focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                />
+              </label>
+
               {/* Start / End time pickers */}
               <div>
                 <label className="text-sm font-medium text-text-muted mb-2 block">Time</label>

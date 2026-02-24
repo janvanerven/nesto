@@ -31,6 +31,7 @@ export interface ShoppingItem {
   name: string
   quantity: string
   checked: boolean
+  added_by: string | null
   position: number
   created_at: string
 }

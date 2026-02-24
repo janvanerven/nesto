@@ -127,6 +127,7 @@ function TasksContent({
               >
                 <TaskCard
                   task={task}
+                  members={members}
                   onComplete={(id) => updateMutation.mutate({ taskId: id, status: 'done' })}
                   onDelete={(id) => deleteMutation.mutate(id)}
                   onEdit={(t) => setEditingTask(t)}

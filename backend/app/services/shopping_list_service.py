@@ -141,7 +141,7 @@ async def list_items(db: AsyncSession, list_id: str, household_id: str) -> list[
 
 
 async def create_item(
-    db: AsyncSession, list_id: str, household_id: str, data: ShoppingItemCreate
+    db: AsyncSession, list_id: str, household_id: str, data: ShoppingItemCreate, user_id: str | None = None
 ) -> ShoppingItem:
     await _get_list_or_404(db, list_id, household_id)
     max_pos = await db.execute(
@@ -152,6 +152,7 @@ async def create_item(
     item = ShoppingItem(
         id=str(uuid.uuid4()),
         list_id=list_id,
+        added_by=user_id,
         position=position,
         **data.model_dump(),
     )

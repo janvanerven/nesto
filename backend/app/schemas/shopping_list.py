@@ -52,6 +52,7 @@ class ShoppingItemResponse(BaseModel):
     name: str
     quantity: str
     checked: bool
+    added_by: str | None
     position: int
     created_at: datetime
 

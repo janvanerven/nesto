@@ -1,15 +1,18 @@
-import { Card, PriorityDot } from '@/components/ui'
+import { Avatar, Card, PriorityDot } from '@/components/ui'
 import type { Task } from '@/api/tasks'
+import type { HouseholdMember } from '@/api/households'
 
 interface TaskCardProps {
   task: Task
+  members?: HouseholdMember[]
   onComplete: (id: string) => void
   onDelete: (id: string) => void
   onEdit?: (task: Task) => void
 }
 
-export function TaskCard({ task, onComplete, onDelete, onEdit }: TaskCardProps) {
+export function TaskCard({ task, members = [], onComplete, onDelete, onEdit }: TaskCardProps) {
   const isDone = task.status === 'done'
+  const assignee = task.assigned_to ? members.find((m) => m.id === task.assigned_to) : null
 
   return (
     <Card className={isDone ? 'opacity-60' : ''}>
@@ -58,6 +61,15 @@ export function TaskCard({ task, onComplete, onDelete, onEdit }: TaskCardProps) 
             </div>
           )}
         </div>
+
+        {/* Assignee avatar */}
+        {assignee && (
+          <Avatar
+            name={assignee.display_name}
+            src={assignee.avatar_url}
+            size="sm"
+          />
+        )}
 
         {/* Delete button */}
         <button

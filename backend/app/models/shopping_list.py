@@ -27,5 +27,6 @@ class ShoppingItem(Base):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     quantity: Mapped[str] = mapped_column(Text, nullable=False, default="")
     checked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    added_by: Mapped[str | None] = mapped_column(Text, ForeignKey("users.id"), nullable=True)
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

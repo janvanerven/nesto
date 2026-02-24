@@ -7,6 +7,7 @@ import { useTasks } from '@/api/tasks'
 import { useEvents } from '@/api/events'
 import { useShoppingLists } from '@/api/lists'
 import { Avatar, Card, PriorityDot } from '@/components/ui'
+import { expandRecurrences } from '@/utils/recurrence'
 
 export const Route = createFileRoute('/')({
   component: DashboardPage,
@@ -55,7 +56,7 @@ function DashboardPage() {
 
       <div className="space-y-6">
         <RemindersSummary householdId={household.id} />
-        <TodaySummary householdId={household.id} />
+        <UpcomingSummary householdId={household.id} />
         <ListsSummary householdId={household.id} />
       </div>
     </div>
@@ -107,44 +108,42 @@ function RemindersSummary({ householdId }: { householdId: string }) {
   )
 }
 
-function TodaySummary({ householdId }: { householdId: string }) {
+function UpcomingSummary({ householdId }: { householdId: string }) {
   const today = new Date()
+  today.setHours(0, 0, 0, 0)
   const todayStr = fmt(today)
-  const tomorrow = new Date(today)
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  const tomorrowStr = fmt(tomorrow)
+  const end = new Date(today)
+  end.setDate(end.getDate() + 7)
+  const endStr = fmt(end)
 
-  const { data: events, isLoading } = useEvents(householdId, todayStr, tomorrowStr)
+  const { data: events, isLoading } = useEvents(householdId, todayStr, endStr)
 
-  const sorted = [...(events || [])].sort(
-    (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
-  )
+  const occurrences = events
+    ? expandRecurrences(events, today, end).slice(0, 5)
+    : []
 
   return (
     <section>
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-lg font-bold text-text">Today</h2>
+        <h2 className="text-lg font-bold text-text">Upcoming</h2>
         <Link to="/calendar" className="text-sm font-medium text-primary">View all</Link>
       </div>
 
       {isLoading ? (
         <Skeleton count={2} />
-      ) : sorted.length === 0 ? (
+      ) : occurrences.length === 0 ? (
         <Card>
-          <p className="text-sm text-text-muted">Nothing scheduled</p>
+          <p className="text-sm text-text-muted">Nothing scheduled this week</p>
         </Card>
       ) : (
         <Card>
-          <p className="text-sm text-text-muted mb-3">
-            <span className="font-semibold text-text">{sorted.length}</span> event{sorted.length !== 1 ? 's' : ''} today
-          </p>
           <div className="space-y-2.5">
-            {sorted.slice(0, 3).map((event) => (
-              <div key={event.id} className="flex items-center gap-2.5">
-                <span className="text-xs font-medium text-primary shrink-0 w-12">
-                  {new Date(event.start_time).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' })}
+            {occurrences.map((occ, i) => (
+              <div key={`${occ.event.id}-${i}`} className="flex items-center gap-2.5">
+                <span className="text-xs font-medium text-primary shrink-0 w-20">
+                  {formatOccurrenceDate(occ.occurrenceStart)}
                 </span>
-                <p className="flex-1 text-sm font-medium text-text truncate">{event.title}</p>
+                <p className="flex-1 text-sm font-medium text-text truncate">{occ.event.title}</p>
               </div>
             ))}
           </div>
@@ -152,6 +151,16 @@ function TodaySummary({ householdId }: { householdId: string }) {
       )}
     </section>
   )
+}
+
+function formatOccurrenceDate(d: Date): string {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const diff = Math.round((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  const time = d.toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit', hour12: false })
+  if (diff === 0) return `Today ${time}`
+  if (diff === 1) return `Tmrw ${time}`
+  return `${d.toLocaleDateString('en', { weekday: 'short' })} ${time}`
 }
 
 function ListsSummary({ householdId }: { householdId: string }) {

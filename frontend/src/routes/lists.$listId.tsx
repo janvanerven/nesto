@@ -2,7 +2,7 @@ import { createFileRoute, Navigate, useNavigate } from '@tanstack/react-router'
 import { useAuth } from 'react-oidc-context'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useHouseholds } from '@/api/households'
+import { useHouseholds, useHouseholdMembers } from '@/api/households'
 import {
   useShoppingLists,
   useShoppingItems,
@@ -14,7 +14,7 @@ import {
   useCompleteShoppingList,
 } from '@/api/lists'
 import { EditListSheet } from '@/components/lists/edit-list-sheet'
-import { Button, Card } from '@/components/ui'
+import { Avatar, Button, Card } from '@/components/ui'
 
 export const Route = createFileRoute('/lists/$listId')({
   component: ListDetailPage,
@@ -38,6 +38,7 @@ function ListDetailContent({ householdId, listId }: { householdId: string; listI
   const { data: lists } = useShoppingLists(householdId)
   const list = lists?.find((l) => l.id === listId) ?? null
   const { data: items, isLoading } = useShoppingItems(householdId, listId)
+  const { data: members = [] } = useHouseholdMembers(householdId)
 
   const createItemMutation = useCreateShoppingItem(householdId, listId)
   const updateItemMutation = useUpdateShoppingItem(householdId, listId)
@@ -181,6 +182,14 @@ function ListDetailContent({ householdId, listId }: { householdId: string; listI
                         <p className="text-xs text-text-muted">{item.quantity}</p>
                       )}
                     </div>
+
+                    {/* Added by */}
+                    {(() => {
+                      const adder = item.added_by ? members.find((m) => m.id === item.added_by) : null
+                      return adder ? (
+                        <Avatar name={adder.display_name} src={adder.avatar_url} size="xs" />
+                      ) : null
+                    })()}
 
                     {/* Delete */}
                     <button
