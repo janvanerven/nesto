@@ -23,3 +23,12 @@ class InviteResponse(BaseModel):
 
 class JoinRequest(BaseModel):
     code: str = Field(min_length=1, max_length=100)
+
+
+class MemberResponse(BaseModel):
+    id: str
+    display_name: str
+    first_name: str | None
+    avatar_url: str | None
+
+    model_config = {"from_attributes": True}

@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.household import Household, HouseholdInvite, HouseholdMember
+from app.models.user import User
 
 
 async def create_household(db: AsyncSession, name: str, user_id: str) -> Household:
@@ -91,3 +92,13 @@ async def join_household(db: AsyncSession, code: str, user_id: str) -> Household
 
     result = await db.execute(select(Household).where(Household.id == invite.household_id))
     return result.scalar_one()
+
+
+async def list_household_members(db: AsyncSession, household_id: str, user_id: str) -> list[User]:
+    await get_household(db, household_id, user_id)
+    result = await db.execute(
+        select(User)
+        .join(HouseholdMember, User.id == HouseholdMember.user_id)
+        .where(HouseholdMember.household_id == household_id)
+    )
+    return list(result.scalars().all())

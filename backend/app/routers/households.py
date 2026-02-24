@@ -3,8 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user_id
 from app.database import get_db
-from app.schemas.household import HouseholdCreate, HouseholdResponse, InviteResponse, JoinRequest
-from app.services.household_service import create_household, create_invite, join_household, list_user_households
+from app.schemas.household import HouseholdCreate, HouseholdResponse, InviteResponse, JoinRequest, MemberResponse
+from app.services.household_service import create_household, create_invite, join_household, list_user_households, list_household_members
 
 router = APIRouter(prefix="/api/households", tags=["households"])
 
@@ -43,3 +43,12 @@ async def join(
     db: AsyncSession = Depends(get_db),
 ):
     return await join_household(db, code=body.code, user_id=user_id)
+
+
+@router.get("/{household_id}/members", response_model=list[MemberResponse])
+async def members(
+    household_id: str,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    return await list_household_members(db, household_id, user_id)
