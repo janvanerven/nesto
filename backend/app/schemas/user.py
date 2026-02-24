@@ -9,6 +9,8 @@ class UserResponse(BaseModel):
     display_name: str
     first_name: str | None
     avatar_url: str | None
+    email_digest_daily: bool
+    email_digest_weekly: bool
     created_at: datetime
     last_login: datetime
 
@@ -18,6 +20,8 @@ class UserResponse(BaseModel):
 class UserUpdate(BaseModel):
     first_name: str | None = Field(default=None, min_length=1, max_length=50)
     avatar_url: str | None = None
+    email_digest_daily: bool | None = None
+    email_digest_weekly: bool | None = None
 
     @field_validator("avatar_url")
     @classmethod

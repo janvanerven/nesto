@@ -66,6 +66,15 @@ function SettingsPage() {
         </Card>
       )}
 
+      {/* Notifications */}
+      <Card className="mb-4">
+        <h2 className="font-bold text-text mb-3">Notifications</h2>
+        <NotificationsSection
+          dailyEnabled={user?.email_digest_daily ?? false}
+          weeklyEnabled={user?.email_digest_weekly ?? false}
+        />
+      </Card>
+
       {/* Appearance */}
       <Card className="mb-4">
         <h2 className="font-bold text-text mb-3">Appearance</h2>
@@ -218,6 +227,65 @@ function EditNameSection({ currentName }: { currentName: string }) {
       <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
         Cancel
       </Button>
+    </div>
+  )
+}
+
+function NotificationsSection({ dailyEnabled, weeklyEnabled }: { dailyEnabled: boolean; weeklyEnabled: boolean }) {
+  const updateUser = useUpdateUser()
+
+  return (
+    <div className="space-y-3">
+      <ToggleRow
+        label="Daily digest"
+        description="Morning email with today's events and reminders"
+        enabled={dailyEnabled}
+        onChange={(v) => updateUser.mutate({ email_digest_daily: v })}
+        disabled={updateUser.isPending}
+      />
+      <ToggleRow
+        label="Weekly digest"
+        description="Sunday evening summary of the week ahead"
+        enabled={weeklyEnabled}
+        onChange={(v) => updateUser.mutate({ email_digest_weekly: v })}
+        disabled={updateUser.isPending}
+      />
+    </div>
+  )
+}
+
+function ToggleRow({ label, description, enabled, onChange, disabled }: {
+  label: string
+  description: string
+  enabled: boolean
+  onChange: (v: boolean) => void
+  disabled?: boolean
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-text">{label}</p>
+        <p className="text-xs text-text-muted">{description}</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={enabled}
+        disabled={disabled}
+        onClick={() => onChange(!enabled)}
+        className={`
+          relative shrink-0 w-11 h-6 rounded-full transition-colors
+          ${enabled ? 'bg-primary' : 'bg-text/15'}
+          ${disabled ? 'opacity-50' : ''}
+        `}
+      >
+        <span
+          className={`
+            absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform
+            ${enabled ? 'translate-x-5' : 'translate-x-0'}
+          `}
+        />
+      </button>
     </div>
   )
 }

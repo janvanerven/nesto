@@ -13,6 +13,7 @@ dependencies = [
     "httpx>=0.28.0",
     "pydantic-settings>=2.6.0",
     "python-dateutil>=2.9.0",
+    "aiosmtplib>=2.0.0",
 ]
 
 [project.optional-dependencies]

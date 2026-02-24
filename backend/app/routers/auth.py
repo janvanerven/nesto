@@ -1,9 +1,11 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import decode_token
+from app.config import settings
 from app.database import get_db
 from app.schemas.user import UserResponse, UserUpdate
 from app.services.user_service import upsert_user, update_user
@@ -37,3 +39,26 @@ async def update_me(
     if not sub:
         raise HTTPException(status_code=401, detail="Token missing subject")
     return await update_user(db, sub, body)
+
+
+class TestDigestRequest(BaseModel):
+    period: str = "daily"
+
+
+@router.post("/me/test-digest")
+async def test_digest(
+    body: TestDigestRequest,
+    token: dict[str, Any] = Depends(decode_token),
+    db: AsyncSession = Depends(get_db),
+):
+    if settings.environment != "development":
+        raise HTTPException(status_code=404, detail="Not found")
+    sub = token.get("sub")
+    if not sub:
+        raise HTTPException(status_code=401, detail="Token missing subject")
+    if body.period not in ("daily", "weekly"):
+        raise HTTPException(status_code=400, detail="period must be 'daily' or 'weekly'")
+
+    from app.services.digest_service import send_test_digest
+    await send_test_digest(db, sub, body.period)
+    return {"status": "sent"}

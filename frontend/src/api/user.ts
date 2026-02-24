@@ -7,6 +7,8 @@ export interface User {
   display_name: string
   first_name: string | null
   avatar_url: string | null
+  email_digest_daily: boolean
+  email_digest_weekly: boolean
   created_at: string
   last_login: string
 }
@@ -22,7 +24,7 @@ export function useCurrentUser() {
 export function useUpdateUser() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { first_name?: string; avatar_url?: string | null }) =>
+    mutationFn: (data: { first_name?: string; avatar_url?: string | null; email_digest_daily?: boolean; email_digest_weekly?: boolean }) =>
       apiFetch<User>('/auth/me', {
         method: 'PATCH',
         body: JSON.stringify(data),
