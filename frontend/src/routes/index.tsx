@@ -4,11 +4,17 @@ import { motion } from 'framer-motion'
 import { useHouseholds } from '@/api/households'
 import { useCurrentUser } from '@/api/user'
 import { useTasks } from '@/api/tasks'
+import { useEvents } from '@/api/events'
+import { useShoppingLists } from '@/api/lists'
 import { Avatar, Card, PriorityDot } from '@/components/ui'
 
 export const Route = createFileRoute('/')({
   component: DashboardPage,
 })
+
+function fmt(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 function getGreeting(): string {
   const h = new Date().getHours()
@@ -47,93 +53,167 @@ function DashboardPage() {
         <Avatar name={user?.display_name || '?'} src={user?.avatar_url} />
       </div>
 
-      {/* Task Summary */}
-      <TaskSummary householdId={household.id} />
+      <div className="space-y-6">
+        <RemindersSummary householdId={household.id} />
+        <TodaySummary householdId={household.id} />
+        <ListsSummary householdId={household.id} />
+      </div>
     </div>
   )
 }
 
-function TaskSummary({ householdId }: { householdId: string }) {
+function RemindersSummary({ householdId }: { householdId: string }) {
   const { data: tasks, isLoading } = useTasks(householdId)
 
-  if (isLoading) {
-    return (
-      <div className="space-y-3">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-20 bg-surface rounded-[var(--radius-card)] animate-pulse" />
-        ))}
-      </div>
-    )
-  }
-
-  const pendingTasks = tasks?.filter((t) => t.status !== 'done') || []
-  const now = new Date()
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  const todayTasks = pendingTasks.filter((t) => t.due_date === todayStr)
-  const overdueTasks = pendingTasks.filter((t) => t.due_date && t.due_date < todayStr)
+  const pending = tasks?.filter((t) => t.status !== 'done') || []
+  const todayStr = fmt(new Date())
+  const overdue = pending.filter((t) => t.due_date && t.due_date < todayStr)
 
   return (
-    <div>
-      {/* Stats row */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        <StatCard label="Open" value={pendingTasks.length} color="text-primary" />
-        <StatCard label="Today" value={todayTasks.length} color="text-secondary" />
-        <StatCard label="Overdue" value={overdueTasks.length} color="text-accent" />
+    <section>
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-lg font-bold text-text">Reminders</h2>
+        <Link to="/tasks" className="text-sm font-medium text-primary">View all</Link>
       </div>
 
-      {/* Recent tasks */}
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-bold text-text">Upcoming reminders</h2>
-        <Link to="/tasks" className="text-sm font-medium text-primary">
-          View all
-        </Link>
-      </div>
-
-      {pendingTasks.length === 0 ? (
-        <EmptyState />
+      {isLoading ? (
+        <Skeleton count={2} />
+      ) : pending.length === 0 ? (
+        <Card>
+          <p className="text-sm text-text-muted">All caught up!</p>
+        </Card>
       ) : (
-        <motion.div className="space-y-3">
-          {pendingTasks.slice(0, 5).map((task, i) => (
-            <motion.div
-              key={task.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-            >
-              <Card>
-                <div className="flex items-start gap-3">
-                  <PriorityDot priority={task.priority} />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-text truncate">{task.title}</p>
-                    <p className="text-sm text-text-muted mt-0.5">
-                      {task.due_date ? `Due ${task.due_date}` : 'No due date'}
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
-        </motion.div>
+        <Card>
+          <p className="text-sm text-text-muted mb-3">
+            <span className="font-semibold text-text">{pending.length}</span> open
+            {overdue.length > 0 && (
+              <span className="text-accent"> · {overdue.length} overdue</span>
+            )}
+          </p>
+          <div className="space-y-2.5">
+            {pending.slice(0, 3).map((task) => (
+              <div key={task.id} className="flex items-center gap-2.5">
+                <PriorityDot priority={task.priority} />
+                <p className="flex-1 text-sm font-medium text-text truncate">{task.title}</p>
+                {task.due_date && (
+                  <p className="text-xs text-text-muted shrink-0">{formatDueShort(task.due_date)}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
       )}
+    </section>
+  )
+}
+
+function TodaySummary({ householdId }: { householdId: string }) {
+  const today = new Date()
+  const todayStr = fmt(today)
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const tomorrowStr = fmt(tomorrow)
+
+  const { data: events, isLoading } = useEvents(householdId, todayStr, tomorrowStr)
+
+  const sorted = [...(events || [])].sort(
+    (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+  )
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-lg font-bold text-text">Today</h2>
+        <Link to="/calendar" className="text-sm font-medium text-primary">View all</Link>
+      </div>
+
+      {isLoading ? (
+        <Skeleton count={2} />
+      ) : sorted.length === 0 ? (
+        <Card>
+          <p className="text-sm text-text-muted">Nothing scheduled</p>
+        </Card>
+      ) : (
+        <Card>
+          <p className="text-sm text-text-muted mb-3">
+            <span className="font-semibold text-text">{sorted.length}</span> event{sorted.length !== 1 ? 's' : ''} today
+          </p>
+          <div className="space-y-2.5">
+            {sorted.slice(0, 3).map((event) => (
+              <div key={event.id} className="flex items-center gap-2.5">
+                <span className="text-xs font-medium text-primary shrink-0 w-12">
+                  {new Date(event.start_time).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' })}
+                </span>
+                <p className="flex-1 text-sm font-medium text-text truncate">{event.title}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+    </section>
+  )
+}
+
+function ListsSummary({ householdId }: { householdId: string }) {
+  const { data: lists, isLoading } = useShoppingLists(householdId, 'active')
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-lg font-bold text-text">Lists</h2>
+        <Link to="/lists" className="text-sm font-medium text-primary">View all</Link>
+      </div>
+
+      {isLoading ? (
+        <Skeleton count={2} />
+      ) : !lists?.length ? (
+        <Card>
+          <p className="text-sm text-text-muted">No active lists</p>
+        </Card>
+      ) : (
+        <Card>
+          <p className="text-sm text-text-muted mb-3">
+            <span className="font-semibold text-text">{lists.length}</span> active list{lists.length !== 1 ? 's' : ''}
+          </p>
+          <div className="space-y-2.5">
+            {lists.slice(0, 3).map((list) => (
+              <div key={list.id} className="flex items-center gap-2.5">
+                <PriorityDot priority={list.priority} />
+                <p className="flex-1 text-sm font-medium text-text truncate">
+                  {list.name || 'Untitled list'}
+                </p>
+                <p className="text-xs text-text-muted shrink-0">
+                  {list.item_count > 0 ? `${list.checked_count}/${list.item_count}` : 'Empty'}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+    </section>
+  )
+}
+
+function Skeleton({ count }: { count: number }) {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className="h-10 bg-surface rounded-[var(--radius-card)] animate-pulse" />
+      ))}
     </div>
   )
 }
 
-function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <Card className="text-center">
-      <p className={`text-2xl font-extrabold ${color}`}>{value}</p>
-      <p className="text-xs font-medium text-text-muted uppercase tracking-wide mt-1">{label}</p>
-    </Card>
-  )
-}
+function formatDueShort(dateStr: string): string {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const date = new Date(dateStr + 'T00:00:00')
+  const diffDays = Math.round((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 
-function EmptyState() {
-  return (
-    <Card className="text-center py-8">
-      <p className="text-4xl mb-3">&#127968;</p>
-      <p className="font-semibold text-text">All caught up!</p>
-      <p className="text-sm text-text-muted mt-1">Time to put your feet up.</p>
-    </Card>
-  )
+  if (diffDays === 0) return 'Today'
+  if (diffDays === 1) return 'Tomorrow'
+  if (diffDays === -1) return 'Yesterday'
+  if (diffDays < -1) return `${Math.abs(diffDays)}d ago`
+  if (diffDays <= 7) return date.toLocaleDateString('en', { weekday: 'short' })
+  return date.toLocaleDateString('en', { month: 'short', day: 'numeric' })
 }
