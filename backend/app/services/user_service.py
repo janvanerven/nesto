@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,3 +33,14 @@ async def upsert_user(db: AsyncSession, sub: str, email: str, name: str, avatar:
 async def get_user(db: AsyncSession, user_id: str) -> User | None:
     result = await db.execute(select(User).where(User.id == user_id))
     return result.scalar_one_or_none()
+
+
+async def update_user_first_name(db: AsyncSession, user_id: str, first_name: str) -> User:
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.first_name = first_name
+    await db.commit()
+    await db.refresh(user)
+    return user

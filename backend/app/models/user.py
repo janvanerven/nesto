@@ -13,5 +13,6 @@ class User(Base):
     email: Mapped[str] = mapped_column(Text, nullable=False)
     display_name: Mapped[str] = mapped_column(Text, nullable=False)
     avatar_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    first_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     last_login: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
