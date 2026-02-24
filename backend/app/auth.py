@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import time
 from typing import Any
 
@@ -8,7 +9,10 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 
 from app.config import settings
+
 from app.database import get_db as _get_db
+
+logger = logging.getLogger(__name__)
 
 security = HTTPBearer(auto_error=False)
 
@@ -55,7 +59,8 @@ async def decode_token(
             issuer=settings.oidc_issuer_url,
         )
         return payload
-    except (JWTError, httpx.HTTPError, KeyError):
+    except (JWTError, httpx.HTTPError, KeyError) as e:
+        logger.warning("Token decode failed: %s: %s", type(e).__name__, e)
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 
