@@ -19,8 +19,6 @@ services:
   frontend:
     image: ghcr.io/janvanerven/nesto/frontend:latest
     env_file: .env
-    volumes:
-      - frontend-dist:/usr/share/nginx/html
     restart: unless-stopped
     deploy:
       resources:
@@ -32,8 +30,6 @@ services:
     image: ghcr.io/janvanerven/nesto/nginx:latest
     ports:
       - "8080:8080"
-    volumes:
-      - frontend-dist:/usr/share/nginx/html:ro
     depends_on:
       backend:
         condition: service_healthy
@@ -66,4 +62,3 @@ services:
 
 volumes:
   nesto-data:
-  frontend-dist:
