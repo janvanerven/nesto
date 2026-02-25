@@ -11,13 +11,15 @@ EXPOSE 5173
 CMD ["npx", "vite", "--host", "0.0.0.0"]
 
 FROM base AS build
-ARG VITE_OIDC_AUTHORITY
-ARG VITE_OIDC_CLIENT_ID
-ARG VITE_OIDC_REDIRECT_URI
 COPY . .
 RUN npm run build
 
 FROM nginxinc/nginx-unprivileged:alpine AS prod
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+USER root
+RUN chmod +x /docker-entrypoint.sh && chown -R 101:101 /usr/share/nginx/html
+USER 101
 EXPOSE 8080
+ENTRYPOINT ["/docker-entrypoint.sh"]
