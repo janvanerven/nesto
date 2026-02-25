@@ -27,10 +27,9 @@ async def _digest_scheduler_loop():
             now = datetime.now(timezone.utc)
             today = now.date()
 
-            # Daily digest: configured hour, minute 0
+            # Daily digest: configured hour (any minute — dedup by date)
             if (
                 now.hour == settings.digest_daily_hour
-                and now.minute == 0
                 and _last_daily_sent != today
                 and settings.smtp_host
             ):
@@ -41,11 +40,10 @@ async def _digest_scheduler_loop():
                 _last_daily_sent = today
                 logger.info("Daily digest complete: %d emails sent", sent)
 
-            # Weekly digest: Sunday at configured hour, minute 0
+            # Weekly digest: Sunday at configured hour (any minute — dedup by date)
             if (
                 now.weekday() == 6  # Sunday
                 and now.hour == settings.digest_weekly_hour
-                and now.minute == 0
                 and _last_weekly_sent != today
                 and settings.smtp_host
             ):
