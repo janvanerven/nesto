@@ -1,6 +1,6 @@
 # Nesto
 
-Self-hosted household management app. Mobile-first PWA with a bold, vibrant design.
+Self-hosted household management app. Mobile-first PWA.
 
 Manage your household's reminders, calendar, and shopping lists — all in one place. Invite family members, assign tasks, and stay organized together.
 
