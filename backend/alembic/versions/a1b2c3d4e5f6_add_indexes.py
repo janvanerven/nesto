@@ -8,6 +8,7 @@ Create Date: 2026-02-25 12:00:00.000000
 from typing import Sequence, Union
 
 from alembic import op
+import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
@@ -19,53 +20,29 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Add indexes on commonly filtered/joined columns."""
-    with op.batch_alter_table('household_members') as batch_op:
-        batch_op.create_index('ix_household_members_household_id', ['household_id'])
-        batch_op.create_index('ix_household_members_user_id', ['user_id'])
-
-    with op.batch_alter_table('tasks') as batch_op:
-        batch_op.create_index('ix_tasks_household_id', ['household_id'])
-        batch_op.create_index('ix_tasks_assigned_to', ['assigned_to'])
-        batch_op.create_index('ix_tasks_status', ['status'])
-
-    with op.batch_alter_table('events') as batch_op:
-        batch_op.create_index('ix_events_household_id', ['household_id'])
-        batch_op.create_index('ix_events_assigned_to', ['assigned_to'])
-
-    with op.batch_alter_table('shopping_lists') as batch_op:
-        batch_op.create_index('ix_shopping_lists_household_id', ['household_id'])
-        batch_op.create_index('ix_shopping_lists_status', ['status'])
-
-    with op.batch_alter_table('shopping_items') as batch_op:
-        batch_op.create_index('ix_shopping_items_list_id', ['list_id'])
-
-    with op.batch_alter_table('household_invites') as batch_op:
-        batch_op.create_index('ix_household_invites_household_id', ['household_id'])
-        batch_op.create_index('ix_household_invites_code', ['code'])
+    op.execute("CREATE INDEX IF NOT EXISTS ix_household_members_household_id ON household_members (household_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_household_members_user_id ON household_members (user_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_tasks_household_id ON tasks (household_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_tasks_assigned_to ON tasks (assigned_to)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_tasks_status ON tasks (status)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_events_household_id ON events (household_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_events_assigned_to ON events (assigned_to)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_shopping_lists_household_id ON shopping_lists (household_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_shopping_lists_status ON shopping_lists (status)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_shopping_items_list_id ON shopping_items (list_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_household_invites_household_id ON household_invites (household_id)")
 
 
 def downgrade() -> None:
     """Remove indexes."""
-    with op.batch_alter_table('household_invites') as batch_op:
-        batch_op.drop_index('ix_household_invites_code')
-        batch_op.drop_index('ix_household_invites_household_id')
-
-    with op.batch_alter_table('shopping_items') as batch_op:
-        batch_op.drop_index('ix_shopping_items_list_id')
-
-    with op.batch_alter_table('shopping_lists') as batch_op:
-        batch_op.drop_index('ix_shopping_lists_status')
-        batch_op.drop_index('ix_shopping_lists_household_id')
-
-    with op.batch_alter_table('events') as batch_op:
-        batch_op.drop_index('ix_events_assigned_to')
-        batch_op.drop_index('ix_events_household_id')
-
-    with op.batch_alter_table('tasks') as batch_op:
-        batch_op.drop_index('ix_tasks_status')
-        batch_op.drop_index('ix_tasks_assigned_to')
-        batch_op.drop_index('ix_tasks_household_id')
-
-    with op.batch_alter_table('household_members') as batch_op:
-        batch_op.drop_index('ix_household_members_user_id')
-        batch_op.drop_index('ix_household_members_household_id')
+    op.execute("DROP INDEX IF EXISTS ix_household_invites_household_id")
+    op.execute("DROP INDEX IF EXISTS ix_shopping_items_list_id")
+    op.execute("DROP INDEX IF EXISTS ix_shopping_lists_status")
+    op.execute("DROP INDEX IF EXISTS ix_shopping_lists_household_id")
+    op.execute("DROP INDEX IF EXISTS ix_events_assigned_to")
+    op.execute("DROP INDEX IF EXISTS ix_events_household_id")
+    op.execute("DROP INDEX IF EXISTS ix_tasks_status")
+    op.execute("DROP INDEX IF EXISTS ix_tasks_assigned_to")
+    op.execute("DROP INDEX IF EXISTS ix_tasks_household_id")
+    op.execute("DROP INDEX IF EXISTS ix_household_members_user_id")
+    op.execute("DROP INDEX IF EXISTS ix_household_members_household_id")
