@@ -1,12 +1,11 @@
-import asyncio
 import logging
-import time
 from typing import Any
 
 import httpx
+import jwt
+from jwt import PyJWKClient, PyJWTError
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
 
 from app.config import settings
 
@@ -16,37 +15,25 @@ logger = logging.getLogger(__name__)
 
 security = HTTPBearer(auto_error=False)
 
-_jwks_cache: dict[str, Any] = {}
-_jwks_cache_time: float = 0
-_jwks_lock = asyncio.Lock()
-_JWKS_CACHE_TTL = 86400  # 24 hours
+_jwks_client: PyJWKClient | None = None
 
 
-async def _get_jwks() -> dict[str, Any]:
-    global _jwks_cache, _jwks_cache_time
-
-    # Fast path: return cached value without acquiring lock
-    now = time.time()
-    if _jwks_cache and (now - _jwks_cache_time) < _JWKS_CACHE_TTL:
-        return _jwks_cache
-
-    async with _jwks_lock:
-        # Double-check after acquiring lock
-        now = time.time()
-        if _jwks_cache and (now - _jwks_cache_time) < _JWKS_CACHE_TTL:
-            return _jwks_cache
-
-        async with httpx.AsyncClient(follow_redirects=True, timeout=10.0) as client:
-            issuer = settings.oidc_issuer_url.rstrip("/")
-            discovery_url = f"{issuer}/.well-known/openid-configuration"
-            discovery = await client.get(discovery_url)
-            discovery.raise_for_status()
-            jwks_uri = discovery.json()["jwks_uri"]
-            jwks_resp = await client.get(jwks_uri)
-            jwks_resp.raise_for_status()
-            _jwks_cache = jwks_resp.json()
-            _jwks_cache_time = now
-            return _jwks_cache
+def _get_jwks_client() -> PyJWKClient:
+    """Return a cached PyJWKClient, discovering the JWKS URI on first call."""
+    global _jwks_client
+    if _jwks_client is None:
+        issuer = settings.oidc_issuer_url.rstrip("/")
+        discovery_url = f"{issuer}/.well-known/openid-configuration"
+        # Synchronous fetch at startup — only happens once
+        resp = httpx.get(discovery_url, follow_redirects=True, timeout=10.0)
+        resp.raise_for_status()
+        jwks_uri = resp.json()["jwks_uri"]
+        _jwks_client = PyJWKClient(
+            jwks_uri,
+            cache_jwk_set=True,
+            lifespan=86400,  # 24 hours, matches previous TTL
+        )
+    return _jwks_client
 
 
 async def decode_token(
@@ -57,16 +44,17 @@ async def decode_token(
 
     token = credentials.credentials
     try:
-        jwks = await _get_jwks()
+        client = _get_jwks_client()
+        signing_key = client.get_signing_key_from_jwt(token)
         payload = jwt.decode(
             token,
-            jwks,
+            key=signing_key.key,
             algorithms=["RS256"],
             audience=settings.oidc_client_id,
             issuer=settings.oidc_issuer_url,
         )
         return payload
-    except (JWTError, httpx.HTTPError, KeyError) as e:
+    except (PyJWTError, httpx.HTTPError, KeyError) as e:
         logger.warning("Token decode failed: %s: %s", type(e).__name__, e)
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 

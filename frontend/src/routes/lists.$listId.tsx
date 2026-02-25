@@ -35,7 +35,7 @@ function ListDetailPage() {
 
 function ListDetailContent({ householdId, listId }: { householdId: string; listId: string }) {
   const navigate = useNavigate()
-  const { data: lists } = useShoppingLists(householdId)
+  const { data: lists, isLoading: isLoadingLists } = useShoppingLists(householdId)
   const list = lists?.find((l) => l.id === listId) ?? null
   const { data: items, isLoading } = useShoppingItems(householdId, listId)
   const { data: members = [] } = useHouseholdMembers(householdId)
@@ -50,6 +50,44 @@ function ListDetailContent({ householdId, listId }: { householdId: string; listI
   const [newItemName, setNewItemName] = useState('')
   const [showEdit, setShowEdit] = useState(false)
   const [confirmComplete, setConfirmComplete] = useState(false)
+  const [confirmDeleteItem, setConfirmDeleteItem] = useState<string | null>(null)
+
+  // Handle loading and not-found states for the list itself
+  if (isLoadingLists) {
+    return (
+      <div className="pb-4">
+        <div className="h-10 bg-surface rounded-xl animate-pulse mt-2 mb-4" />
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-14 bg-surface rounded-[var(--radius-card)] animate-pulse" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (lists && !list) {
+    return (
+      <div className="pb-4">
+        <div className="flex items-center gap-3 mt-2 mb-4">
+          <button
+            onClick={() => navigate({ to: '/lists' })}
+            className="p-1.5 -ml-1.5 rounded-full text-text-muted hover:bg-text/5 transition-colors"
+            aria-label="Back to lists"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
+          <h1 className="text-2xl font-extrabold text-text">List not found</h1>
+        </div>
+        <Card className="text-center py-8">
+          <p className="font-semibold text-text">This list no longer exists</p>
+          <p className="text-sm text-text-muted mt-1">It may have been deleted.</p>
+        </Card>
+      </div>
+    )
+  }
 
   function handleAddItem(e: React.FormEvent) {
     e.preventDefault()
@@ -200,8 +238,17 @@ function ListDetailContent({ householdId, listId }: { householdId: string; listI
 
                     {/* Delete */}
                     <button
-                      onClick={() => deleteItemMutation.mutate(item.id)}
-                      className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-text-muted hover:text-accent hover:bg-accent/10 transition-all"
+                      onClick={() => {
+                        if (confirmDeleteItem === item.id) {
+                          deleteItemMutation.mutate(item.id)
+                          setConfirmDeleteItem(null)
+                        } else {
+                          setConfirmDeleteItem(item.id)
+                        }
+                      }}
+                      className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-all ${
+                        confirmDeleteItem === item.id ? 'text-accent bg-accent/10' : 'text-text-muted hover:text-accent hover:bg-accent/10'
+                      }`}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M3 6h18" /><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" /><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />

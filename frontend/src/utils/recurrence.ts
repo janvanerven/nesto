@@ -73,16 +73,27 @@ function advanceDate(
     case 'monthly': {
       const anchorWeekOfMonth = Math.ceil(anchor.getDate() / 7)
       const anchorDayOfWeek = anchor.getDay()
+      // Try advancing by interval months, retry if the target week overflows
+      let attempt = interval
+      for (let tries = 0; tries < 12; tries++) {
+        const candidate = new Date(current)
+        candidate.setMonth(candidate.getMonth() + attempt)
+        candidate.setDate(1)
+        while (candidate.getDay() !== anchorDayOfWeek) {
+          candidate.setDate(candidate.getDate() + 1)
+        }
+        candidate.setDate(candidate.getDate() + (anchorWeekOfMonth - 1) * 7)
+        // Check if we overflowed into the next month
+        const expectedMonth = (current.getMonth() + attempt) % 12
+        if (candidate.getMonth() === expectedMonth) {
+          candidate.setHours(anchor.getHours(), anchor.getMinutes(), anchor.getSeconds())
+          return candidate
+        }
+        // Overflowed — skip to next interval
+        attempt += interval
+      }
+      // Fallback: just advance by interval months on same day-of-month
       next.setMonth(next.getMonth() + interval)
-      next.setDate(1)
-      while (next.getDay() !== anchorDayOfWeek) {
-        next.setDate(next.getDate() + 1)
-      }
-      next.setDate(next.getDate() + (anchorWeekOfMonth - 1) * 7)
-      if (next.getMonth() !== (current.getMonth() + interval) % 12) {
-        return advanceDate(next, rule, interval, anchor)
-      }
-      next.setHours(anchor.getHours(), anchor.getMinutes(), anchor.getSeconds())
       break
     }
 

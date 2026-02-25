@@ -125,7 +125,12 @@ async def get_daily_digest_data(db: AsyncSession, user_id: str) -> list[dict]:
     for hh in households:
         # Events for today (with recurrence expansion)
         events_result = await db.execute(
-            select(Event).where(Event.household_id == hh.id)
+            select(Event).where(
+                Event.household_id == hh.id,
+                (Event.recurrence_rule.isnot(None)) | (
+                    (Event.end_time >= day_start) & (Event.start_time <= day_end)
+                ),
+            )
         )
         all_events = list(events_result.scalars().all())
         today_occurrences = expand_event_occurrences(all_events, day_start, day_end)
@@ -176,7 +181,12 @@ async def get_weekly_digest_data(db: AsyncSession, user_id: str) -> list[dict]:
     for hh in households:
         # Events for the week
         events_result = await db.execute(
-            select(Event).where(Event.household_id == hh.id)
+            select(Event).where(
+                Event.household_id == hh.id,
+                (Event.recurrence_rule.isnot(None)) | (
+                    (Event.end_time >= range_start) & (Event.start_time <= range_end)
+                ),
+            )
         )
         all_events = list(events_result.scalars().all())
         week_occurrences = expand_event_occurrences(all_events, range_start, range_end)

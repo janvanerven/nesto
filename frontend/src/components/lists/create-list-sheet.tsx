@@ -45,7 +45,9 @@ export function CreateListSheet({ open, onClose, onSubmit, isPending }: CreateLi
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            onAnimationComplete={() => titleRef.current?.focus()}
+            onAnimationComplete={(def: { y?: string | number }) => {
+              if (def.y === 0) titleRef.current?.focus()
+            }}
             className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-3xl p-6 pb-[env(safe-area-inset-bottom)] z-50 max-w-lg mx-auto"
           >
             <div className="w-12 h-1.5 bg-text/10 rounded-full mx-auto mb-6" />

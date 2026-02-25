@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from fastapi import HTTPException
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
@@ -29,8 +30,14 @@ async def upsert_user(db: AsyncSession, sub: str, email: str, name: str, avatar:
         )
         db.add(user)
 
-    await db.commit()
-    await db.refresh(user)
+    try:
+        await db.commit()
+        await db.refresh(user)
+    except IntegrityError:
+        await db.rollback()
+        # Another request created the user first — re-query and return it
+        result = await db.execute(select(User).where(User.id == sub))
+        user = result.scalar_one()
     return user
 
 

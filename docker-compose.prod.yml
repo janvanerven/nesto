@@ -32,7 +32,7 @@ services:
           cpus: "0.5"
 
   nginx:
-    image: nginx:alpine
+    image: nginxinc/nginx-unprivileged:alpine
     ports:
       - "8080:8080"
     volumes:

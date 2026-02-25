@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.household import Household, HouseholdInvite, HouseholdMember
@@ -96,7 +97,11 @@ async def join_household(db: AsyncSession, code: str, user_id: str) -> Household
     # Mark invite as consumed (single-use)
     await db.delete(invite)
 
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="Already a member")
 
     result = await db.execute(select(Household).where(Household.id == invite.household_id))
     return result.scalar_one()

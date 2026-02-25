@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button, Input, Avatar } from '@/components/ui'
 import type { EventCreate } from '@/api/events'
 import type { HouseholdMember } from '@/api/households'
@@ -102,6 +102,11 @@ export function CreateEventSheet({
     setAssignedTo(null)
   }
 
+  // Reset form when sheet opens (handles reopening with different defaultDate)
+  useEffect(() => {
+    if (open) resetForm()
+  }, [open])
+
   function handleSubmit(e: React.FormEvent): void {
     e.preventDefault()
     if (!title.trim() || !startTime) return
@@ -181,7 +186,9 @@ export function CreateEventSheet({
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            onAnimationComplete={() => titleRef.current?.focus()}
+            onAnimationComplete={(def: { y?: string | number }) => {
+              if (def.y === 0) titleRef.current?.focus()
+            }}
             className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-3xl p-6 pb-[env(safe-area-inset-bottom)] z-50 max-w-lg mx-auto max-h-[85vh] overflow-y-auto"
           >
             <div className="w-12 h-1.5 bg-text/10 rounded-full mx-auto mb-6" />

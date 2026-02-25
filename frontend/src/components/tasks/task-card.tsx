@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Avatar, Card, PriorityDot } from '@/components/ui'
 import type { Task } from '@/api/tasks'
 import type { HouseholdMember } from '@/api/households'
@@ -11,6 +12,7 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, members = [], onComplete, onDelete, onEdit }: TaskCardProps) {
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const isDone = task.status === 'done'
   const assignee = task.assigned_to ? members.find((m) => m.id === task.assigned_to) : null
 
@@ -73,8 +75,17 @@ export function TaskCard({ task, members = [], onComplete, onDelete, onEdit }: T
 
         {/* Delete button */}
         <button
-          onClick={() => onDelete(task.id)}
-          className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-text-muted hover:text-accent hover:bg-accent/10 transition-all"
+          onClick={() => {
+            if (confirmDelete) {
+              onDelete(task.id)
+              setConfirmDelete(false)
+            } else {
+              setConfirmDelete(true)
+            }
+          }}
+          className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-all ${
+            confirmDelete ? 'text-accent bg-accent/10' : 'text-text-muted hover:text-accent hover:bg-accent/10'
+          }`}
           aria-label="Delete"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
