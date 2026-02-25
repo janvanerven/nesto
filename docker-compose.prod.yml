@@ -23,9 +23,9 @@ services:
       context: ./frontend
       target: prod
       args:
-        VITE_OIDC_AUTHORITY: ${VITE_OIDC_AUTHORITY}
-        VITE_OIDC_CLIENT_ID: ${VITE_OIDC_CLIENT_ID}
-        VITE_OIDC_REDIRECT_URI: ${VITE_OIDC_REDIRECT_URI}
+        VITE_OIDC_AUTHORITY: ${OIDC_ISSUER_URL}
+        VITE_OIDC_CLIENT_ID: ${OIDC_CLIENT_ID}
+        VITE_OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI}
     volumes:
       - frontend-dist:/usr/share/nginx/html
     restart: unless-stopped

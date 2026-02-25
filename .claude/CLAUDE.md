@@ -96,5 +96,5 @@ User model includes: id, email, display_name, first_name (nullable), avatar_url,
 
 ## Environment Variables
 
-Backend: `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `SECRET_KEY`, `DATABASE_URL`, `CORS_ORIGINS`, `ENVIRONMENT`
-Frontend (VITE_): `VITE_OIDC_AUTHORITY`, `VITE_OIDC_CLIENT_ID`, `VITE_OIDC_REDIRECT_URI`
+OIDC: `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_REDIRECT_URI` (shared by backend + frontend; mapped to VITE_ build args in docker-compose)
+Backend: `SECRET_KEY`, `DATABASE_URL`, `CORS_ORIGINS`, `ENVIRONMENT`
