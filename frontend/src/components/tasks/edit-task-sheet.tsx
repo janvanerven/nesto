@@ -163,7 +163,7 @@ export function EditReminderSheet({
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={3}
-                  className="px-4 py-3 rounded-[var(--radius-input)] border-2 border-text/10 bg-surface text-text placeholder:text-text-muted/50 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200 resize-none"
+                  className="px-4 py-3 rounded-[var(--radius-input)] border-2 border-text/10 bg-surface text-text text-base placeholder:text-text-muted/50 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200 resize-none"
                   placeholder="Add a description..."
                 />
               </div>
@@ -232,7 +232,7 @@ export function EditReminderSheet({
                     <input
                       ref={dateInputRef}
                       type="date"
-                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer text-base"
                       onChange={(e) => setDueDate(e.target.value || null)}
                     />
                   </label>
@@ -275,7 +275,7 @@ export function EditReminderSheet({
                         onChange={(e) =>
                           setRecurrenceInterval(Math.max(1, parseInt(e.target.value) || 1))
                         }
-                        className="w-14 h-8 px-2 rounded-lg border-2 border-text/10 bg-surface text-text text-center focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                        className="w-14 h-8 px-2 rounded-lg border-2 border-text/10 bg-surface text-text text-base text-center focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
                       />
                       <span>
                         {recurrenceUnit(recurrence)}

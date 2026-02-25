@@ -82,6 +82,7 @@ export function CreateEventSheet({
   const [recurrenceInterval, setRecurrenceInterval] = useState(1)
   const [assignedTo, setAssignedTo] = useState<string | null>(null)
 
+  const titleRef = useRef<HTMLInputElement>(null)
   const dateInputRef = useRef<HTMLInputElement>(null)
   const timeInputRef = useRef<HTMLInputElement>(null)
   const endTimeInputRef = useRef<HTMLInputElement>(null)
@@ -180,6 +181,7 @@ export function CreateEventSheet({
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            onAnimationComplete={() => titleRef.current?.focus()}
             className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-3xl p-6 pb-[env(safe-area-inset-bottom)] z-50 max-w-lg mx-auto max-h-[85vh] overflow-y-auto"
           >
             <div className="w-12 h-1.5 bg-text/10 rounded-full mx-auto mb-6" />
@@ -187,10 +189,10 @@ export function CreateEventSheet({
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <Input
+                ref={titleRef}
                 label="Event title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                autoFocus
               />
 
               {/* Collapsible description */}
@@ -209,7 +211,7 @@ export function CreateEventSheet({
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     rows={3}
-                    className="px-4 py-3 rounded-[var(--radius-input)] border-2 border-text/10 bg-surface text-text placeholder:text-text-muted/50 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200 resize-none"
+                    className="px-4 py-3 rounded-[var(--radius-input)] border-2 border-text/10 bg-surface text-text text-base placeholder:text-text-muted/50 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200 resize-none"
                     placeholder="Add a description..."
                   />
                 </div>
@@ -253,7 +255,7 @@ export function CreateEventSheet({
                     <input
                       ref={dateInputRef}
                       type="date"
-                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer text-base"
                       onChange={(e) => {
                         if (e.target.value) setEventDate(e.target.value)
                       }}
@@ -300,7 +302,7 @@ export function CreateEventSheet({
                     <input
                       ref={timeInputRef}
                       type="time"
-                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer text-base"
                       onChange={(e) => {
                         if (e.target.value) {
                           setStartTime(e.target.value)
@@ -354,7 +356,7 @@ export function CreateEventSheet({
                       <input
                         ref={endTimeInputRef}
                         type="time"
-                        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer text-base"
                         onChange={(e) => {
                           if (e.target.value) {
                             setCustomEndTime(e.target.value)
@@ -403,7 +405,7 @@ export function CreateEventSheet({
                       onChange={(e) =>
                         setRecurrenceInterval(Math.max(1, parseInt(e.target.value) || 1))
                       }
-                      className="w-14 h-8 px-2 rounded-lg border-2 border-text/10 bg-surface text-text text-center focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                      className="w-14 h-8 px-2 rounded-lg border-2 border-text/10 bg-surface text-text text-base text-center focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
                     />
                     <span>
                       {recurrenceUnit(recurrence)}

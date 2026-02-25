@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Button, Input } from '@/components/ui'
 import type { ShoppingListCreate } from '@/api/lists'
 
@@ -11,6 +11,7 @@ interface CreateListSheetProps {
 }
 
 export function CreateListSheet({ open, onClose, onSubmit, isPending }: CreateListSheetProps) {
+  const titleRef = useRef<HTMLInputElement>(null)
   const [name, setName] = useState('')
   const [priority, setPriority] = useState(3)
 
@@ -44,6 +45,7 @@ export function CreateListSheet({ open, onClose, onSubmit, isPending }: CreateLi
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            onAnimationComplete={() => titleRef.current?.focus()}
             className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-3xl p-6 pb-[env(safe-area-inset-bottom)] z-50 max-w-lg mx-auto"
           >
             <div className="w-12 h-1.5 bg-text/10 rounded-full mx-auto mb-6" />
@@ -51,11 +53,11 @@ export function CreateListSheet({ open, onClose, onSubmit, isPending }: CreateLi
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <Input
+                ref={titleRef}
                 label="List name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Groceries, Birthday wishlist"
-                autoFocus
               />
 
               {/* Priority selector */}

@@ -182,7 +182,7 @@ function EditHouseholdNameSection({ householdId, currentName }: { householdId: s
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="Household name"
-        className="flex-1 !h-10 !text-sm"
+        className="flex-1 !h-10"
         autoFocus
       />
       <Button size="sm" onClick={handleSave} disabled={!name.trim() || updateHousehold.isPending}>
@@ -223,7 +223,7 @@ function EditNameSection({ currentName }: { currentName: string }) {
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="Your first name"
-        className="flex-1 !h-10 !text-sm"
+        className="flex-1 !h-10"
         autoFocus
       />
       <Button size="sm" onClick={handleSave} disabled={!name.trim() || updateUser.isPending}>

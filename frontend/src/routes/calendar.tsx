@@ -144,7 +144,10 @@ function CalendarContent({ householdId }: { householdId: string }) {
         </div>
       ) : dayOccurrences.length === 0 ? (
         <Card className="text-center py-8">
-          <p className="text-4xl mb-3">&#9728;&#65039;</p>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-3 text-text-muted/40">
+            <rect x="3" y="4" width="18" height="18" rx="2" />
+            <path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" />
+          </svg>
           <p className="font-semibold text-text">No events</p>
           <p className="text-sm text-text-muted mt-1">Tap + to add an event.</p>
         </Card>

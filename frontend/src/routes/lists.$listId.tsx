@@ -48,16 +48,14 @@ function ListDetailContent({ householdId, listId }: { householdId: string; listI
   const completeListMutation = useCompleteShoppingList(householdId)
 
   const [newItemName, setNewItemName] = useState('')
-  const [newItemQty, setNewItemQty] = useState('')
   const [showEdit, setShowEdit] = useState(false)
   const [confirmComplete, setConfirmComplete] = useState(false)
 
   function handleAddItem(e: React.FormEvent) {
     e.preventDefault()
     if (!newItemName.trim()) return
-    createItemMutation.mutate({ name: newItemName.trim(), quantity: newItemQty.trim() || undefined })
+    createItemMutation.mutate({ name: newItemName.trim() })
     setNewItemName('')
-    setNewItemQty('')
   }
 
   async function handleComplete() {
@@ -106,30 +104,25 @@ function ListDetailContent({ householdId, listId }: { householdId: string; listI
         </button>
       </div>
 
-      {/* Add item form */}
-      <form onSubmit={handleAddItem} className="flex gap-2 mb-4">
-        <input
-          type="text"
-          value={newItemName}
-          onChange={(e) => setNewItemName(e.target.value)}
-          placeholder="Add item..."
-          className="flex-1 px-4 py-2.5 rounded-xl border-2 border-text/10 bg-surface text-text placeholder:text-text-muted/50 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200 text-sm"
-        />
-        <input
-          type="text"
-          value={newItemQty}
-          onChange={(e) => setNewItemQty(e.target.value)}
-          placeholder="Qty"
-          className="w-20 px-3 py-2.5 rounded-xl border-2 border-text/10 bg-surface text-text placeholder:text-text-muted/50 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200 text-sm text-center"
-        />
-        <button
-          type="submit"
-          disabled={!newItemName.trim() || createItemMutation.isPending}
-          className="px-4 py-2.5 rounded-xl bg-primary text-white font-medium text-sm disabled:opacity-50 transition-all"
-        >
-          Add
-        </button>
-      </form>
+      {/* Progress bar */}
+      {items && items.length > 0 && (
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs text-text-muted font-medium">
+              {items.filter((i) => i.checked).length} of {items.length} items
+            </span>
+            <span className="text-xs text-text-muted">
+              {Math.round((items.filter((i) => i.checked).length / items.length) * 100)}%
+            </span>
+          </div>
+          <div className="w-full h-2 bg-text/10 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-success rounded-full transition-all duration-300"
+              style={{ width: `${(items.filter((i) => i.checked).length / items.length) * 100}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Items */}
       {isLoading ? (
@@ -142,7 +135,7 @@ function ListDetailContent({ householdId, listId }: { householdId: string; listI
         <Card className="text-center py-8">
           <p className="text-4xl mb-3">&#128722;</p>
           <p className="font-semibold text-text">No items yet</p>
-          <p className="text-sm text-text-muted mt-1">Add items using the form above.</p>
+          <p className="text-sm text-text-muted mt-1">Add items using the form below.</p>
         </Card>
       ) : (
         <motion.div className="space-y-2">
@@ -208,6 +201,26 @@ function ListDetailContent({ householdId, listId }: { householdId: string; listI
             ))}
           </AnimatePresence>
         </motion.div>
+      )}
+
+      {/* Add item form */}
+      {list?.status === 'active' && (
+        <form onSubmit={handleAddItem} className="flex gap-2 mt-4">
+          <input
+            type="text"
+            value={newItemName}
+            onChange={(e) => setNewItemName(e.target.value)}
+            placeholder="Add item..."
+            className="flex-1 px-4 py-2.5 rounded-xl border-2 border-text/10 bg-surface text-text placeholder:text-text-muted/50 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200 text-base"
+          />
+          <button
+            type="submit"
+            disabled={!newItemName.trim() || createItemMutation.isPending}
+            className="px-4 py-2.5 rounded-xl bg-primary text-white font-medium text-sm disabled:opacity-50 transition-all"
+          >
+            Add
+          </button>
+        </form>
       )}
 
       {/* Complete / Reopen list button */}
