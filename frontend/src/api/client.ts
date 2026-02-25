@@ -27,11 +27,11 @@ export function setSessionExpiredHandler(handler: () => void) {
 // Read user data directly from OIDC sessionStorage (source of truth,
 // always fresher than the React state closure)
 function getStoredOidcUser(): { access_token?: string; expires_at?: number } | null {
-  for (let i = 0; i < sessionStorage.length; i++) {
-    const key = sessionStorage.key(i)
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i)
     if (key?.startsWith('oidc.user:')) {
       try {
-        return JSON.parse(sessionStorage.getItem(key)!)
+        return JSON.parse(localStorage.getItem(key)!)
       } catch {
         return null
       }

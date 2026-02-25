@@ -10,5 +10,5 @@ export const oidcConfig = {
   scope: 'openid profile email offline_access',
   response_type: 'code',
   automaticSilentRenew: true,
-  userStore: new WebStorageStateStore({ store: window.sessionStorage }),
+  userStore: new WebStorageStateStore({ store: window.localStorage }),
 }
