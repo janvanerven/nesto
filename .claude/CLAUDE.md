@@ -7,7 +7,7 @@ Self-hosted household management app. Mobile-first SPA with bold/vibrant design.
 **Backend:** FastAPI, SQLAlchemy 2.0 (async), aiosqlite, Alembic, PyJWT, httpx, Pydantic Settings
 **Frontend:** React 19, TypeScript, TanStack Router (file-based), TanStack Query, Zustand, Tailwind CSS v4, Framer Motion, oidc-client-ts
 **Auth:** OIDC via Authentik with JWT/JWKS validation, refresh tokens (offline_access)
-**Infra:** Docker Compose, SQLite (WAL mode), nginx reverse proxy
+**Infra:** Docker Compose, SQLite (WAL mode), nginx reverse proxy, GitHub Actions CI, GHCR images
 
 ## Project Structure
 
@@ -39,8 +39,18 @@ frontend/src/
 ```bash
 cp .env.example .env   # Fill in OIDC + SECRET_KEY
 docker compose up      # Dev: backend:8000, frontend:5173
-docker compose -f docker-compose.prod.yml up  # Prod: nginx:8080
+docker compose -f docker-compose.prod.yml up  # Prod: nginx:8080 (prebuilt images from GHCR)
 ```
+
+## Production Architecture
+
+Prod uses prebuilt multi-arch images from `ghcr.io/janvanerven/nesto/{backend,frontend,nginx}:latest`, built by GitHub Actions on push to main. No source checkout needed on the deploy server — just `docker-compose.prod.yml` + `.env`.
+
+- **frontend** — serves static dist files via its own nginx, generates `/config.js` at container startup from env vars (`OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_REDIRECT_URI`) via `docker-entrypoint.sh`
+- **nginx** — reverse proxy with security headers and rate limiting; proxies `/api/` to backend, everything else to frontend
+- **backend** — FastAPI app
+
+OIDC config is injected at runtime via `window.__NESTO_CONFIG__` (set by `/config.js`), with fallback to `import.meta.env.VITE_*` for dev mode. This allows the same frontend image to work across environments.
 
 ## Key Conventions
 
@@ -101,6 +111,6 @@ Automated daily backup service copies DB to `./backups/` with 7-day retention.
 
 ## Environment Variables
 
-OIDC: `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_REDIRECT_URI` (shared by backend + frontend; mapped to VITE_ build args in docker-compose)
+OIDC: `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_REDIRECT_URI` (shared by backend + frontend; injected at runtime in prod via config.js, via VITE_ env vars in dev)
 Backend: `SECRET_KEY`, `DATABASE_URL`, `CORS_ORIGINS`, `ENVIRONMENT`
 SMTP (optional): `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_USE_TLS`
