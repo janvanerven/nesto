@@ -18,7 +18,7 @@ Manage your household's reminders, calendar, and shopping lists — all in one p
 
 | Layer | Stack |
 |-------|-------|
-| Backend | FastAPI, SQLAlchemy 2.0 (async), SQLite (WAL), Alembic |
+| Backend | FastAPI, SQLAlchemy 2.0 (async), SQLite (WAL), Alembic, PyJWT |
 | Frontend | React 19, TypeScript, TanStack Router, TanStack Query, Tailwind CSS v4, Framer Motion |
 | Auth | OIDC via [Authentik](https://goauthentik.io/) with JWT/JWKS validation |
 | Infra | Docker Compose, nginx reverse proxy |
@@ -35,10 +35,11 @@ Manage your household's reminders, calendar, and shopping lists — all in one p
 Create an **OAuth2/OpenID Provider** in Authentik:
 
 1. Go to **Applications > Providers > Create** and choose **OAuth2/OpenID Provider**
-2. Set the **Redirect URI** to `https://your-nesto-domain.com/callback`
-3. Under **Advanced Protocol Settings**, ensure these scopes are included: `openid`, `email`, `profile`, `offline_access`
-4. Create an **Application** and link it to the provider
-5. Note down the **Client ID**, **Client Secret**, and **Issuer URL** (found under the provider's OpenID Configuration URL, typically `https://auth.example.com/application/o/your-app/`)
+2. Set **Client type** to **Public** (the SPA uses PKCE, no client secret needed)
+3. Set the **Redirect URI** to `https://your-nesto-domain.com/callback`
+4. Under **Advanced Protocol Settings**, ensure these scopes are included: `openid`, `email`, `profile`, `offline_access`
+5. Create an **Application** and link it to the provider
+6. Note down the **Client ID** and **Issuer URL** (found under the provider's OpenID Configuration URL, typically `https://auth.example.com/application/o/your-app/`)
 
 ### 2. Configure environment
 
@@ -49,15 +50,10 @@ cp .env.example .env
 Edit `.env` with your values:
 
 ```env
-# OIDC / Authentik
+# OIDC / Authentik (single provider, shared by backend + frontend)
 OIDC_ISSUER_URL=https://auth.example.com/application/o/nesto/
 OIDC_CLIENT_ID=your-client-id
-OIDC_CLIENT_SECRET=your-client-secret
-
-# Frontend OIDC (VITE_ prefix exposes them to the browser)
-VITE_OIDC_AUTHORITY=https://auth.example.com/application/o/nesto
-VITE_OIDC_CLIENT_ID=your-client-id
-VITE_OIDC_REDIRECT_URI=https://nesto.example.com/callback
+OIDC_REDIRECT_URI=https://nesto.example.com/callback
 
 # App
 SECRET_KEY=          # Generate with: python -c "import secrets; print(secrets.token_urlsafe(64))"
@@ -90,7 +86,8 @@ docker compose -f docker-compose.prod.yml up -d
 The production setup runs:
 - **Backend** — FastAPI with auto-migration on startup
 - **Frontend** — Static build served by nginx
-- **nginx** — Reverse proxy on port 8080 with security headers (CSP, HSTS, etc.)
+- **nginx** — Reverse proxy on port 8080 with security headers (CSP, X-Frame-Options, etc.) and rate limiting
+- **backup** — Daily SQLite backup with 7-day retention
 
 ### 4. Reverse proxy (recommended)
 
@@ -151,7 +148,7 @@ backend/
   app/
     main.py            # FastAPI app, CORS, background scheduler
     config.py          # Environment config with validation
-    auth.py            # JWT/JWKS validation, user auto-upsert
+    auth.py            # JWT/JWKS validation via PyJWT, user auto-upsert
     database.py        # Async SQLAlchemy + SQLite pragmas
     models/            # ORM models
     schemas/           # Pydantic request/response schemas

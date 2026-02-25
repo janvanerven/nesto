@@ -4,7 +4,7 @@ Self-hosted household management app. Mobile-first SPA with bold/vibrant design.
 
 ## Tech Stack
 
-**Backend:** FastAPI, SQLAlchemy 2.0 (async), aiosqlite, Alembic, python-jose, httpx, Pydantic Settings
+**Backend:** FastAPI, SQLAlchemy 2.0 (async), aiosqlite, Alembic, PyJWT, httpx, Pydantic Settings
 **Frontend:** React 19, TypeScript, TanStack Router (file-based), TanStack Query, Zustand, Tailwind CSS v4, Framer Motion, oidc-client-ts
 **Auth:** OIDC via Authentik with JWT/JWKS validation, refresh tokens (offline_access)
 **Infra:** Docker Compose, SQLite (WAL mode), nginx reverse proxy
@@ -16,11 +16,11 @@ backend/app/
   main.py          # FastAPI app, CORS, router registration
   config.py        # Pydantic Settings with validators
   database.py      # Async SQLAlchemy engine, session, SQLite pragmas
-  auth.py          # JWT decode, JWKS caching with asyncio.Lock, user auto-upsert, token logging
+  auth.py          # JWT decode via PyJWKClient, user auto-upsert
   models/          # SQLAlchemy ORM (user, household, task, event, shopping_list)
   schemas/         # Pydantic request/response models with validation
   routers/         # API routes: /api/auth, /api/households, /api/households/{id}/tasks, /api/households/{id}/events, /api/households/{id}/members, /api/households/{id}/lists
-  services/        # Business logic (user_service, household_service, task_service, event_service, shopping_list_service)
+  services/        # Business logic (user_service, household_service, task_service, event_service, shopping_list_service, digest_service)
 backend/alembic/   # Async migrations
 backend/tests/     # pytest-asyncio tests
 
@@ -68,16 +68,19 @@ cd backend && pytest tests/  # asyncio_mode = "auto"
 
 - SECRET_KEY validated at startup (min 32 chars)
 - CORS restricted to specific methods/headers
-- Containers run as non-root (appuser/node)
+- Containers run as non-root (appuser/node, nginxinc/nginx-unprivileged)
 - OpenAPI docs disabled in production
-- nginx has security headers + request limits
+- nginx has security headers (CSP, X-Frame-Options, etc.), rate limiting (20r/s + burst 40), and request size limits
+- Assigned_to validated against household membership before accepting
 - .env is gitignored; .env.example has no real secrets
 
 ## Database
 
-SQLite with WAL mode, async via aiosqlite. Tables: users, households, household_members, household_invites, tasks, events, shopping_lists, shopping_items. Alembic for migrations.
+SQLite with WAL mode, async via aiosqlite. Tables: users, households, household_members, household_invites, tasks, events, shopping_lists, shopping_items. Alembic for migrations. Indexes on all FK/filter columns.
 
-User model includes: id, email, display_name, first_name (nullable), avatar_url, created_at, last_login.
+User model includes: id, email, display_name, first_name (nullable), avatar_url, created_at, last_login, email_digest_daily, email_digest_weekly.
+
+Automated daily backup service copies DB to `./backups/` with 7-day retention.
 
 ## API Endpoints
 
@@ -88,6 +91,8 @@ User model includes: id, email, display_name, first_name (nullable), avatar_url,
 - `GET /api/households/{id}/members` — List household members
 - `GET/POST /api/households/{id}/tasks` — List/create tasks (reminders)
 - `PATCH/DELETE /api/households/{id}/tasks/{taskId}` — Update/delete task
+- `GET/POST /api/households/{id}/events` — List/create events (with date range filter)
+- `PATCH/DELETE /api/households/{id}/events/{eventId}` — Update/delete event
 - `GET/POST /api/households/{id}/lists` — List/create shopping lists
 - `PATCH/DELETE /api/households/{id}/lists/{listId}` — Update/delete list
 - `POST /api/households/{id}/lists/{listId}/complete` — Archive list + check all items
@@ -98,3 +103,4 @@ User model includes: id, email, display_name, first_name (nullable), avatar_url,
 
 OIDC: `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_REDIRECT_URI` (shared by backend + frontend; mapped to VITE_ build args in docker-compose)
 Backend: `SECRET_KEY`, `DATABASE_URL`, `CORS_ORIGINS`, `ENVIRONMENT`
+SMTP (optional): `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_USE_TLS`
