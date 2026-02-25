@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -62,7 +62,7 @@ async def create_invite(db: AsyncSession, household_id: str, user_id: str) -> Ho
         id=str(uuid.uuid4()),
         household_id=household_id,
         created_by=user_id,
-        expires_at=datetime.utcnow() + timedelta(days=7),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=7),
     )
     db.add(invite)
     await db.commit()
@@ -77,7 +77,7 @@ async def join_household(db: AsyncSession, code: str, user_id: str) -> Household
     if not invite:
         raise HTTPException(status_code=404, detail="Invalid invite code")
 
-    if invite.expires_at < datetime.utcnow():
+    if invite.expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=410, detail="Invite has expired")
 
     # Check if already a member

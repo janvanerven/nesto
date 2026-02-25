@@ -6,8 +6,20 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.household import HouseholdMember
 from app.models.task import Task
 from app.schemas.task import TaskCreate, TaskUpdate
+
+
+async def _verify_household_member(db: AsyncSession, household_id: str, user_id: str) -> None:
+    result = await db.execute(
+        select(HouseholdMember).where(
+            HouseholdMember.household_id == household_id,
+            HouseholdMember.user_id == user_id,
+        )
+    )
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Assigned user is not a member of this household")
 
 _UPDATABLE_FIELDS = {
     "title", "description", "status", "priority", "assigned_to", "due_date",
@@ -37,11 +49,11 @@ async def list_tasks(
     offset: int = 0,
 ) -> list[Task]:
     query = select(Task).where(Task.household_id == household_id)
-    if status:
+    if status is not None:
         query = query.where(Task.status == status)
-    if priority:
+    if priority is not None:
         query = query.where(Task.priority == priority)
-    if assigned_to:
+    if assigned_to is not None:
         query = query.where(Task.assigned_to == assigned_to)
     query = query.order_by(Task.priority.asc(), Task.created_at.desc())
     query = query.limit(limit).offset(offset)
@@ -50,6 +62,9 @@ async def list_tasks(
 
 
 async def create_task(db: AsyncSession, household_id: str, user_id: str, data: TaskCreate) -> Task:
+    if data.assigned_to:
+        await _verify_household_member(db, household_id, data.assigned_to)
+
     task = Task(
         id=str(uuid.uuid4()),
         household_id=household_id,
@@ -71,6 +86,10 @@ async def update_task(db: AsyncSession, task_id: str, household_id: str, data: T
         raise HTTPException(status_code=404, detail="Task not found")
 
     updates = data.model_dump(exclude_unset=True)
+
+    if updates.get("assigned_to") is not None:
+        await _verify_household_member(db, household_id, updates["assigned_to"])
+
     for key, value in updates.items():
         if key in _UPDATABLE_FIELDS:
             setattr(task, key, value)

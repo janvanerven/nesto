@@ -63,17 +63,29 @@ function ListDetailContent({ householdId, listId }: { householdId: string; listI
       setConfirmComplete(true)
       return
     }
-    await completeListMutation.mutateAsync(listId)
-    navigate({ to: '/lists' })
+    try {
+      await completeListMutation.mutateAsync(listId)
+      navigate({ to: '/lists' })
+    } catch {
+      setConfirmComplete(false)
+    }
   }
 
   async function handleReopen() {
-    await updateListMutation.mutateAsync({ listId, status: 'active' })
+    try {
+      await updateListMutation.mutateAsync({ listId, status: 'active' })
+    } catch {
+      // mutation error state handles UI
+    }
   }
 
   async function handleDelete(id: string) {
-    await deleteListMutation.mutateAsync(id)
-    navigate({ to: '/lists' })
+    try {
+      await deleteListMutation.mutateAsync(id)
+      navigate({ to: '/lists' })
+    } catch {
+      // mutation error state handles UI
+    }
   }
 
   return (

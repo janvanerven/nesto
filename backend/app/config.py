@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_password: str = ""
     smtp_from: str = ""
+    smtp_use_tls: bool = False
 
     # Digest scheduling (server-local time)
     digest_daily_hour: int = 6

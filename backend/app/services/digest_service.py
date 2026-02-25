@@ -308,7 +308,8 @@ async def send_digest_email(to: str, subject: str, html: str) -> None:
         port=settings.smtp_port,
         username=settings.smtp_user or None,
         password=settings.smtp_password or None,
-        start_tls=True,
+        use_tls=settings.smtp_use_tls,
+        start_tls=not settings.smtp_use_tls,
     )
     logger.info("Digest email sent to %s: %s", to, subject)
 

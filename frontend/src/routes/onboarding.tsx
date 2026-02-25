@@ -51,13 +51,19 @@ function OnboardingPage() {
 
 function FirstNameStep({ onComplete }: { onComplete: () => void }) {
   const [name, setName] = useState('')
+  const [error, setError] = useState('')
   const updateUser = useUpdateUser()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return
-    await updateUser.mutateAsync({ first_name: name.trim() })
-    onComplete()
+    setError('')
+    try {
+      await updateUser.mutateAsync({ first_name: name.trim() })
+      onComplete()
+    } catch {
+      setError('Something went wrong. Please try again.')
+    }
   }
 
   return (
@@ -80,6 +86,7 @@ function FirstNameStep({ onComplete }: { onComplete: () => void }) {
       <Button type="submit" disabled={!name.trim() || updateUser.isPending}>
         {updateUser.isPending ? 'Saving...' : 'Continue'}
       </Button>
+      {error && <p className="text-sm text-accent text-center">{error}</p>}
     </motion.form>
   )
 }
@@ -109,14 +116,20 @@ function HouseholdStep({ onSelect }: { onSelect: (m: 'create' | 'join') => void 
 
 function CreateHousehold({ onBack }: { onBack: () => void }) {
   const [name, setName] = useState('')
+  const [error, setError] = useState('')
   const createMutation = useCreateHousehold()
   const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return
-    await createMutation.mutateAsync(name.trim())
-    navigate({ to: '/' })
+    setError('')
+    try {
+      await createMutation.mutateAsync(name.trim())
+      navigate({ to: '/' })
+    } catch {
+      setError('Something went wrong. Please try again.')
+    }
   }
 
   return (
@@ -140,20 +153,27 @@ function CreateHousehold({ onBack }: { onBack: () => void }) {
       <Button variant="ghost" type="button" onClick={onBack}>
         Back
       </Button>
+      {error && <p className="text-sm text-accent text-center">{error}</p>}
     </motion.form>
   )
 }
 
 function JoinHousehold({ onBack }: { onBack: () => void }) {
   const [code, setCode] = useState('')
+  const [error, setError] = useState('')
   const joinMutation = useJoinHousehold()
   const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!code.trim()) return
-    await joinMutation.mutateAsync(code.trim())
-    navigate({ to: '/' })
+    setError('')
+    try {
+      await joinMutation.mutateAsync(code.trim())
+      navigate({ to: '/' })
+    } catch {
+      setError('Something went wrong. Please try again.')
+    }
   }
 
   return (
@@ -177,6 +197,7 @@ function JoinHousehold({ onBack }: { onBack: () => void }) {
       <Button variant="ghost" type="button" onClick={onBack}>
         Back
       </Button>
+      {error && <p className="text-sm text-accent text-center">{error}</p>}
     </motion.form>
   )
 }

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -19,7 +19,7 @@ async def upsert_user(db: AsyncSession, sub: str, email: str, name: str, avatar:
         user.display_name = name
         if not user.avatar_url:
             user.avatar_url = avatar
-        user.last_login = datetime.utcnow()
+        user.last_login = datetime.now(timezone.utc)
     else:
         user = User(
             id=sub,

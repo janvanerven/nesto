@@ -5,7 +5,19 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.event import Event
+from app.models.household import HouseholdMember
 from app.schemas.event import EventCreate, EventUpdate
+
+
+async def _verify_household_member(db: AsyncSession, household_id: str, user_id: str) -> None:
+    result = await db.execute(
+        select(HouseholdMember).where(
+            HouseholdMember.household_id == household_id,
+            HouseholdMember.user_id == user_id,
+        )
+    )
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Assigned user is not a member of this household")
 
 _UPDATABLE_FIELDS = {
     "title", "description", "start_time", "end_time",
@@ -38,6 +50,9 @@ async def list_events(
 
 
 async def create_event(db: AsyncSession, household_id: str, user_id: str, data: EventCreate) -> Event:
+    if data.assigned_to:
+        await _verify_household_member(db, household_id, data.assigned_to)
+
     event = Event(
         id=str(uuid.uuid4()),
         household_id=household_id,
@@ -59,6 +74,10 @@ async def update_event(db: AsyncSession, event_id: str, household_id: str, data:
         raise HTTPException(status_code=404, detail="Event not found")
 
     updates = data.model_dump(exclude_unset=True)
+
+    if updates.get("assigned_to") is not None:
+        await _verify_household_member(db, household_id, updates["assigned_to"])
+
     for key, value in updates.items():
         if key in _UPDATABLE_FIELDS:
             setattr(event, key, value)

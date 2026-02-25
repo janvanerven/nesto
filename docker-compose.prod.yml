@@ -12,6 +12,11 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "1.0"
 
   frontend:
     build:
@@ -20,6 +25,11 @@ services:
     volumes:
       - frontend-dist:/usr/share/nginx/html
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
 
   nginx:
     image: nginx:alpine
@@ -27,6 +37,7 @@ services:
       - "8080:8080"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/00-rate-limit.conf:/etc/nginx/conf.d/00-rate-limit.conf:ro
       - frontend-dist:/usr/share/nginx/html:ro
     depends_on:
       backend:
@@ -34,6 +45,29 @@ services:
       frontend:
         condition: service_started
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+          cpus: "0.5"
+
+  backup:
+    image: alpine
+    volumes:
+      - nesto-data:/data:ro
+      - ./backups:/backup
+    entrypoint: >
+      sh -c 'while true; do
+        cp /data/nesto.db "/backup/nesto-$$(date +%Y%m%d-%H%M).db" 2>/dev/null;
+        find /backup -name "*.db" -mtime +7 -delete 2>/dev/null;
+        sleep 86400;
+      done'
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+          cpus: "0.25"
 
 volumes:
   nesto-data:
