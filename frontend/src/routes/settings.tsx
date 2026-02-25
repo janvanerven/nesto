@@ -1,7 +1,7 @@
 import { createFileRoute, Navigate } from '@tanstack/react-router'
 import { useAuth } from 'react-oidc-context'
 import { useCurrentUser, useUpdateUser } from '@/api/user'
-import { useHouseholds, useCreateInvite, useUpdateHousehold } from '@/api/households'
+import { useHouseholds, useHouseholdMembers, useCreateInvite, useUpdateHousehold } from '@/api/households'
 import { Avatar, Button, Card, Input } from '@/components/ui'
 import { useState, useRef } from 'react'
 import { useThemeStore } from '@/stores/theme-store'
@@ -67,6 +67,7 @@ function SettingsPage() {
         <Card className="mb-4">
           <h2 className="font-bold text-text mb-3">Household</h2>
           <EditHouseholdNameSection householdId={household.id} currentName={household.name} />
+          <MembersSection householdId={household.id} />
           <InviteSection householdId={household.id} />
         </Card>
       )}
@@ -138,6 +139,26 @@ function AvatarUpload({ name, src }: { name: string; src?: string | null }) {
         />
       </button>
       {error && <p className="text-xs text-accent mt-1">{error}</p>}
+    </div>
+  )
+}
+
+function MembersSection({ householdId }: { householdId: string }) {
+  const { data: members = [] } = useHouseholdMembers(householdId)
+
+  if (!members.length) return null
+
+  return (
+    <div className="mb-4">
+      <p className="text-sm font-medium text-text-muted mb-2">Members</p>
+      <div className="space-y-2">
+        {members.map((m) => (
+          <div key={m.id} className="flex items-center gap-3">
+            <Avatar name={m.display_name} src={m.avatar_url} size="sm" />
+            <span className="text-sm font-medium text-text">{m.first_name || m.display_name}</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
