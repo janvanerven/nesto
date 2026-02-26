@@ -156,7 +156,9 @@ function UpcomingSummary({ householdId }: { householdId: string }) {
 function formatOccurrenceDate(d: Date): string {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  const diff = Math.round((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  const dateOnly = new Date(d)
+  dateOnly.setHours(0, 0, 0, 0)
+  const diff = Math.round((dateOnly.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
   const time = d.toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit', hour12: false })
   if (diff === 0) return `Today ${time}`
   if (diff === 1) return `Tmrw ${time}`
