@@ -37,14 +37,6 @@ function getMonday(d: Date): Date {
   return date
 }
 
-function isSameDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  )
-}
-
 function formatSelectedLabel(date: Date): string {
   return date.toLocaleDateString('en', {
     weekday: 'long',
@@ -91,10 +83,22 @@ function CalendarContent({ householdId }: { householdId: string }) {
     [events, weekStart, weekEnd],
   )
 
-  const dayOccurrences = useMemo(
-    () => occurrences.filter((occ) => isSameDay(occ.occurrenceStart, selectedDate)),
-    [occurrences, selectedDate],
-  )
+  const dayOccurrences = useMemo(() => {
+    const dayStart = new Date(selectedDate)
+    dayStart.setHours(0, 0, 0, 0)
+    const dayEnd = new Date(selectedDate)
+    dayEnd.setHours(23, 59, 59, 999)
+
+    return occurrences
+      .filter((occ) => occ.occurrenceStart <= dayEnd && occ.occurrenceEnd >= dayStart)
+      .sort((a, b) => {
+        // All-day events first, then by start time
+        const aAllDay = a.event.all_day ? 0 : 1
+        const bAllDay = b.event.all_day ? 0 : 1
+        if (aAllDay !== bAllDay) return aAllDay - bAllDay
+        return a.occurrenceStart.getTime() - b.occurrenceStart.getTime()
+      })
+  }, [occurrences, selectedDate])
 
   function navigateWeek(direction: -1 | 1): void {
     setWeekStart((prev) => {
