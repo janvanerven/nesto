@@ -1,6 +1,6 @@
 import { createRootRoute, Outlet, useLocation } from '@tanstack/react-router'
 import { useAuth } from 'react-oidc-context'
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { setTokenGetter, setTokenRefresher, setSessionExpiredHandler } from '@/api/client'
 import { BottomNav } from '@/components/layout/bottom-nav'
 import '@/stores/theme-store'
@@ -33,6 +33,25 @@ const SHELL_EXCLUDED = ['/login', '/callback']
 function RootComponent() {
   const auth = useAuth()
   const location = useLocation()
+  const [isRenewing, setIsRenewing] = useState(false)
+  const renewAttempted = useRef(false)
+
+  // Try silent renewal when returning with an expired access token
+  // (automaticSilentRenew only handles *expiring* tokens, not already-expired ones)
+  useEffect(() => {
+    if (auth.user?.expired && !auth.isLoading && !renewAttempted.current) {
+      renewAttempted.current = true
+      setIsRenewing(true)
+      auth.signinSilent()
+        .catch(() => {
+          // Refresh token also expired or renewal failed — user must log in again
+        })
+        .finally(() => setIsRenewing(false))
+    }
+    if (auth.isAuthenticated) {
+      renewAttempted.current = false
+    }
+  }, [auth.user?.expired, auth.isAuthenticated, auth.isLoading, auth.signinSilent])
 
   useEffect(() => {
     setTokenGetter(() => auth.user?.access_token)
@@ -44,6 +63,15 @@ function RootComponent() {
       auth.signinRedirect()
     })
   }, [auth.user, auth.signinSilent, auth.signinRedirect])
+
+  // Show loading during initial auth or silent renewal
+  if (auth.isLoading || isRenewing) {
+    return (
+      <div className="min-h-dvh flex items-center justify-center bg-background">
+        <div className="text-primary text-xl font-bold animate-pulse">Loading...</div>
+      </div>
+    )
+  }
 
   const showShell = !SHELL_EXCLUDED.includes(location.pathname) && auth.isAuthenticated
 
