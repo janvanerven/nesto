@@ -81,6 +81,8 @@ export function CreateEventSheet({
   const [recurrence, setRecurrence] = useState<string | null>(null)
   const [recurrenceInterval, setRecurrenceInterval] = useState(1)
   const [assignedTo, setAssignedTo] = useState<string | null>(null)
+  const [allDay, setAllDay] = useState(false)
+  const [endDate, setEndDate] = useState(formatDate(defaultDate))
 
   const titleRef = useRef<HTMLInputElement>(null)
   const dateInputRef = useRef<HTMLInputElement>(null)
@@ -100,6 +102,8 @@ export function CreateEventSheet({
     setRecurrence(null)
     setRecurrenceInterval(1)
     setAssignedTo(null)
+    setAllDay(false)
+    setEndDate(formatDate(defaultDate))
   }
 
   // Reset form when sheet opens (handles reopening with different defaultDate)
@@ -107,32 +111,42 @@ export function CreateEventSheet({
     if (open) resetForm()
   }, [open])
 
+  // Keep endDate >= eventDate
+  useEffect(() => {
+    if (endDate < eventDate) setEndDate(eventDate)
+  }, [eventDate])
+
   function handleSubmit(e: React.FormEvent): void {
     e.preventDefault()
-    if (!title.trim() || !startTime) return
+    if (!title.trim()) return
+    if (!allDay && !startTime) return
 
-    let endTime: string
-    if (customDuration && customEndTime) {
-      endTime = customEndTime
+    let start_time: string
+    let end_time: string
+
+    if (allDay) {
+      start_time = `${eventDate}T00:00:00`
+      end_time = `${endDate}T23:59:59`
     } else {
-      endTime = addMinutes(startTime, durationMinutes ?? 60)
+      let endTimeVal: string
+      if (customDuration && customEndTime) {
+        endTimeVal = customEndTime
+      } else {
+        endTimeVal = addMinutes(startTime!, durationMinutes ?? 60)
+      }
+      start_time = `${eventDate}T${startTime}:00`
+      end_time = `${eventDate}T${endTimeVal}:00`
     }
-
-    const start_time = `${eventDate}T${startTime}:00`
-    const end_time = `${eventDate}T${endTime}:00`
 
     const event: EventCreate = {
       title: title.trim(),
       start_time,
       end_time,
+      all_day: allDay || undefined,
     }
 
-    if (description.trim()) {
-      event.description = description.trim()
-    }
-    if (assignedTo) {
-      event.assigned_to = assignedTo
-    }
+    if (description.trim()) event.description = description.trim()
+    if (assignedTo) event.assigned_to = assignedTo
     if (recurrence) {
       event.recurrence_rule = recurrence
       event.recurrence_interval = recurrenceInterval
@@ -168,7 +182,7 @@ export function CreateEventSheet({
   const dateOptions = getDateOptions()
   const isCustomDate = eventDate && !dateOptions.some((o) => o.value === eventDate)
   const isPresetTime = TIME_PRESETS.some((p) => p.value === startTime)
-  const canSubmit = title.trim() && startTime && !isPending
+  const canSubmit = title.trim() && (allDay || startTime) && !isPending
 
   return (
     <AnimatePresence>
@@ -224,6 +238,31 @@ export function CreateEventSheet({
                 </div>
               )}
 
+              {/* All-day toggle */}
+              <div>
+                <label className="text-sm font-medium text-text-muted mb-2 block">Type</label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAllDay(false)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                      !allDay ? 'bg-primary text-white shadow-md' : 'bg-text/5 text-text-muted'
+                    }`}
+                  >
+                    Timed
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAllDay(true)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                      allDay ? 'bg-primary text-white shadow-md' : 'bg-text/5 text-text-muted'
+                    }`}
+                  >
+                    All day
+                  </button>
+                </div>
+              </div>
+
               {/* Date quick-pick */}
               <div>
                 <label className="text-sm font-medium text-text-muted mb-2 block">Date</label>
@@ -271,7 +310,22 @@ export function CreateEventSheet({
                 </div>
               </div>
 
+              {/* End date (for all-day events) */}
+              {allDay && (
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-sm font-medium text-text-muted">End date</span>
+                  <input
+                    type="date"
+                    value={endDate}
+                    min={eventDate}
+                    onChange={(e) => { if (e.target.value) setEndDate(e.target.value) }}
+                    className="px-4 py-2.5 rounded-[var(--radius-input)] border-2 border-text/10 bg-surface text-text text-base font-medium focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                  />
+                </label>
+              )}
+
               {/* Start time quick-pick */}
+              {!allDay && (
               <div>
                 <label className="text-sm font-medium text-text-muted mb-2 block">
                   Start time
@@ -320,9 +374,10 @@ export function CreateEventSheet({
                   </label>
                 </div>
               </div>
+              )}
 
               {/* Duration quick-pick (shown after start time selected) */}
-              {startTime && (
+              {!allDay && startTime && (
                 <div>
                   <label className="text-sm font-medium text-text-muted mb-2 block">
                     Duration
