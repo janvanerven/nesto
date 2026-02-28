@@ -141,7 +141,9 @@ function UpcomingSummary({ householdId }: { householdId: string }) {
             {occurrences.map((occ, i) => (
               <div key={`${occ.event.id}-${i}`} className="flex items-center gap-2.5">
                 <span className="text-xs font-medium text-primary shrink-0 w-20">
-                  {formatOccurrenceDate(occ.occurrenceStart)}
+                  {occ.event.all_day
+                    ? formatOccurrenceDateOnly(occ.occurrenceStart)
+                    : formatOccurrenceDate(occ.occurrenceStart)}
                 </span>
                 <p className="flex-1 text-sm font-medium text-text truncate">{occ.event.title}</p>
               </div>
@@ -163,6 +165,17 @@ function formatOccurrenceDate(d: Date): string {
   if (diff === 0) return `Today ${time}`
   if (diff === 1) return `Tmrw ${time}`
   return `${d.toLocaleDateString('en', { weekday: 'short' })} ${time}`
+}
+
+function formatOccurrenceDateOnly(d: Date): string {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const dateOnly = new Date(d)
+  dateOnly.setHours(0, 0, 0, 0)
+  const diff = Math.round((dateOnly.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  if (diff === 0) return 'Today'
+  if (diff === 1) return 'Tomorrow'
+  return d.toLocaleDateString('en', { weekday: 'short' })
 }
 
 function ListsSummary({ householdId }: { householdId: string }) {
