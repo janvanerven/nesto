@@ -45,6 +45,8 @@ export function EditEventSheet({
   const [eventDate, setEventDate] = useState('')
   const [startTime, setStartTime] = useState('')
   const [endTime, setEndTime] = useState('')
+  const [allDay, setAllDay] = useState(false)
+  const [endDate, setEndDate] = useState('')
   const [recurrence, setRecurrence] = useState<string | null>(null)
   const [recurrenceInterval, setRecurrenceInterval] = useState(1)
   const [assignedTo, setAssignedTo] = useState<string | null>(null)
@@ -66,6 +68,9 @@ export function EditEventSheet({
     )
     setStartTime(`${padTime(start.getHours())}:${padTime(start.getMinutes())}`)
     setEndTime(`${padTime(end.getHours())}:${padTime(end.getMinutes())}`)
+    setAllDay(event.all_day ?? false)
+    const endD = new Date(event.end_time)
+    setEndDate(`${endD.getFullYear()}-${padTime(endD.getMonth() + 1)}-${padTime(endD.getDate())}`)
     setRecurrence(event.recurrence_rule)
     setRecurrenceInterval(event.recurrence_interval ?? 1)
     setAssignedTo(event.assigned_to)
@@ -76,10 +81,19 @@ export function EditEventSheet({
 
   function handleSubmit(e: React.FormEvent): void {
     e.preventDefault()
-    if (!event || !title.trim() || !startTime || !endTime) return
+    if (!event || !title.trim()) return
+    if (!allDay && (!startTime || !endTime)) return
 
-    const start_time = `${eventDate}T${startTime}:00`
-    const end_time = `${eventDate}T${endTime}:00`
+    let start_time: string
+    let end_time: string
+
+    if (allDay) {
+      start_time = `${eventDate}T00:00:00`
+      end_time = `${endDate}T23:59:59`
+    } else {
+      start_time = `${eventDate}T${startTime}:00`
+      end_time = `${eventDate}T${endTime}:00`
+    }
 
     const update: EventUpdate & { eventId: string } = {
       eventId: event.id,
@@ -87,6 +101,7 @@ export function EditEventSheet({
       description: description.trim() || undefined,
       start_time,
       end_time,
+      all_day: allDay,
       assigned_to: assignedTo ?? undefined,
       recurrence_rule: recurrence,
       recurrence_interval: recurrence ? recurrenceInterval : undefined,
@@ -105,7 +120,7 @@ export function EditEventSheet({
     }
   }
 
-  const canSubmit = title.trim() && startTime && endTime && !isPending
+  const canSubmit = title.trim() && (allDay || (startTime && endTime)) && !isPending
 
   return (
     <AnimatePresence>
@@ -159,6 +174,31 @@ export function EditEventSheet({
                 />
               </div>
 
+              {/* All-day toggle */}
+              <div>
+                <label className="text-sm font-medium text-text-muted mb-2 block">Type</label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAllDay(false)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                      !allDay ? 'bg-primary text-white shadow-md' : 'bg-text/5 text-text-muted'
+                    }`}
+                  >
+                    Timed
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAllDay(true)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                      allDay ? 'bg-primary text-white shadow-md' : 'bg-text/5 text-text-muted'
+                    }`}
+                  >
+                    All day
+                  </button>
+                </div>
+              </div>
+
               {/* Date picker */}
               <label className="flex flex-col gap-1.5">
                 <span className="text-sm font-medium text-text-muted">Date</span>
@@ -170,7 +210,22 @@ export function EditEventSheet({
                 />
               </label>
 
+              {/* End date for all-day events */}
+              {allDay && (
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-sm font-medium text-text-muted">End date</span>
+                  <input
+                    type="date"
+                    value={endDate}
+                    min={eventDate}
+                    onChange={(e) => { if (e.target.value) setEndDate(e.target.value) }}
+                    className="px-4 py-2.5 rounded-[var(--radius-input)] border-2 border-text/10 bg-surface text-text text-base font-medium focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                  />
+                </label>
+              )}
+
               {/* Start / End time pickers */}
+              {!allDay && (
               <div>
                 <label className="text-sm font-medium text-text-muted mb-2 block">Time</label>
                 <div className="flex gap-2">
@@ -200,6 +255,7 @@ export function EditEventSheet({
                   </label>
                 </div>
               </div>
+              )}
 
               {/* Recurrence toggle pills */}
               <div>
