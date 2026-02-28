@@ -8,6 +8,7 @@ export interface CalendarEvent {
   description: string | null
   start_time: string
   end_time: string
+  all_day: boolean
   assigned_to: string | null
   created_by: string
   recurrence_rule: string | null
@@ -22,6 +23,7 @@ export interface EventCreate {
   description?: string
   start_time: string
   end_time: string
+  all_day?: boolean
   assigned_to?: string
   recurrence_rule?: string
   recurrence_interval?: number
@@ -33,6 +35,7 @@ export interface EventUpdate {
   description?: string
   start_time?: string
   end_time?: string
+  all_day?: boolean
   assigned_to?: string
   recurrence_rule?: string | null
   recurrence_interval?: number
