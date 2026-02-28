@@ -1,6 +1,7 @@
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, Text, func
+import sqlalchemy as sa
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -15,6 +16,7 @@ class Event(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     start_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     end_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    all_day: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=sa.text("0"))
     assigned_to: Mapped[str | None] = mapped_column(Text, ForeignKey("users.id"), nullable=True)
     created_by: Mapped[str] = mapped_column(Text, ForeignKey("users.id"), nullable=False)
     recurrence_rule: Mapped[str | None] = mapped_column(Text, nullable=True)

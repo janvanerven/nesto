@@ -20,7 +20,7 @@ async def _verify_household_member(db: AsyncSession, household_id: str, user_id:
         raise HTTPException(status_code=400, detail="Assigned user is not a member of this household")
 
 _UPDATABLE_FIELDS = {
-    "title", "description", "start_time", "end_time",
+    "title", "description", "start_time", "end_time", "all_day",
     "assigned_to", "recurrence_rule", "recurrence_interval", "recurrence_end",
 }
 

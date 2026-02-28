@@ -13,6 +13,7 @@ class EventCreate(BaseModel):
     recurrence_rule: Literal["daily", "weekly", "monthly", "yearly"] | None = None
     recurrence_interval: int = Field(default=1, ge=1, le=365)
     recurrence_end: date | None = None
+    all_day: bool = False
 
     @model_validator(mode="after")
     def validate_times(self):
@@ -30,6 +31,7 @@ class EventUpdate(BaseModel):
     recurrence_rule: Literal["daily", "weekly", "monthly", "yearly"] | None = None
     recurrence_interval: int | None = Field(default=None, ge=1, le=365)
     recurrence_end: date | None = None
+    all_day: bool | None = None
 
     @model_validator(mode="after")
     def validate_times(self):
@@ -45,6 +47,7 @@ class EventResponse(BaseModel):
     description: str | None
     start_time: datetime
     end_time: datetime
+    all_day: bool
     assigned_to: str | None
     created_by: str
     recurrence_rule: str | None
