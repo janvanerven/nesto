@@ -29,7 +29,7 @@ export function EventCard({ occurrence, members, onClick }: EventCardProps) {
     ? members.find((m) => m.id === event.assigned_to)
     : null
 
-  const borderColor = isRecurring ? 'border-l-secondary' : 'border-l-primary'
+  const borderColor = event.all_day ? 'border-l-accent' : isRecurring ? 'border-l-secondary' : 'border-l-primary'
   const intervalLabel = getIntervalLabel(event.recurrence_rule, event.recurrence_interval)
 
   return (
@@ -41,9 +41,15 @@ export function EventCard({ occurrence, members, onClick }: EventCardProps) {
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-text">{event.title}</p>
-          <p className="text-sm text-text-muted mt-0.5">
-            {formatTime(occurrenceStart)} – {formatTime(occurrenceEnd)}
-          </p>
+          {event.all_day ? (
+            <p className="text-sm text-text-muted mt-0.5">
+              {formatAllDayLabel(occurrenceStart, occurrenceEnd)}
+            </p>
+          ) : (
+            <p className="text-sm text-text-muted mt-0.5">
+              {formatTime(occurrenceStart)} – {formatTime(occurrenceEnd)}
+            </p>
+          )}
           {isRecurring && (
             <span className="inline-block mt-1.5 px-2 py-0.5 rounded-full bg-secondary/10 text-secondary text-xs font-medium">
               {intervalLabel}
@@ -60,6 +66,18 @@ export function EventCard({ occurrence, members, onClick }: EventCardProps) {
       </div>
     </Card>
   )
+}
+
+function formatAllDayLabel(start: Date, end: Date): string {
+  const startDay = new Date(start)
+  startDay.setHours(0, 0, 0, 0)
+  const endDay = new Date(end)
+  endDay.setHours(0, 0, 0, 0)
+
+  if (startDay.getTime() === endDay.getTime()) return 'All day'
+
+  const endLabel = end.toLocaleDateString('en', { month: 'short', day: 'numeric' })
+  return `All day · ends ${endLabel}`
 }
 
 function formatTime(date: Date): string {
