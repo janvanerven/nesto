@@ -283,7 +283,9 @@ export function CreateEventSheet({
                       {opt.label}
                     </button>
                   ))}
-                  <label
+                  <button
+                    type="button"
+                    onClick={() => dateInputRef.current?.showPicker()}
                     className={`
                       relative px-3 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer
                       ${isCustomDate
@@ -298,15 +300,15 @@ export function CreateEventSheet({
                           day: 'numeric',
                         })
                       : 'Pick date'}
-                    <input
-                      ref={dateInputRef}
-                      type="date"
-                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer text-base"
-                      onChange={(e) => {
-                        if (e.target.value) setEventDate(e.target.value)
-                      }}
-                    />
-                  </label>
+                  </button>
+                  <input
+                    ref={dateInputRef}
+                    type="date"
+                    className="sr-only"
+                    onChange={(e) => {
+                      if (e.target.value) setEventDate(e.target.value)
+                    }}
+                  />
                 </div>
               </div>
 

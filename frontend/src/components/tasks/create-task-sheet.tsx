@@ -148,7 +148,9 @@ export function CreateReminderSheet({ open, onClose, onSubmit, isPending, member
                       {opt.label}
                     </button>
                   ))}
-                  <label
+                  <button
+                    type="button"
+                    onClick={() => dateInputRef.current?.showPicker()}
                     className={`
                       relative px-3 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer
                       ${isCustomDate
@@ -160,13 +162,13 @@ export function CreateReminderSheet({ open, onClose, onSubmit, isPending, member
                     {isCustomDate
                       ? new Date(dueDate + 'T00:00:00').toLocaleDateString('en', { month: 'short', day: 'numeric' })
                       : 'Pick date'}
-                    <input
-                      ref={dateInputRef}
-                      type="date"
-                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer text-base"
-                      onChange={(e) => setDueDate(e.target.value || null)}
-                    />
-                  </label>
+                  </button>
+                  <input
+                    ref={dateInputRef}
+                    type="date"
+                    className="sr-only"
+                    onChange={(e) => setDueDate(e.target.value || null)}
+                  />
                 </div>
               </div>
 
