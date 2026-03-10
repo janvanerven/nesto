@@ -66,7 +66,12 @@ function DashboardPage() {
 function RemindersSummary({ householdId }: { householdId: string }) {
   const { data: tasks, isLoading } = useTasks(householdId)
 
-  const pending = tasks?.filter((t) => t.status !== 'done') || []
+  const pending = (tasks?.filter((t) => t.status !== 'done') || []).sort((a, b) => {
+    if (!a.due_date && !b.due_date) return 0
+    if (!a.due_date) return 1
+    if (!b.due_date) return -1
+    return a.due_date.localeCompare(b.due_date)
+  })
   const todayStr = fmt(new Date())
   const overdue = pending.filter((t) => t.due_date && t.due_date < todayStr)
 
