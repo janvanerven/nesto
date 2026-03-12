@@ -17,18 +17,18 @@ backend/app/
   config.py        # Pydantic Settings with validators
   database.py      # Async SQLAlchemy engine, session, SQLite pragmas
   auth.py          # JWT decode via PyJWKClient, user auto-upsert
-  models/          # SQLAlchemy ORM (user, household, task, event, shopping_list)
+  models/          # SQLAlchemy ORM (user, household, task, event, shopping_list, loyalty_card)
   schemas/         # Pydantic request/response models with validation
-  routers/         # API routes: /api/auth, /api/households, /api/households/{id}/tasks, /api/households/{id}/events, /api/households/{id}/members, /api/households/{id}/lists
-  services/        # Business logic (user_service, household_service, task_service, event_service, shopping_list_service, digest_service)
+  routers/         # API routes: /api/auth, /api/households, /api/households/{id}/tasks, /api/households/{id}/events, /api/households/{id}/members, /api/households/{id}/lists, /api/households/{id}/cards
+  services/        # Business logic (user_service, household_service, task_service, event_service, shopping_list_service, loyalty_card_service, digest_service)
 backend/alembic/   # Async migrations
 backend/tests/     # pytest-asyncio tests
 
 frontend/src/
-  routes/          # TanStack Router file-based routes (__root, index, login, callback, tasks, onboarding, settings, calendar, lists, lists.$listId)
+  routes/          # TanStack Router file-based routes (__root, index, login, callback, tasks, onboarding, settings, calendar, lists, lists.$listId, cards, cards.$cardId)
   api/             # apiFetch client with token refresh + session expiry, React Query hooks per domain
   auth/            # OIDC config and provider
-  components/      # ui/ (Button, Card, Input, Avatar, Fab, PriorityDot), layout/ (bottom-nav), tasks/ (task-card, create-task-sheet, edit-task-sheet), calendar/ (week-strip, event-card, create-event-sheet, edit-event-sheet), lists/ (list-card, create-list-sheet, edit-list-sheet)
+  components/      # ui/ (Button, Card, Input, Avatar, Fab, PriorityDot), layout/ (bottom-nav), tasks/ (task-card, create-task-sheet, edit-task-sheet), calendar/ (week-strip, event-card, create-event-sheet, edit-event-sheet), lists/ (list-card, create-list-sheet, edit-list-sheet), cards/ (loyalty-card-card, create-card-sheet, edit-card-sheet, barcode-display)
   stores/          # Zustand stores (auth-store, theme-store)
   utils/           # recurrence.ts (client-side recurring event expansion)
   styles/          # Tailwind CSS v4 theme with light/dark mode
@@ -86,7 +86,7 @@ cd backend && pytest tests/  # asyncio_mode = "auto"
 
 ## Database
 
-SQLite with WAL mode, async via aiosqlite. Tables: users, households, household_members, household_invites, tasks, events, shopping_lists, shopping_items. Alembic for migrations. Indexes on all FK/filter columns.
+SQLite with WAL mode, async via aiosqlite. Tables: users, households, household_members, household_invites, tasks, events, shopping_lists, shopping_items, loyalty_cards. Alembic for migrations. Indexes on all FK/filter columns.
 
 User model includes: id, email, display_name, first_name (nullable), avatar_url, created_at, last_login, email_digest_daily, email_digest_weekly.
 
@@ -108,6 +108,8 @@ Automated daily backup service copies DB to `./backups/` with 7-day retention.
 - `POST /api/households/{id}/lists/{listId}/complete` — Archive list + check all items
 - `GET/POST /api/households/{id}/lists/{listId}/items` — List/add items
 - `PATCH/DELETE /api/households/{id}/lists/{listId}/items/{itemId}` — Update/delete item
+- `GET/POST /api/households/{id}/cards` — List/create loyalty cards
+- `PATCH/DELETE /api/households/{id}/cards/{cardId}` — Update/delete loyalty card
 
 ## Environment Variables
 
