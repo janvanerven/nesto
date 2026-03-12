@@ -14,11 +14,14 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ListsRouteImport } from './routes/lists'
+import { Route as CardsRouteImport } from './routes/cards'
 import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ListsIndexRouteImport } from './routes/lists.index'
+import { Route as CardsIndexRouteImport } from './routes/cards.index'
 import { Route as ListsListIdRouteImport } from './routes/lists.$listId'
+import { Route as CardsCardIdRouteImport } from './routes/cards.$cardId'
 
 const TasksRoute = TasksRouteImport.update({
   id: '/tasks',
@@ -45,6 +48,11 @@ const ListsRoute = ListsRouteImport.update({
   path: '/lists',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CardsRoute = CardsRouteImport.update({
+  id: '/cards',
+  path: '/cards',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CallbackRoute = CallbackRouteImport.update({
   id: '/callback',
   path: '/callback',
@@ -65,22 +73,35 @@ const ListsIndexRoute = ListsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ListsRoute,
 } as any)
+const CardsIndexRoute = CardsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CardsRoute,
+} as any)
 const ListsListIdRoute = ListsListIdRouteImport.update({
   id: '/$listId',
   path: '/$listId',
   getParentRoute: () => ListsRoute,
+} as any)
+const CardsCardIdRoute = CardsCardIdRouteImport.update({
+  id: '/$cardId',
+  path: '/$cardId',
+  getParentRoute: () => CardsRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/callback': typeof CallbackRoute
+  '/cards': typeof CardsRouteWithChildren
   '/lists': typeof ListsRouteWithChildren
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
+  '/cards/$cardId': typeof CardsCardIdRoute
   '/lists/$listId': typeof ListsListIdRoute
+  '/cards/': typeof CardsIndexRoute
   '/lists/': typeof ListsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -91,7 +112,9 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
+  '/cards/$cardId': typeof CardsCardIdRoute
   '/lists/$listId': typeof ListsListIdRoute
+  '/cards': typeof CardsIndexRoute
   '/lists': typeof ListsIndexRoute
 }
 export interface FileRoutesById {
@@ -99,12 +122,15 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/callback': typeof CallbackRoute
+  '/cards': typeof CardsRouteWithChildren
   '/lists': typeof ListsRouteWithChildren
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
+  '/cards/$cardId': typeof CardsCardIdRoute
   '/lists/$listId': typeof ListsListIdRoute
+  '/cards/': typeof CardsIndexRoute
   '/lists/': typeof ListsIndexRoute
 }
 export interface FileRouteTypes {
@@ -113,12 +139,15 @@ export interface FileRouteTypes {
     | '/'
     | '/calendar'
     | '/callback'
+    | '/cards'
     | '/lists'
     | '/login'
     | '/onboarding'
     | '/settings'
     | '/tasks'
+    | '/cards/$cardId'
     | '/lists/$listId'
+    | '/cards/'
     | '/lists/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -129,19 +158,24 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/settings'
     | '/tasks'
+    | '/cards/$cardId'
     | '/lists/$listId'
+    | '/cards'
     | '/lists'
   id:
     | '__root__'
     | '/'
     | '/calendar'
     | '/callback'
+    | '/cards'
     | '/lists'
     | '/login'
     | '/onboarding'
     | '/settings'
     | '/tasks'
+    | '/cards/$cardId'
     | '/lists/$listId'
+    | '/cards/'
     | '/lists/'
   fileRoutesById: FileRoutesById
 }
@@ -149,6 +183,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CalendarRoute: typeof CalendarRoute
   CallbackRoute: typeof CallbackRoute
+  CardsRoute: typeof CardsRouteWithChildren
   ListsRoute: typeof ListsRouteWithChildren
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
@@ -193,6 +228,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ListsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cards': {
+      id: '/cards'
+      path: '/cards'
+      fullPath: '/cards'
+      preLoaderRoute: typeof CardsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/callback': {
       id: '/callback'
       path: '/callback'
@@ -221,6 +263,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ListsIndexRouteImport
       parentRoute: typeof ListsRoute
     }
+    '/cards/': {
+      id: '/cards/'
+      path: '/'
+      fullPath: '/cards/'
+      preLoaderRoute: typeof CardsIndexRouteImport
+      parentRoute: typeof CardsRoute
+    }
     '/lists/$listId': {
       id: '/lists/$listId'
       path: '/$listId'
@@ -228,8 +277,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ListsListIdRouteImport
       parentRoute: typeof ListsRoute
     }
+    '/cards/$cardId': {
+      id: '/cards/$cardId'
+      path: '/$cardId'
+      fullPath: '/cards/$cardId'
+      preLoaderRoute: typeof CardsCardIdRouteImport
+      parentRoute: typeof CardsRoute
+    }
   }
 }
+
+interface CardsRouteChildren {
+  CardsCardIdRoute: typeof CardsCardIdRoute
+  CardsIndexRoute: typeof CardsIndexRoute
+}
+
+const CardsRouteChildren: CardsRouteChildren = {
+  CardsCardIdRoute: CardsCardIdRoute,
+  CardsIndexRoute: CardsIndexRoute,
+}
+
+const CardsRouteWithChildren = CardsRoute._addFileChildren(CardsRouteChildren)
 
 interface ListsRouteChildren {
   ListsListIdRoute: typeof ListsListIdRoute
@@ -247,6 +315,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalendarRoute: CalendarRoute,
   CallbackRoute: CallbackRoute,
+  CardsRoute: CardsRouteWithChildren,
   ListsRoute: ListsRouteWithChildren,
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
