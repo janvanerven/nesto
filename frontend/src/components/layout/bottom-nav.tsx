@@ -6,6 +6,7 @@ const tabs = [
   { to: '/tasks' as const, label: 'Reminders', icon: CheckIcon },
   { to: '/calendar' as const, label: 'Calendar', icon: CalendarIcon },
   { to: '/lists' as const, label: 'Lists', icon: ListIcon },
+  { to: '/cards' as const, label: 'Cards', icon: CardIcon },
   { to: '/settings' as const, label: 'More', icon: SettingsIcon },
 ]
 
@@ -22,7 +23,7 @@ export function BottomNav() {
             <Link
               key={tab.to}
               to={tab.to}
-              className="flex flex-col items-center gap-1 px-4 py-2 relative"
+              className="flex flex-col items-center gap-1 px-2 py-2 relative"
             >
               {isActive && (
                 <motion.div
@@ -76,6 +77,15 @@ function ListIcon({ active }: { active: boolean }) {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M9 5h11M9 12h11M9 19h11M5 5v.01M5 12v.01M5 19v.01" />
+    </svg>
+  )
+}
+
+function CardIcon({ active }: { active: boolean }) {
+  const color = active ? '#6C5CE7' : '#636E72'
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" />
     </svg>
   )
 }
