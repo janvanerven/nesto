@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import async_session
-from app.routers import auth, events, households, shopping_lists, tasks
+from app.routers import auth, events, households, loyalty_cards, shopping_lists, tasks
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +96,7 @@ app.include_router(events.router)
 app.include_router(households.router)
 app.include_router(shopping_lists.router)
 app.include_router(tasks.router)
+app.include_router(loyalty_cards.router)
 
 
 @app.get("/api/health")
