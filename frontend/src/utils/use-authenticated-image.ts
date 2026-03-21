@@ -1,16 +1,21 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { getAccessToken } from '@/api/client'
 
 export function useAuthenticatedImage(url: string | null): string | null {
   const [objectUrl, setObjectUrl] = useState<string | null>(null)
+  const currentUrl = useRef<string | null>(null)
 
   useEffect(() => {
     if (!url) {
+      if (currentUrl.current) {
+        URL.revokeObjectURL(currentUrl.current)
+        currentUrl.current = null
+      }
       setObjectUrl(null)
       return
     }
 
-    let revoked = false
+    let cancelled = false
     const token = getAccessToken()
 
     fetch(url, {
@@ -21,20 +26,27 @@ export function useAuthenticatedImage(url: string | null): string | null {
         return res.blob()
       })
       .then((blob) => {
-        if (!revoked) {
-          setObjectUrl(URL.createObjectURL(blob))
+        if (!cancelled) {
+          // Revoke previous URL before creating new one
+          if (currentUrl.current) {
+            URL.revokeObjectURL(currentUrl.current)
+          }
+          const newUrl = URL.createObjectURL(blob)
+          currentUrl.current = newUrl
+          setObjectUrl(newUrl)
         }
       })
       .catch(() => {
-        if (!revoked) setObjectUrl(null)
+        if (!cancelled) setObjectUrl(null)
       })
 
     return () => {
-      revoked = true
-      setObjectUrl((prev) => {
-        if (prev) URL.revokeObjectURL(prev)
-        return null
-      })
+      cancelled = true
+      if (currentUrl.current) {
+        URL.revokeObjectURL(currentUrl.current)
+        currentUrl.current = null
+      }
+      setObjectUrl(null)
     }
   }, [url])
 

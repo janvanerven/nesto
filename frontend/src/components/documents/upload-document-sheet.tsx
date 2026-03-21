@@ -94,7 +94,7 @@ export function UploadDocumentSheet({ open, onClose, householdId }: UploadDocume
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={handleClose}
+            onClick={uploadMutation.isPending ? undefined : handleClose}
           />
           <motion.div
             initial={{ y: '100%' }}
@@ -124,6 +124,7 @@ export function UploadDocumentSheet({ open, onClose, householdId }: UploadDocume
                   <Button
                     size="sm"
                     variant="ghost"
+                    disabled={uploadMutation.isPending}
                     onClick={() => {
                       setFile(null)
                       if (fileRef.current) fileRef.current.value = ''
@@ -136,6 +137,7 @@ export function UploadDocumentSheet({ open, onClose, householdId }: UploadDocume
                 <Button
                   variant="secondary"
                   className="w-full"
+                  disabled={uploadMutation.isPending}
                   onClick={() => fileRef.current?.click()}
                 >
                   Choose file
@@ -213,7 +215,7 @@ export function UploadDocumentSheet({ open, onClose, householdId }: UploadDocume
               onClick={handleUpload}
               disabled={!file || uploadMutation.isPending}
             >
-              {uploadMutation.isPending ? 'Uploading...' : 'Upload'}
+              {uploadMutation.isPending ? 'Uploading... please wait' : 'Upload'}
             </Button>
           </motion.div>
         </>

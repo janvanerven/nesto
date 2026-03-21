@@ -1,6 +1,6 @@
 import { createFileRoute, Navigate, useNavigate } from '@tanstack/react-router'
 import { useAuth } from 'react-oidc-context'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useHouseholds } from '@/api/households'
 import { useDocuments, useDocumentTags, getDocumentThumbnailUrl } from '@/api/documents'
@@ -40,17 +40,44 @@ function DocumentsContent({
   setShowUpload: (v: boolean) => void
 }) {
   const navigate = useNavigate()
-  const [search, setSearch] = useState('')
-  const [activeTypeTag, setActiveTypeTag] = useState<string | null>(null)
-  const [activeSubjectTag, setActiveSubjectTag] = useState<string | null>(null)
+  const [search, setSearch] = useState(() => sessionStorage.getItem('doc-search') || '')
+  const [debouncedSearch, setDebouncedSearch] = useState(() => sessionStorage.getItem('doc-search') || '')
+  const [activeTypeTag, setActiveTypeTag] = useState<string | null>(
+    () => sessionStorage.getItem('doc-type-tag'),
+  )
+  const [activeSubjectTag, setActiveSubjectTag] = useState<string | null>(
+    () => sessionStorage.getItem('doc-subject-tag'),
+  )
+
+  // Debounce search input to avoid firing a request on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  // Persist filter state to sessionStorage so it survives back-navigation remounts
+  useEffect(() => {
+    if (search) sessionStorage.setItem('doc-search', search)
+    else sessionStorage.removeItem('doc-search')
+  }, [search])
+
+  useEffect(() => {
+    if (activeTypeTag) sessionStorage.setItem('doc-type-tag', activeTypeTag)
+    else sessionStorage.removeItem('doc-type-tag')
+  }, [activeTypeTag])
+
+  useEffect(() => {
+    if (activeSubjectTag) sessionStorage.setItem('doc-subject-tag', activeSubjectTag)
+    else sessionStorage.removeItem('doc-subject-tag')
+  }, [activeSubjectTag])
 
   const filters = useMemo(
     () => ({
       type_tag: activeTypeTag || undefined,
       subject_tag: activeSubjectTag || undefined,
-      search: search || undefined,
+      search: debouncedSearch || undefined,
     }),
-    [activeTypeTag, activeSubjectTag, search],
+    [activeTypeTag, activeSubjectTag, debouncedSearch],
   )
 
   const { data: documents, isLoading } = useDocuments(householdId, filters)

@@ -8,7 +8,6 @@ import {
   useUpdateDocument,
   useDocumentTags,
   getDocumentFileUrl,
-  getDocumentThumbnailUrl,
 } from '@/api/documents'
 import { useAuthenticatedImage } from '@/utils/use-authenticated-image'
 import { getAccessToken } from '@/api/client'
@@ -38,13 +37,8 @@ function DocumentDetail({ householdId }: { householdId: string }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const isImage = doc?.mime_type?.startsWith('image/')
-  const previewUrl = doc && isImage ? getDocumentThumbnailUrl(householdId, doc.id) : null
   const fullImageUrl = doc && isImage ? getDocumentFileUrl(householdId, doc.id) : null
-  const thumbSrc = useAuthenticatedImage(previewUrl)
-  const fullSrc = useAuthenticatedImage(fullImageUrl)
-
-  // Use the full image if loaded, otherwise fall back to thumbnail
-  const displaySrc = fullSrc ?? thumbSrc
+  const imageSrc = useAuthenticatedImage(fullImageUrl)
 
   const handleDelete = async () => {
     await deleteMutation.mutateAsync(docId)
@@ -58,13 +52,20 @@ function DocumentDetail({ householdId }: { householdId: string }) {
     fetch(url, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
-      .then((res) => res.blob())
+      .then((res) => {
+        if (!res.ok) throw new Error('Download failed')
+        return res.blob()
+      })
       .then((blob) => {
         const a = document.createElement('a')
         a.href = URL.createObjectURL(blob)
         a.download = doc.filename
         a.click()
-        URL.revokeObjectURL(a.href)
+        // Delay revocation for Safari compatibility
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+      })
+      .catch(() => {
+        // Could add a toast/error state here
       })
   }
 
@@ -145,10 +146,10 @@ function DocumentDetail({ householdId }: { householdId: string }) {
       </div>
 
       {/* Preview */}
-      {isImage && displaySrc ? (
+      {isImage && imageSrc ? (
         <div className="rounded-2xl overflow-hidden mb-4 bg-background">
           <img
-            src={displaySrc}
+            src={imageSrc}
             alt={doc.filename}
             className="w-full object-contain max-h-96"
           />
