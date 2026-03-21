@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import async_session
-from app.routers import auth, events, households, loyalty_cards, shopping_lists, tasks
+from app.routers import auth, calendar_sync, events, households, loyalty_cards, shopping_lists, tasks
 
 logger = logging.getLogger(__name__)
 
@@ -60,16 +60,61 @@ async def _digest_scheduler_loop():
             logger.exception("Digest scheduler error")
 
 
+async def _calendar_sync_loop():
+    """Background loop that syncs CalDAV connections every 5 minutes."""
+    sync_lock = asyncio.Lock()
+    while True:
+        try:
+            await asyncio.sleep(300)  # 5 minutes
+            if sync_lock.locked():
+                logger.debug("Calendar sync: previous run still in progress, skipping")
+                continue
+            async with sync_lock:
+                from app.services.calendar_sync_service import sync_connection
+                from app.models.calendar_sync import CalendarConnection
+                from sqlalchemy import select
+
+                async with async_session() as db:
+                    result = await db.execute(
+                        select(CalendarConnection).where(CalendarConnection.enabled == True)
+                    )
+                    connections = result.scalars().all()
+
+                for conn in connections:
+                    try:
+                        async with async_session() as db:
+                            r = await db.execute(
+                                select(CalendarConnection).where(CalendarConnection.id == conn.id)
+                            )
+                            fresh_conn = r.scalar_one_or_none()
+                            if fresh_conn and fresh_conn.enabled:
+                                await sync_connection(db, fresh_conn)
+                    except Exception:
+                        logger.exception("Calendar sync error for connection %s", conn.id)
+
+        except asyncio.CancelledError:
+            break
+        except Exception:
+            logger.exception("Calendar sync scheduler error")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     os.makedirs("data", exist_ok=True)
-    task = asyncio.create_task(_digest_scheduler_loop())
+    digest_task = asyncio.create_task(_digest_scheduler_loop())
+    sync_task = asyncio.create_task(_calendar_sync_loop())
     logger.info("Digest scheduler started (daily@%02d:00, weekly@Sun %02d:00)",
                 settings.digest_daily_hour, settings.digest_weekly_hour)
+    logger.info("Calendar sync scheduler started (every 5 minutes)")
     yield
-    task.cancel()
+    digest_task.cancel()
+    sync_task.cancel()
     try:
-        await task
+        await digest_task
+    except asyncio.CancelledError:
+        pass
+    try:
+        await sync_task
     except asyncio.CancelledError:
         pass
 
@@ -97,6 +142,10 @@ app.include_router(households.router)
 app.include_router(shopping_lists.router)
 app.include_router(tasks.router)
 app.include_router(loyalty_cards.router)
+app.include_router(calendar_sync.connections_router)
+app.include_router(calendar_sync.external_events_router)
+app.include_router(calendar_sync.feed_token_router)
+app.include_router(calendar_sync.feed_router)
 
 
 @app.get("/api/health")

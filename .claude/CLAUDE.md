@@ -4,7 +4,7 @@ Self-hosted household management app. Mobile-first SPA with bold/vibrant design.
 
 ## Tech Stack
 
-**Backend:** FastAPI, SQLAlchemy 2.0 (async), aiosqlite, Alembic, PyJWT, httpx, Pydantic Settings
+**Backend:** FastAPI, SQLAlchemy 2.0 (async), aiosqlite, Alembic, PyJWT, httpx, Pydantic Settings, caldav, icalendar, cryptography
 **Frontend:** React 19, TypeScript, TanStack Router (file-based), TanStack Query, Zustand, Tailwind CSS v4, Framer Motion, oidc-client-ts
 **Auth:** OIDC via Authentik with JWT/JWKS validation, refresh tokens (offline_access)
 **Infra:** Docker Compose, SQLite (WAL mode), nginx reverse proxy, GitHub Actions CI, GHCR images
@@ -17,18 +17,18 @@ backend/app/
   config.py        # Pydantic Settings with validators
   database.py      # Async SQLAlchemy engine, session, SQLite pragmas
   auth.py          # JWT decode via PyJWKClient, user auto-upsert
-  models/          # SQLAlchemy ORM (user, household, task, event, shopping_list, loyalty_card)
+  models/          # SQLAlchemy ORM (user, household, task, event, shopping_list, loyalty_card, calendar_sync)
   schemas/         # Pydantic request/response models with validation
-  routers/         # API routes: /api/auth, /api/households, /api/households/{id}/tasks, /api/households/{id}/events, /api/households/{id}/members, /api/households/{id}/lists, /api/households/{id}/cards
-  services/        # Business logic (user_service, household_service, task_service, event_service, shopping_list_service, loyalty_card_service, digest_service)
+  routers/         # API routes: /api/auth, /api/households, /api/households/{id}/tasks, /api/households/{id}/events, /api/households/{id}/members, /api/households/{id}/lists, /api/households/{id}/cards, /api/calendar/*
+  services/        # Business logic (user_service, household_service, task_service, event_service, shopping_list_service, loyalty_card_service, digest_service, calendar_connection_service, calendar_sync_service, feed_service, external_event_service, crypto_service)
 backend/alembic/   # Async migrations
 backend/tests/     # pytest-asyncio tests
 
 frontend/src/
   routes/          # TanStack Router file-based routes (__root, index, login, callback, tasks, onboarding, settings, calendar, lists, lists.$listId, cards, cards.$cardId)
-  api/             # apiFetch client with token refresh + session expiry, React Query hooks per domain
+  api/             # apiFetch client with token refresh + session expiry, React Query hooks per domain (calendar-sync.ts for CalDAV connections + external events)
   auth/            # OIDC config and provider
-  components/      # ui/ (Button, Card, Input, Avatar, Fab, PriorityDot), layout/ (bottom-nav), tasks/ (task-card, create-task-sheet, edit-task-sheet), calendar/ (week-strip, event-card, create-event-sheet, edit-event-sheet), lists/ (list-card, create-list-sheet, edit-list-sheet), cards/ (loyalty-card-card, create-card-sheet, edit-card-sheet, barcode-display)
+  components/      # ui/ (Button, Card, Input, Avatar, Fab, PriorityDot), layout/ (bottom-nav), tasks/ (task-card, create-task-sheet, edit-task-sheet), calendar/ (week-strip, event-card, external-event-card, create-event-sheet, edit-event-sheet, add-calendar-sheet), lists/ (list-card, create-list-sheet, edit-list-sheet), cards/ (loyalty-card-card, create-card-sheet, edit-card-sheet, barcode-display)
   stores/          # Zustand stores (auth-store, theme-store)
   utils/           # recurrence.ts (client-side recurring event expansion)
   styles/          # Tailwind CSS v4 theme with light/dark mode
@@ -44,7 +44,7 @@ docker compose -f docker-compose.prod.yml up  # Prod: nginx:8080 (prebuilt image
 
 ## Production Architecture
 
-Prod uses prebuilt multi-arch images from `ghcr.io/janvanerven/nesto/{backend,frontend,nginx}:latest`, built by GitHub Actions on push to main. No source checkout needed on the deploy server — just `docker-compose.prod.yml` + `.env`.
+Prod uses prebuilt multi-arch images from `ghcr.io/janvanerven/nesto/{backend,frontend,nginx}:latest`, built by GitHub Actions on version tag push (e.g. `git tag v1.0.0 && git push --tags`). Images are tagged with semver (`1.0.0`, `1.0`) + `latest`. Manual builds via `workflow_dispatch`. No source checkout needed on the deploy server — just `docker-compose.prod.yml` + `.env`.
 
 - **frontend** — serves static dist files via its own nginx, generates `/config.js` at container startup from env vars (`OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_REDIRECT_URI`) via `docker-entrypoint.sh`
 - **nginx** — reverse proxy with security headers and rate limiting; proxies `/api/` to backend, everything else to frontend
@@ -86,7 +86,7 @@ cd backend && pytest tests/  # asyncio_mode = "auto"
 
 ## Database
 
-SQLite with WAL mode, async via aiosqlite. Tables: users, households, household_members, household_invites, tasks, events, shopping_lists, shopping_items, loyalty_cards. Alembic for migrations. Indexes on all FK/filter columns.
+SQLite with WAL mode, async via aiosqlite. Tables: users, households, household_members (+ feed_token), household_invites, tasks, events, shopping_lists, shopping_items, loyalty_cards, calendar_connections, external_events. Alembic for migrations. Indexes on all FK/filter columns.
 
 User model includes: id, email, display_name, first_name (nullable), avatar_url, created_at, last_login, email_digest_daily, email_digest_weekly.
 
@@ -110,6 +110,13 @@ Automated daily backup service copies DB to `./backups/` with 7-day retention.
 - `PATCH/DELETE /api/households/{id}/lists/{listId}/items/{itemId}` — Update/delete item
 - `GET/POST /api/households/{id}/cards` — List/create loyalty cards
 - `PATCH/DELETE /api/households/{id}/cards/{cardId}` — Update/delete loyalty card
+- `GET/POST /api/calendar/connections` — List/create CalDAV connections
+- `PATCH/DELETE /api/calendar/connections/{id}` — Update/delete connection
+- `POST /api/calendar/connections/{id}/sync` — Trigger immediate sync
+- `GET /api/households/{id}/external-events?start=&end=` — List external events (RRULE expanded server-side)
+- `GET /api/calendar/feed-token` — Get or create .ics feed token + URL
+- `POST /api/calendar/feed-token/regenerate` — Replace feed token
+- `GET /api/calendar/feed/{token}.ics` — Token-authenticated .ics subscription feed (no OIDC)
 
 ## Environment Variables
 

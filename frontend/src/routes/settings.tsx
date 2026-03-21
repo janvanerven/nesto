@@ -5,6 +5,15 @@ import { useHouseholds, useHouseholdMembers, useCreateInvite, useUpdateHousehold
 import { Avatar, Button, Card, Input } from '@/components/ui'
 import { useState, useRef } from 'react'
 import { useThemeStore } from '@/stores/theme-store'
+import {
+  useCalendarConnections,
+  useUpdateCalendarConnection,
+  useDeleteCalendarConnection,
+  useTriggerSync,
+  useFeedToken,
+  useRegenerateFeedToken,
+} from '@/api/calendar-sync'
+import { AddCalendarSheet } from '@/components/calendar/add-calendar-sheet'
 
 export const Route = createFileRoute('/settings')({
   component: SettingsPage,
@@ -69,6 +78,14 @@ function SettingsPage() {
           <EditHouseholdNameSection householdId={household.id} currentName={household.name} />
           <MembersSection householdId={household.id} />
           <InviteSection householdId={household.id} />
+        </Card>
+      )}
+
+      {/* Calendar Sync */}
+      {household && (
+        <Card className="mb-4">
+          <h2 className="font-bold text-text mb-3">Calendar Sync</h2>
+          <CalendarSyncSection householdId={household.id} />
         </Card>
       )}
 
@@ -183,6 +200,146 @@ function InviteSection({ householdId }: { householdId: string }) {
         <Button variant="secondary" size="sm" onClick={handleInvite} disabled={inviteMutation.isPending}>
           {inviteMutation.isPending ? 'Generating...' : 'Invite member'}
         </Button>
+      )}
+    </div>
+  )
+}
+
+function CalendarSyncSection({ householdId }: { householdId: string }) {
+  const { data: connections = [] } = useCalendarConnections()
+  const [showAdd, setShowAdd] = useState(false)
+
+  return (
+    <div>
+      {connections.length > 0 && (
+        <div className="space-y-3 mb-4">
+          {connections.map((conn) => (
+            <ConnectedCalendarRow key={conn.id} connection={conn} />
+          ))}
+        </div>
+      )}
+
+      <Button variant="secondary" size="sm" onClick={() => setShowAdd(true)}>
+        Add calendar
+      </Button>
+
+      <div className="mt-4 pt-4 border-t border-text/10">
+        <IcsSubscriptionSection />
+      </div>
+
+      <AddCalendarSheet open={showAdd} onClose={() => setShowAdd(false)} />
+    </div>
+  )
+}
+
+function ConnectedCalendarRow({ connection }: { connection: import('@/api/calendar-sync').CalendarConnection }) {
+  const updateMutation = useUpdateCalendarConnection()
+  const deleteMutation = useDeleteCalendarConnection()
+  const syncMutation = useTriggerSync()
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  return (
+    <div className="bg-background rounded-xl p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <span
+            className="w-3 h-3 rounded-full shrink-0"
+            style={{ backgroundColor: connection.color }}
+          />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-text truncate">{connection.name}</p>
+            <p className="text-xs text-text-muted">
+              {connection.provider} · {connection.last_synced_at
+                ? `Synced ${new Date(connection.last_synced_at).toLocaleString()}`
+                : 'Never synced'}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => syncMutation.mutate(connection.id)}
+            disabled={syncMutation.isPending}
+            className="text-xs text-primary font-medium px-2 py-1"
+          >
+            {syncMutation.isPending ? '...' : 'Sync'}
+          </button>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={connection.enabled}
+            onClick={() => updateMutation.mutate({ connectionId: connection.id, enabled: !connection.enabled })}
+            className={`relative shrink-0 w-9 h-5 rounded-full transition-colors ${connection.enabled ? 'bg-primary' : 'bg-text/15'}`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${connection.enabled ? 'translate-x-4' : 'translate-x-0'}`} />
+          </button>
+        </div>
+      </div>
+      {connection.error_count > 0 && connection.last_error && (
+        <p className="text-xs text-accent mt-2">{connection.last_error}</p>
+      )}
+      <div className="mt-2 flex justify-end">
+        {confirmDelete ? (
+          <div className="flex gap-2">
+            <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+            <Button size="sm" variant="danger" onClick={() => deleteMutation.mutate(connection.id)} disabled={deleteMutation.isPending}>
+              {deleteMutation.isPending ? '...' : 'Confirm'}
+            </Button>
+          </div>
+        ) : (
+          <button type="button" onClick={() => setConfirmDelete(true)} className="text-xs text-accent font-medium">
+            Remove
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function IcsSubscriptionSection() {
+  const { data: feedToken } = useFeedToken()
+  const regenerateMutation = useRegenerateFeedToken()
+  const [copied, setCopied] = useState(false)
+  const [confirmRegen, setConfirmRegen] = useState(false)
+
+  const handleCopy = async () => {
+    if (!feedToken?.url) return
+    await navigator.clipboard.writeText(feedToken.url)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div>
+      <p className="text-sm font-medium text-text mb-1">Calendar subscription</p>
+      <p className="text-xs text-text-muted mb-2">Subscribe to this URL in your calendar app to see Nesto events.</p>
+      {feedToken ? (
+        <>
+          <div className="bg-background rounded-xl p-3 mb-2">
+            <p className="font-mono text-xs text-primary break-all">{feedToken.url}</p>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" variant="secondary" onClick={handleCopy}>
+              {copied ? 'Copied!' : 'Copy URL'}
+            </Button>
+            {confirmRegen ? (
+              <>
+                <Button size="sm" variant="danger" onClick={() => { regenerateMutation.mutate(); setConfirmRegen(false) }}>
+                  Confirm
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setConfirmRegen(false)}>
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <Button size="sm" variant="ghost" onClick={() => setConfirmRegen(true)}>
+                Regenerate
+              </Button>
+            )}
+          </div>
+        </>
+      ) : (
+        <p className="text-xs text-text-muted">Loading...</p>
       )}
     </div>
   )

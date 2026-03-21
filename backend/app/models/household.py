@@ -21,6 +21,7 @@ class HouseholdMember(Base):
     household_id: Mapped[str] = mapped_column(Text, ForeignKey("households.id"), primary_key=True)
     user_id: Mapped[str] = mapped_column(Text, ForeignKey("users.id"), primary_key=True)
     joined_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    feed_token: Mapped[str | None] = mapped_column(Text, nullable=True, unique=True)
 
 
 class HouseholdInvite(Base):
