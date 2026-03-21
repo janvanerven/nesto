@@ -44,7 +44,7 @@ docker compose -f docker-compose.prod.yml up  # Prod: nginx:8080 (prebuilt image
 
 ## Production Architecture
 
-Prod uses prebuilt multi-arch images from `ghcr.io/janvanerven/nesto/{backend,frontend,nginx}:latest`, built by GitHub Actions on push to main. No source checkout needed on the deploy server — just `docker-compose.prod.yml` + `.env`.
+Prod uses prebuilt multi-arch images from `ghcr.io/janvanerven/nesto/{backend,frontend,nginx}:latest`, built by GitHub Actions on version tag push (e.g. `git tag v1.0.0 && git push --tags`). Images are tagged with semver (`1.0.0`, `1.0`) + `latest`. Manual builds via `workflow_dispatch`. No source checkout needed on the deploy server — just `docker-compose.prod.yml` + `.env`.
 
 - **frontend** — serves static dist files via its own nginx, generates `/config.js` at container startup from env vars (`OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_REDIRECT_URI`) via `docker-entrypoint.sh`
 - **nginx** — reverse proxy with security headers and rate limiting; proxies `/api/` to backend, everything else to frontend
