@@ -287,7 +287,8 @@ async def validate_caldav_credentials(
         client = caldav.DAVClient(url=server_url, username=username, password=password, timeout=CALDAV_TIMEOUT)
         calendar = caldav.Calendar(client=client, url=calendar_url)
         # Try to fetch properties — will raise on bad auth
-        calendar.get_properties([caldav.dav.DisplayName()])
+        from caldav.elements.dav import DisplayName
+        calendar.get_properties([DisplayName()])
         return True
 
     try:
