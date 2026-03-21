@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 
 class DocumentTagCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=100)
+    name: str = Field(min_length=1, max_length=100, pattern=r"^[^\x00-\x1f\x7f]+$")
     category: Literal["type", "subject"]
 
 
@@ -19,6 +19,8 @@ class DocumentTagResponse(BaseModel):
 
 
 class DocumentResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
     id: str
     household_id: str
     uploaded_by: str

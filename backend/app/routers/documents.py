@@ -36,7 +36,7 @@ async def list_documents(
 async def upload_document(
     household_id: str,
     file: UploadFile = File(...),
-    metadata: str = Form(default="{}"),
+    metadata: str = Form(default="{}", max_length=4096),
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -52,6 +52,8 @@ async def upload_document(
     tag_ids = meta.get("tags", [])
     if not isinstance(tag_ids, list) or not all(isinstance(t, str) for t in tag_ids):
         raise HTTPException(status_code=422, detail="tags must be a list of strings")
+    if len(tag_ids) > 50:
+        raise HTTPException(status_code=422, detail="Too many tags (max 50)")
 
     return await svc.create_document(db, household_id, user_id, file, tag_ids)
 
@@ -81,7 +83,10 @@ async def get_document_file(
         file_path,
         filename=doc.filename,
         media_type=doc.mime_type,
-        headers={"X-Content-Type-Options": "nosniff"},
+        headers={
+            "X-Content-Type-Options": "nosniff",
+            "Content-Disposition": f'attachment; filename="{doc.filename}"',
+        },
     )
 
 

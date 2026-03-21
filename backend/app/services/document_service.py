@@ -1,7 +1,6 @@
 import logging
 import os
 import shutil
-import tempfile
 import uuid
 
 from fastapi import HTTPException, UploadFile
@@ -53,7 +52,10 @@ def _validate_magic_bytes(content: bytes, declared_mime: str) -> None:
 
 def _sanitize_filename(filename: str) -> str:
     """Sanitize filename: strip path components, limit length, reject reserved prefixes."""
+    if "\x00" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
     name = os.path.basename(filename)[:200]
+    name = name.lstrip(".")
     if not name:
         name = "unnamed"
     if name.startswith("thumb_"):
@@ -104,7 +106,7 @@ async def list_documents(
             Document.id.in_(
                 select(DocumentTagLink.document_id)
                 .join(DocumentTag, DocumentTag.id == DocumentTagLink.tag_id)
-                .where(DocumentTag.id == type_tag)
+                .where(DocumentTag.id == type_tag, DocumentTag.household_id == household_id)
             )
         )
     if subject_tag:
@@ -112,7 +114,7 @@ async def list_documents(
             Document.id.in_(
                 select(DocumentTagLink.document_id)
                 .join(DocumentTag, DocumentTag.id == DocumentTagLink.tag_id)
-                .where(DocumentTag.id == subject_tag)
+                .where(DocumentTag.id == subject_tag, DocumentTag.household_id == household_id)
             )
         )
 
@@ -210,29 +212,9 @@ async def create_document(
 
     doc_id = str(uuid.uuid4())
     filename = _sanitize_filename(file.filename or "unnamed")
-
-    # Create directory
-    doc_dir = os.path.join(DOCUMENTS_DIR, household_id, doc_id)
-    _safe_path(doc_dir)
-    os.makedirs(doc_dir, exist_ok=True)
-
-    # Write to temp file first, move after DB commit
-    tmp_path = os.path.join(doc_dir, f".tmp_{filename}")
-    final_path = os.path.join(doc_dir, filename)
-    with open(tmp_path, "wb") as f:
-        f.write(content)
-
-    # Generate thumbnail for images
-    has_thumbnail = False
-    if file.content_type and file.content_type.startswith("image/"):
-        try:
-            _generate_thumbnail(tmp_path, doc_dir, filename)
-            has_thumbnail = True
-        except Exception as e:
-            logger.warning("Failed to generate thumbnail for %s: %s", doc_id, e)
-
-    # Create DB record
     storage_path = os.path.join(household_id, doc_id, filename)
+
+    # Insert DB record first (SQLite serializes writes, preventing concurrent quota bypass)
     doc = Document(
         id=doc_id,
         household_id=household_id,
@@ -241,7 +223,7 @@ async def create_document(
         storage_path=storage_path,
         mime_type=file.content_type,
         size_bytes=len(content),
-        has_thumbnail=has_thumbnail,
+        has_thumbnail=False,
     )
     db.add(doc)
 
@@ -249,17 +231,42 @@ async def create_document(
     for tag_id in tag_ids:
         db.add(DocumentTagLink(document_id=doc_id, tag_id=tag_id))
 
+    await db.commit()
+
+    # DB committed — now write file to disk
+    doc_dir = os.path.join(DOCUMENTS_DIR, household_id, doc_id)
+    _safe_path(doc_dir)
+    os.makedirs(doc_dir, exist_ok=True)
+    final_path = os.path.join(doc_dir, filename)
+
     try:
-        await db.commit()
-    except Exception:
-        # Clean up orphaned files on DB failure
+        with open(final_path, "wb") as f:
+            f.write(content)
+    except Exception as e:
+        # File write failed — remove DB record to stay consistent
+        logger.error("File write failed for doc %s, rolling back DB record: %s", doc_id, e)
+        try:
+            await db.delete(doc)
+            await db.commit()
+        except Exception:
+            logger.error("Failed to roll back DB record for doc %s", doc_id)
         shutil.rmtree(doc_dir, ignore_errors=True)
-        raise
+        raise HTTPException(status_code=500, detail="Failed to store uploaded file")
 
-    # DB committed — move temp file to final path
-    os.rename(tmp_path, final_path)
+    # Generate thumbnail for images
+    has_thumbnail = False
+    if file.content_type and file.content_type.startswith("image/"):
+        try:
+            _generate_thumbnail(final_path, doc_dir, filename)
+            has_thumbnail = True
+        except Exception as e:
+            logger.warning("Failed to generate thumbnail for %s: %s", doc_id, e)
 
-    await db.refresh(doc)
+    if has_thumbnail:
+        await db.refresh(doc)
+        doc.has_thumbnail = True
+        await db.commit()
+
     return await get_document_with_tags(db, doc_id, household_id)
 
 
@@ -281,13 +288,27 @@ async def update_document(
 ) -> dict:
     doc = await get_document(db, doc_id, household_id)
 
+    old_filename = doc.filename
+    old_storage_path = doc.storage_path
+
     if filename is not None:
         new_filename = _sanitize_filename(filename)
-        old_storage_path = doc.storage_path
         new_storage_path = os.path.join(household_id, doc_id, new_filename)
 
-        # Update DB first, then rename file
-        old_filename = doc.filename
+        # Rename file on disk first; if it fails, abort before touching the DB
+        old_path = _safe_path(os.path.join(DOCUMENTS_DIR, old_storage_path))
+        new_path = _safe_path(os.path.join(DOCUMENTS_DIR, new_storage_path))
+        if old_path != new_path and os.path.exists(old_path):
+            os.rename(old_path, new_path)
+            # Rename thumbnail too (best-effort — failure doesn't block the update)
+            old_thumb = _safe_path(os.path.join(DOCUMENTS_DIR, household_id, doc_id, f"thumb_{old_filename}"))
+            new_thumb = _safe_path(os.path.join(DOCUMENTS_DIR, household_id, doc_id, f"thumb_{new_filename}"))
+            if os.path.exists(old_thumb):
+                try:
+                    os.rename(old_thumb, new_thumb)
+                except OSError as e:
+                    logger.warning("Thumbnail rename failed for doc %s: %s", doc_id, e)
+
         doc.filename = new_filename
         doc.storage_path = new_storage_path
 
@@ -302,22 +323,19 @@ async def update_document(
         for tag_id in tag_ids:
             db.add(DocumentTagLink(document_id=doc_id, tag_id=tag_id))
 
-    await db.commit()
-
-    # Rename file on disk after DB commit succeeds
-    if filename is not None:
-        old_path = _safe_path(os.path.join(DOCUMENTS_DIR, old_storage_path))
-        new_path = _safe_path(os.path.join(DOCUMENTS_DIR, new_storage_path))
-        if old_path != new_path and os.path.exists(old_path):
-            try:
-                os.rename(old_path, new_path)
-                # Rename thumbnail too
-                old_thumb = _safe_path(os.path.join(DOCUMENTS_DIR, household_id, doc_id, f"thumb_{old_filename}"))
-                new_thumb = _safe_path(os.path.join(DOCUMENTS_DIR, household_id, doc_id, f"thumb_{new_filename}"))
-                if os.path.exists(old_thumb):
-                    os.rename(old_thumb, new_thumb)
-            except OSError as e:
-                logger.error("File rename failed after DB commit: %s", e)
+    try:
+        await db.commit()
+    except Exception:
+        # DB commit failed — rename file back to keep disk and DB in sync
+        if filename is not None:
+            new_path = _safe_path(os.path.join(DOCUMENTS_DIR, new_storage_path))
+            old_path = _safe_path(os.path.join(DOCUMENTS_DIR, old_storage_path))
+            if os.path.exists(new_path):
+                try:
+                    os.rename(new_path, old_path)
+                except OSError as e:
+                    logger.error("Failed to revert file rename for doc %s: %s", doc_id, e)
+        raise
 
     return await get_document_with_tags(db, doc_id, household_id)
 
@@ -331,8 +349,11 @@ async def delete_document(db: AsyncSession, doc_id: str, household_id: str) -> N
 
     # Then clean up files
     doc_dir = _safe_path(os.path.join(DOCUMENTS_DIR, household_id, doc_id))
-    if os.path.exists(doc_dir):
-        shutil.rmtree(doc_dir)
+    try:
+        if os.path.exists(doc_dir):
+            shutil.rmtree(doc_dir)
+    except OSError as e:
+        logger.error("Failed to delete files for doc %s: %s", doc_id, e)
 
 
 def get_file_path(doc: Document) -> str:
