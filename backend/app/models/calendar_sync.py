@@ -1,7 +1,7 @@
 from datetime import datetime
 
 import sqlalchemy as sa
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -30,6 +30,9 @@ class CalendarConnection(Base):
 
 class ExternalEvent(Base):
     __tablename__ = "external_events"
+    __table_args__ = (
+        UniqueConstraint("connection_id", "caldav_uid", name="uq_external_events_connection_uid"),
+    )
 
     id: Mapped[str] = mapped_column(Text, primary_key=True)
     connection_id: Mapped[str] = mapped_column(

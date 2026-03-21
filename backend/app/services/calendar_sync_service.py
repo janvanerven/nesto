@@ -1,7 +1,10 @@
 import asyncio
+import ipaddress
 import logging
+import socket
 import uuid
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlparse
 
 import caldav
 from icalendar import Calendar
@@ -14,7 +17,53 @@ from app.services.crypto_service import decrypt_password
 logger = logging.getLogger(__name__)
 
 MAX_RAW_ICAL_SIZE = 65536  # 64KB
+MAX_EVENT_SIZE = 655360  # 640KB hard limit per event
 MAX_CONSECUTIVE_ERRORS = 10
+CALDAV_TIMEOUT = 30  # seconds
+
+_BLOCKED_NETWORKS = [
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("169.254.0.0/16"),
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fc00::/7"),
+    ipaddress.ip_network("fe80::/10"),
+]
+
+
+def _validate_url_not_internal(url: str) -> None:
+    """Resolve hostname and reject private/internal IP addresses."""
+    host = urlparse(url).hostname
+    if not host:
+        raise ValueError("Invalid URL: no hostname")
+    try:
+        addr_infos = socket.getaddrinfo(host, None)
+    except socket.gaierror:
+        raise ValueError(f"Cannot resolve hostname: {host}")
+    for addr_info in addr_infos:
+        ip = ipaddress.ip_address(addr_info[4][0])
+        if any(ip in net for net in _BLOCKED_NETWORKS):
+            raise ValueError(f"URL resolves to a private/internal address")
+
+
+def _sanitize_sync_error(e: Exception) -> str:
+    """Return a user-friendly error message without leaking internal details."""
+    msg = str(e)
+    if "401" in msg or "Unauthorized" in msg:
+        return "Authentication failed — check your username and password"
+    if "403" in msg or "Forbidden" in msg:
+        return "Access denied by the CalDAV server"
+    if "404" in msg or "Not Found" in msg:
+        return "Calendar not found — check the calendar URL"
+    if "timeout" in msg.lower() or "timed out" in msg.lower():
+        return "Connection timed out — server may be unreachable"
+    if "resolve" in msg.lower() or "getaddrinfo" in msg.lower():
+        return "Cannot resolve server hostname"
+    if "SSL" in msg or "certificate" in msg.lower():
+        return "TLS/SSL error — check the server URL"
+    return "Sync failed — check server URL and credentials"
 
 
 def _parse_vevent(vevent_component, connection_id: str) -> dict | None:
@@ -47,14 +96,21 @@ def _parse_vevent(vevent_component, connection_id: str) -> dict | None:
             else:
                 end_time = datetime(dtstart_val.year, dtstart_val.month, dtstart_val.day, 23, 59, 59)
         else:
-            start_time = dtstart_val.replace(tzinfo=None) if dtstart_val.tzinfo else dtstart_val
+            # Normalize to UTC before stripping tzinfo
+            if dtstart_val.tzinfo:
+                start_time = dtstart_val.astimezone(timezone.utc).replace(tzinfo=None)
+            else:
+                start_time = dtstart_val
             if dtend:
                 dtend_val = dtend.dt
-                end_time = dtend_val.replace(tzinfo=None) if dtend_val.tzinfo else dtend_val
+                if dtend_val.tzinfo:
+                    end_time = dtend_val.astimezone(timezone.utc).replace(tzinfo=None)
+                else:
+                    end_time = dtend_val
             else:
                 end_time = start_time
 
-        # Extract timezone
+        # Extract original timezone (for reference, times are stored as UTC)
         tz = None
         if hasattr(dtstart_val, "tzinfo") and dtstart_val.tzinfo:
             tz = str(dtstart_val.tzinfo)
@@ -91,13 +147,22 @@ def _fetch_events_sync(
     server_url: str, calendar_url: str, username: str, password: str
 ) -> list[tuple[str, str, str | None]]:
     """Synchronous CalDAV fetch. Returns list of (uid, ical_data, href)."""
-    client = caldav.DAVClient(url=server_url, username=username, password=password)
+    _validate_url_not_internal(server_url)
+    _validate_url_not_internal(calendar_url)
+
+    client = caldav.DAVClient(url=server_url, username=username, password=password, timeout=CALDAV_TIMEOUT)
     calendar = caldav.Calendar(client=client, url=calendar_url)
 
     events = calendar.events()
     result = []
     for event in events:
         ical_data = event.data
+
+        # Skip oversized events to prevent memory exhaustion
+        if len(ical_data) > MAX_EVENT_SIZE:
+            logger.warning("Skipping oversized event (%d bytes) from %s", len(ical_data), server_url)
+            continue
+
         href = str(event.url) if event.url else None
 
         # Parse UID from ical data
@@ -126,17 +191,26 @@ async def sync_connection(db: AsyncSession, connection: CalendarConnection) -> N
         return
 
     try:
-        events_data = await asyncio.to_thread(
-            _fetch_events_sync,
-            connection.server_url,
-            connection.calendar_url,
-            connection.username,
-            password,
+        events_data = await asyncio.wait_for(
+            asyncio.to_thread(
+                _fetch_events_sync,
+                connection.server_url,
+                connection.calendar_url,
+                connection.username,
+                password,
+            ),
+            timeout=120,  # 2-minute async-level deadline
         )
+    except asyncio.TimeoutError:
+        logger.warning("CalDAV fetch timed out for connection %s", connection.id)
+        connection.error_count += 1
+        connection.last_error = "Sync timed out — server may be unreachable"
+        await db.commit()
+        return
     except Exception as e:
         logger.warning("CalDAV fetch failed for connection %s: %s", connection.id, e)
         connection.error_count += 1
-        connection.last_error = str(e)[:500]
+        connection.last_error = _sanitize_sync_error(e)
         if connection.error_count >= MAX_CONSECUTIVE_ERRORS:
             connection.enabled = False
             logger.warning("Disabled connection %s after %d errors", connection.id, MAX_CONSECUTIVE_ERRORS)
@@ -208,13 +282,15 @@ async def validate_caldav_credentials(
 ) -> bool:
     """Test CalDAV credentials. Returns True if valid."""
     def _test():
-        client = caldav.DAVClient(url=server_url, username=username, password=password)
+        _validate_url_not_internal(server_url)
+        _validate_url_not_internal(calendar_url)
+        client = caldav.DAVClient(url=server_url, username=username, password=password, timeout=CALDAV_TIMEOUT)
         calendar = caldav.Calendar(client=client, url=calendar_url)
         # Try to fetch properties — will raise on bad auth
         calendar.get_properties([caldav.dav.DisplayName()])
         return True
 
     try:
-        return await asyncio.to_thread(_test)
+        return await asyncio.wait_for(asyncio.to_thread(_test), timeout=60)
     except Exception:
         return False

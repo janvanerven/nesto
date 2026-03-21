@@ -1,7 +1,10 @@
+import re
 from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
+
+_HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
 class CalendarConnectionCreate(BaseModel):
@@ -23,8 +26,8 @@ class CalendarConnectionCreate(BaseModel):
     @field_validator("color")
     @classmethod
     def validate_color(cls, v: str) -> str:
-        if not v.startswith("#") or len(v) != 7:
-            raise ValueError("Color must be a hex color like #6C5CE7")
+        if not _HEX_COLOR_RE.match(v):
+            raise ValueError("Color must be a valid hex color like #6C5CE7")
         return v
 
 
@@ -37,8 +40,8 @@ class CalendarConnectionUpdate(BaseModel):
     @field_validator("color")
     @classmethod
     def validate_color(cls, v: str | None) -> str | None:
-        if v is not None and (not v.startswith("#") or len(v) != 7):
-            raise ValueError("Color must be a hex color like #6C5CE7")
+        if v is not None and not _HEX_COLOR_RE.match(v):
+            raise ValueError("Color must be a valid hex color like #6C5CE7")
         return v
 
 
@@ -52,7 +55,6 @@ class CalendarConnectionResponse(BaseModel):
     calendar_url: str
     username: str
     color: str
-    sync_token: str | None
     last_synced_at: datetime | None
     enabled: bool
     error_count: int

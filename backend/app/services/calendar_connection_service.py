@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.calendar_sync import CalendarConnection, ExternalEvent
+from app.models.calendar_sync import CalendarConnection
 from app.schemas.calendar_sync import CalendarConnectionCreate, CalendarConnectionUpdate
 from app.services.crypto_service import encrypt_password
 
@@ -85,20 +85,17 @@ async def delete_connection(db: AsyncSession, connection_id: str, user_id: str) 
     if not conn:
         raise HTTPException(status_code=404, detail="Calendar connection not found")
 
-    # Delete all external events for this connection
-    events_result = await db.execute(
-        select(ExternalEvent).where(ExternalEvent.connection_id == connection_id)
-    )
-    for event in events_result.scalars().all():
-        await db.delete(event)
-
+    # External events are cascade-deleted by the FK constraint
     await db.delete(conn)
     await db.commit()
 
 
-async def get_connection(db: AsyncSession, connection_id: str) -> CalendarConnection:
+async def get_connection(db: AsyncSession, connection_id: str, user_id: str) -> CalendarConnection:
     result = await db.execute(
-        select(CalendarConnection).where(CalendarConnection.id == connection_id)
+        select(CalendarConnection).where(
+            CalendarConnection.id == connection_id,
+            CalendarConnection.user_id == user_id,
+        )
     )
     conn = result.scalar_one_or_none()
     if not conn:

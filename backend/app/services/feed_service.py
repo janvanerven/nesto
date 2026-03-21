@@ -1,8 +1,8 @@
 import secrets
 from datetime import date, datetime, timedelta
 
+from fastapi import HTTPException
 from icalendar import Calendar, Event as ICalEvent
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,7 +18,7 @@ RRULE_FREQ_MAP = {
 }
 
 
-def _event_to_vevent(event) -> ICalEvent:
+def _event_to_vevent(event: Event) -> ICalEvent:
     vevent = ICalEvent()
     vevent.add("uid", f"{event.id}@nesto")
     vevent.add("summary", event.title)
@@ -78,7 +78,6 @@ async def get_or_create_feed_token(db: AsyncSession, user_id: str, household_id:
     )
     member = result.scalar_one_or_none()
     if not member:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Household membership not found")
 
     if not member.feed_token:
@@ -98,7 +97,6 @@ async def regenerate_feed_token(db: AsyncSession, user_id: str, household_id: st
     )
     member = result.scalar_one_or_none()
     if not member:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Household membership not found")
 
     member.feed_token = secrets.token_urlsafe(48)

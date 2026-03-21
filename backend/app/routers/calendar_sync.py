@@ -99,9 +99,7 @@ async def trigger_sync(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    conn = await get_connection(db, connection_id)
-    if conn.user_id != user_id:
-        raise HTTPException(status_code=404, detail="Calendar connection not found")
+    conn = await get_connection(db, connection_id, user_id)
     await sync_connection(db, conn)
     await db.refresh(conn)
     return conn
