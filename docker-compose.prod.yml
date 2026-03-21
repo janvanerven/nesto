@@ -53,8 +53,11 @@ services:
       - nesto-data:/data:ro
       - ./backups:/backup
     entrypoint: >
-      sh -c 'apk add --no-cache sqlite && while true; do
+      sh -c 'apk add --no-cache sqlite rsync && while true; do
         sqlite3 /data/nesto.db ".backup /backup/nesto-$$(date +%Y%m%d-%H%M).db";
+        if [ -d /data/documents ]; then
+          rsync -a --delete /data/documents/ /backup/documents/;
+        fi;
         find /backup -name "*.db" -mtime +7 -delete;
         sleep 86400;
       done'
