@@ -21,7 +21,7 @@ services:
       - ./frontend/vite.config.ts:/app/vite.config.ts
       - ./.env:/app/.env:ro
     ports:
-      - "5173:5173"
+      - "127.0.0.1:5173:5173"
     env_file: .env
     depends_on:
       - backend

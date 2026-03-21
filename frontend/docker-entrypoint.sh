@@ -1,4 +1,8 @@
 #!/bin/sh
+: "${OIDC_ISSUER_URL:?OIDC_ISSUER_URL is required}"
+: "${OIDC_CLIENT_ID:?OIDC_CLIENT_ID is required}"
+: "${OIDC_REDIRECT_URI:?OIDC_REDIRECT_URI is required}"
+
 cat > /usr/share/nginx/html/config.js <<EOF
 window.__NESTO_CONFIG__ = {
   OIDC_AUTHORITY: "${OIDC_ISSUER_URL}",

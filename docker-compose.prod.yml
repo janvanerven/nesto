@@ -20,6 +20,11 @@ services:
     image: ghcr.io/janvanerven/nesto/frontend:latest
     env_file: .env
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     deploy:
       resources:
         limits:
@@ -34,7 +39,7 @@ services:
       backend:
         condition: service_healthy
       frontend:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
     deploy:
       resources:
@@ -43,14 +48,14 @@ services:
           cpus: "0.5"
 
   backup:
-    image: alpine
+    image: alpine:3.21
     volumes:
       - nesto-data:/data:ro
       - ./backups:/backup
     entrypoint: >
-      sh -c 'while true; do
-        cp /data/nesto.db "/backup/nesto-$$(date +%Y%m%d-%H%M).db" 2>/dev/null;
-        find /backup -name "*.db" -mtime +7 -delete 2>/dev/null;
+      sh -c 'apk add --no-cache sqlite && while true; do
+        sqlite3 /data/nesto.db ".backup /backup/nesto-$$(date +%Y%m%d-%H%M).db";
+        find /backup -name "*.db" -mtime +7 -delete;
         sleep 86400;
       done'
     restart: unless-stopped
