@@ -101,6 +101,7 @@ async def _calendar_sync_loop():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     os.makedirs("data", exist_ok=True)
+    os.makedirs("data/documents", exist_ok=True)
     digest_task = asyncio.create_task(_digest_scheduler_loop())
     sync_task = asyncio.create_task(_calendar_sync_loop())
     logger.info("Digest scheduler started (daily@%02d:00, weekly@Sun %02d:00)",
