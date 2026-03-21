@@ -292,5 +292,6 @@ async def validate_caldav_credentials(
 
     try:
         return await asyncio.wait_for(asyncio.to_thread(_test), timeout=60)
-    except Exception:
+    except Exception as e:
+        logger.warning("CalDAV validation failed: %s: %s", type(e).__name__, e)
         return False
