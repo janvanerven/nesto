@@ -12,8 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as MoreRouteImport } from './routes/more'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ListsRouteImport } from './routes/lists'
+import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as CardsRouteImport } from './routes/cards'
 import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as CalendarRouteImport } from './routes/calendar'
@@ -38,9 +40,19 @@ const OnboardingRoute = OnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MoreRoute = MoreRouteImport.update({
+  id: '/more',
+  path: '/more',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocumentsRoute = DocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ListsRoute = ListsRouteImport.update({
@@ -94,8 +106,10 @@ export interface FileRoutesByFullPath {
   '/calendar': typeof CalendarRoute
   '/callback': typeof CallbackRoute
   '/cards': typeof CardsRouteWithChildren
+  '/documents': typeof DocumentsRoute
   '/lists': typeof ListsRouteWithChildren
   '/login': typeof LoginRoute
+  '/more': typeof MoreRoute
   '/onboarding': typeof OnboardingRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
@@ -108,7 +122,9 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/callback': typeof CallbackRoute
+  '/documents': typeof DocumentsRoute
   '/login': typeof LoginRoute
+  '/more': typeof MoreRoute
   '/onboarding': typeof OnboardingRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
@@ -123,8 +139,10 @@ export interface FileRoutesById {
   '/calendar': typeof CalendarRoute
   '/callback': typeof CallbackRoute
   '/cards': typeof CardsRouteWithChildren
+  '/documents': typeof DocumentsRoute
   '/lists': typeof ListsRouteWithChildren
   '/login': typeof LoginRoute
+  '/more': typeof MoreRoute
   '/onboarding': typeof OnboardingRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
@@ -140,8 +158,10 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/callback'
     | '/cards'
+    | '/documents'
     | '/lists'
     | '/login'
+    | '/more'
     | '/onboarding'
     | '/settings'
     | '/tasks'
@@ -154,7 +174,9 @@ export interface FileRouteTypes {
     | '/'
     | '/calendar'
     | '/callback'
+    | '/documents'
     | '/login'
+    | '/more'
     | '/onboarding'
     | '/settings'
     | '/tasks'
@@ -168,8 +190,10 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/callback'
     | '/cards'
+    | '/documents'
     | '/lists'
     | '/login'
+    | '/more'
     | '/onboarding'
     | '/settings'
     | '/tasks'
@@ -184,8 +208,10 @@ export interface RootRouteChildren {
   CalendarRoute: typeof CalendarRoute
   CallbackRoute: typeof CallbackRoute
   CardsRoute: typeof CardsRouteWithChildren
+  DocumentsRoute: typeof DocumentsRoute
   ListsRoute: typeof ListsRouteWithChildren
   LoginRoute: typeof LoginRoute
+  MoreRoute: typeof MoreRoute
   OnboardingRoute: typeof OnboardingRoute
   SettingsRoute: typeof SettingsRoute
   TasksRoute: typeof TasksRoute
@@ -214,6 +240,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/more': {
+      id: '/more'
+      path: '/more'
+      fullPath: '/more'
+      preLoaderRoute: typeof MoreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -226,6 +259,13 @@ declare module '@tanstack/react-router' {
       path: '/lists'
       fullPath: '/lists'
       preLoaderRoute: typeof ListsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/documents': {
+      id: '/documents'
+      path: '/documents'
+      fullPath: '/documents'
+      preLoaderRoute: typeof DocumentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cards': {
@@ -316,8 +356,10 @@ const rootRouteChildren: RootRouteChildren = {
   CalendarRoute: CalendarRoute,
   CallbackRoute: CallbackRoute,
   CardsRoute: CardsRouteWithChildren,
+  DocumentsRoute: DocumentsRoute,
   ListsRoute: ListsRouteWithChildren,
   LoginRoute: LoginRoute,
+  MoreRoute: MoreRoute,
   OnboardingRoute: OnboardingRoute,
   SettingsRoute: SettingsRoute,
   TasksRoute: TasksRoute,
