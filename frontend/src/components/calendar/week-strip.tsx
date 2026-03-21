@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import type { EventOccurrence } from '@/utils/recurrence'
+import { isSameDay } from '@/utils/dates'
 
 interface WeekStripProps {
   weekStart: Date
@@ -14,9 +15,13 @@ const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 export function WeekStrip({ weekStart, selectedDate, onSelectDate, onNavigate, onJumpToDate, occurrences }: WeekStripProps) {
-  const days = getDaysOfWeek(weekStart)
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  // Memoised: creates 7 Date objects once per weekStart change, not every render
+  const days = useMemo(() => getDaysOfWeek(weekStart), [weekStart])
+  const today = useMemo(() => {
+    const t = new Date()
+    t.setHours(0, 0, 0, 0)
+    return t
+  }, [])
 
   const [showPicker, setShowPicker] = useState(false)
   const [pickerYear, setPickerYear] = useState(weekStart.getFullYear())
@@ -156,12 +161,6 @@ function getDaysOfWeek(weekStart: Date): Date[] {
     d.setDate(d.getDate() + i)
     return d
   })
-}
-
-function isSameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
 }
 
 function getEventsForDay(day: Date, occurrences: EventOccurrence[]): EventOccurrence[] {

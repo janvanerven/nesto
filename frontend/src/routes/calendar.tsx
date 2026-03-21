@@ -1,6 +1,7 @@
 import { createFileRoute, Navigate } from '@tanstack/react-router'
 import { useAuth } from 'react-oidc-context'
 import { useState, useMemo } from 'react'
+import { formatDateISO } from '@/utils/dates'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useHouseholds, useHouseholdMembers } from '@/api/households'
 import { useEvents, useCreateEvent, useUpdateEvent, useDeleteEvent } from '@/api/events'
@@ -49,8 +50,11 @@ function formatSelectedLabel(date: Date): string {
 }
 
 function CalendarContent({ householdId }: { householdId: string }) {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const today = useMemo(() => {
+    const t = new Date()
+    t.setHours(0, 0, 0, 0)
+    return t
+  }, [])
 
   const [selectedDate, setSelectedDate] = useState<Date>(today)
   const [weekStart, setWeekStart] = useState<Date>(() => getMonday(today))
@@ -60,13 +64,13 @@ function CalendarContent({ householdId }: { householdId: string }) {
   const fetchStart = useMemo(() => {
     const d = new Date(weekStart)
     d.setDate(d.getDate() - 7)
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    return formatDateISO(d)
   }, [weekStart])
 
   const fetchEnd = useMemo(() => {
     const d = new Date(weekStart)
     d.setDate(d.getDate() + 14)
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    return formatDateISO(d)
   }, [weekStart])
 
   const { data: events = [], isLoading } = useEvents(householdId, fetchStart, fetchEnd)

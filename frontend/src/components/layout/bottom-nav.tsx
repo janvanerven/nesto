@@ -44,56 +44,75 @@ export function BottomNav() {
   )
 }
 
-// Inline SVG icons — small, no external dependency
+// Inline SVG icons — stroke="currentColor" so they inherit text color from
+// the parent className (text-primary when active, text-text-muted otherwise).
 function HomeIcon({ active }: { active: boolean }) {
-  const color = active ? '#6C5CE7' : '#636E72'
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="24" height="24" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      className={active ? 'text-primary' : 'text-text-muted'}
+    >
       <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1" />
     </svg>
   )
 }
 
 function CheckIcon({ active }: { active: boolean }) {
-  const color = active ? '#6C5CE7' : '#636E72'
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="24" height="24" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      className={active ? 'text-primary' : 'text-text-muted'}
+    >
       <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
     </svg>
   )
 }
 
 function CalendarIcon({ active }: { active: boolean }) {
-  const color = active ? '#6C5CE7' : '#636E72'
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="24" height="24" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      className={active ? 'text-primary' : 'text-text-muted'}
+    >
       <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
     </svg>
   )
 }
 
 function ListIcon({ active }: { active: boolean }) {
-  const color = active ? '#6C5CE7' : '#636E72'
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="24" height="24" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      className={active ? 'text-primary' : 'text-text-muted'}
+    >
       <path d="M9 5h11M9 12h11M9 19h11M5 5v.01M5 12v.01M5 19v.01" />
     </svg>
   )
 }
 
 function CardIcon({ active }: { active: boolean }) {
-  const color = active ? '#6C5CE7' : '#636E72'
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="24" height="24" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      className={active ? 'text-primary' : 'text-text-muted'}
+    >
       <rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" />
     </svg>
   )
 }
 
 function SettingsIcon({ active }: { active: boolean }) {
-  const color = active ? '#6C5CE7' : '#636E72'
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="24" height="24" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      className={active ? 'text-primary' : 'text-text-muted'}
+    >
       <circle cx="12" cy="12" r="1" /><circle cx="12" cy="5" r="1" /><circle cx="12" cy="19" r="1" />
     </svg>
   )

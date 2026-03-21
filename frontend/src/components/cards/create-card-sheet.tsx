@@ -2,6 +2,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useRef, useState } from 'react'
 import { Button, Input } from '@/components/ui'
 import type { LoyaltyCardCreate } from '@/api/cards'
+import { FORMATS, COLORS } from './constants'
+import { useScrollLock } from '@/utils/use-scroll-lock'
 
 interface CreateCardSheetProps {
   open: boolean
@@ -10,25 +12,14 @@ interface CreateCardSheetProps {
   isPending: boolean
 }
 
-const FORMATS = [
-  { value: 'code128' as const, label: 'Code 128' },
-  { value: 'ean13' as const, label: 'EAN-13' },
-  { value: 'qr' as const, label: 'QR Code' },
-  { value: 'code39' as const, label: 'Code 39' },
-]
-
-const COLORS = [
-  '#6C5CE7', '#0984E3', '#00B894', '#FDCB6E',
-  '#E17055', '#D63031', '#E84393', '#2D3436',
-  '#636E72', '#00CEC9', '#55EFC4', '#FAB1A0',
-]
-
 export function CreateCardSheet({ open, onClose, onSubmit, isPending }: CreateCardSheetProps) {
   const nameRef = useRef<HTMLInputElement>(null)
   const [storeName, setStoreName] = useState('')
   const [barcodeNumber, setBarcodeNumber] = useState('')
   const [barcodeFormat, setBarcodeFormat] = useState<LoyaltyCardCreate['barcode_format']>('code128')
   const [color, setColor] = useState(COLORS[0])
+
+  useScrollLock(open)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()

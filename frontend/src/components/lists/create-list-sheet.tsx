@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useRef, useState } from 'react'
 import { Button, Input } from '@/components/ui'
 import type { ShoppingListCreate } from '@/api/lists'
+import { useScrollLock } from '@/utils/use-scroll-lock'
 
 interface CreateListSheetProps {
   open: boolean
@@ -14,6 +15,8 @@ export function CreateListSheet({ open, onClose, onSubmit, isPending }: CreateLi
   const titleRef = useRef<HTMLInputElement>(null)
   const [name, setName] = useState('')
   const [priority, setPriority] = useState(3)
+
+  useScrollLock(open)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()

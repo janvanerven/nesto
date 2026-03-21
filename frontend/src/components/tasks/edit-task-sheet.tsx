@@ -1,8 +1,10 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useMemo } from 'react'
 import { Button, Input, Avatar } from '@/components/ui'
 import type { Task, TaskUpdate } from '@/api/tasks'
 import type { HouseholdMember } from '@/api/households'
+import { getDateOptions } from '@/utils/dates'
+import { useScrollLock } from '@/utils/use-scroll-lock'
 
 interface EditReminderSheetProps {
   task: Task | null
@@ -29,22 +31,6 @@ function recurrenceUnit(rule: string): string {
   return 'year'
 }
 
-function getDateOptions(): { label: string; value: string }[] {
-  const today = new Date()
-  const fmt = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  const tomorrow = new Date(today)
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  const nextWeek = new Date(today)
-  nextWeek.setDate(nextWeek.getDate() + 7)
-
-  return [
-    { label: 'Today', value: fmt(today) },
-    { label: 'Tomorrow', value: fmt(tomorrow) },
-    { label: 'Next week', value: fmt(nextWeek) },
-  ]
-}
-
 export function EditReminderSheet({
   task,
   open,
@@ -64,6 +50,12 @@ export function EditReminderSheet({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const dateInputRef = useRef<HTMLInputElement>(null)
 
+  // Memoised: Date objects are created once, not on every keystroke
+  const dateOptions = useMemo(() => getDateOptions(), [])
+  const isCustomDate = dueDate && !dateOptions.some((o) => o.value === dueDate)
+
+  useScrollLock(open)
+
   useEffect(() => {
     if (!task) return
     setTitle(task.title)
@@ -77,8 +69,6 @@ export function EditReminderSheet({
   }, [task])
 
   if (!task) return null
-
-  const isCustomDate = dueDate && !getDateOptions().some((o) => o.value === dueDate)
 
   function handleSubmit(e: React.FormEvent): void {
     e.preventDefault()
@@ -201,7 +191,7 @@ export function EditReminderSheet({
               <div>
                 <label className="text-sm font-medium text-text-muted mb-2 block">Due date</label>
                 <div className="flex gap-2 flex-wrap relative">
-                  {getDateOptions().map((opt) => (
+                  {dateOptions.map((opt) => (
                     <button
                       key={opt.value}
                       type="button"

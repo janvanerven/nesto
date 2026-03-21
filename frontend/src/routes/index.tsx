@@ -1,5 +1,6 @@
 import { createFileRoute, Navigate, Link } from '@tanstack/react-router'
 import { useAuth } from 'react-oidc-context'
+import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useHouseholds } from '@/api/households'
 import { useCurrentUser } from '@/api/user'
@@ -8,14 +9,11 @@ import { useEvents } from '@/api/events'
 import { useShoppingLists } from '@/api/lists'
 import { Avatar, Card, PriorityDot } from '@/components/ui'
 import { expandRecurrences } from '@/utils/recurrence'
+import { formatDateISO } from '@/utils/dates'
 
 export const Route = createFileRoute('/')({
   component: DashboardPage,
 })
-
-function fmt(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
 
 function getGreeting(): string {
   const h = new Date().getHours()
@@ -72,7 +70,7 @@ function RemindersSummary({ householdId }: { householdId: string }) {
     if (!b.due_date) return -1
     return a.due_date.localeCompare(b.due_date)
   })
-  const todayStr = fmt(new Date())
+  const todayStr = formatDateISO(new Date())
   const overdue = pending.filter((t) => t.due_date && t.due_date < todayStr)
 
   return (
@@ -114,12 +112,18 @@ function RemindersSummary({ householdId }: { householdId: string }) {
 }
 
 function UpcomingSummary({ householdId }: { householdId: string }) {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const todayStr = fmt(today)
-  const end = new Date(today)
-  end.setDate(end.getDate() + 7)
-  const endStr = fmt(end)
+  const today = useMemo(() => {
+    const t = new Date()
+    t.setHours(0, 0, 0, 0)
+    return t
+  }, [])
+  const todayStr = formatDateISO(today)
+  const end = useMemo(() => {
+    const e = new Date(today)
+    e.setDate(e.getDate() + 7)
+    return e
+  }, [today])
+  const endStr = formatDateISO(end)
 
   const { data: events, isLoading } = useEvents(householdId, todayStr, endStr)
 

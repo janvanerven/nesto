@@ -3,6 +3,7 @@ import { useRef, useState, useEffect } from 'react'
 import { Button, Input, Avatar } from '@/components/ui'
 import type { CalendarEvent, EventUpdate } from '@/api/events'
 import type { HouseholdMember } from '@/api/households'
+import { useScrollLock } from '@/utils/use-scroll-lock'
 
 interface EditEventSheetProps {
   event: CalendarEvent | null
@@ -54,6 +55,8 @@ export function EditEventSheet({
 
   const startTimeRef = useRef<HTMLInputElement>(null)
   const endTimeRef = useRef<HTMLInputElement>(null)
+
+  useScrollLock(open)
 
   useEffect(() => {
     if (!event) return

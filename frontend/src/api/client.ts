@@ -24,12 +24,34 @@ export function setSessionExpiredHandler(handler: () => void) {
   onSessionExpired = handler
 }
 
-// Read user data directly from OIDC sessionStorage (source of truth,
+// Cache the discovered OIDC key so we avoid iterating all localStorage keys
+// on every apiFetch call. The key format is `oidc.user:{authority}:{client_id}`
+// and is stable for the lifetime of a session.
+let cachedOidcKey: string | null = null
+
+// Read user data directly from OIDC localStorage (source of truth,
 // always fresher than the React state closure)
 function getStoredOidcUser(): { access_token?: string; expires_at?: number } | null {
+  // Fast path: reuse the cached key
+  if (cachedOidcKey) {
+    const item = localStorage.getItem(cachedOidcKey)
+    if (item) {
+      try {
+        return JSON.parse(item)
+      } catch {
+        cachedOidcKey = null
+      }
+    } else {
+      // Key was removed (sign-out); clear the cache
+      cachedOidcKey = null
+    }
+  }
+
+  // Slow path: scan once to find the key, then cache it
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i)
     if (key?.startsWith('oidc.user:')) {
+      cachedOidcKey = key
       try {
         return JSON.parse(localStorage.getItem(key)!)
       } catch {

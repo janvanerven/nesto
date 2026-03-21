@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import { Button, Input } from '@/components/ui'
 import type { ShoppingList, ShoppingListUpdate } from '@/api/lists'
+import { useScrollLock } from '@/utils/use-scroll-lock'
 
 interface EditListSheetProps {
   list: ShoppingList | null
@@ -16,6 +17,8 @@ export function EditListSheet({ list, open, onClose, onSubmit, onDelete, isPendi
   const [name, setName] = useState('')
   const [priority, setPriority] = useState(3)
   const [confirmDelete, setConfirmDelete] = useState(false)
+
+  useScrollLock(open)
 
   useEffect(() => {
     if (!list) return

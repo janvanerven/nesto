@@ -268,6 +268,7 @@ function ConnectedCalendarRow({ connection }: { connection: import('@/api/calend
             type="button"
             role="switch"
             aria-checked={connection.enabled}
+            aria-label={`Toggle ${connection.name}`}
             onClick={() => updateMutation.mutate({ connectionId: connection.id, enabled: !connection.enabled })}
             className={`relative shrink-0 w-9 h-5 rounded-full transition-colors ${connection.enabled ? 'bg-primary' : 'bg-text/15'}`}
           >
@@ -467,6 +468,7 @@ function ToggleRow({ label, description, enabled, onChange, disabled }: {
         type="button"
         role="switch"
         aria-checked={enabled}
+        aria-label={label}
         disabled={disabled}
         onClick={() => onChange(!enabled)}
         className={`

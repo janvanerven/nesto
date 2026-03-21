@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button, Input } from '@/components/ui'
 import { useCreateCalendarConnection } from '@/api/calendar-sync'
+import { useScrollLock } from '@/utils/use-scroll-lock'
 
 interface AddCalendarSheetProps {
   open: boolean
@@ -17,6 +18,8 @@ const PROVIDERS = [
 const COLORS = ['#6C5CE7', '#00CEC9', '#FF6B6B', '#FDCB6E', '#00B894', '#E17055', '#0984E3', '#A29BFE']
 
 export function AddCalendarSheet({ open, onClose }: AddCalendarSheetProps) {
+  useScrollLock(open)
+
   const [step, setStep] = useState<'url' | 'name'>('url')
   const [provider, setProvider] = useState<string>('caldav')
   const [serverUrl, setServerUrl] = useState('')

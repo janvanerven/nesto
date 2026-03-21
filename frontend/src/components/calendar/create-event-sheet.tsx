@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Button, Input, Avatar } from '@/components/ui'
 import type { EventCreate } from '@/api/events'
 import type { HouseholdMember } from '@/api/households'
+import { isSameDay, formatDateISO } from '@/utils/dates'
+import { useScrollLock } from '@/utils/use-scroll-lock'
 
 interface CreateEventSheetProps {
   open: boolean
@@ -32,21 +34,6 @@ const RECURRENCE_OPTIONS = [
   { label: 'Monthly', value: 'monthly' },
 ] as const
 
-function formatDate(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-function isSameDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  )
-}
-
 function addMinutes(timeStr: string, minutes: number): string {
   const [h, m] = timeStr.split(':').map(Number)
   const total = h * 60 + m + minutes
@@ -72,7 +59,7 @@ export function CreateEventSheet({
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [showDetails, setShowDetails] = useState(false)
-  const [eventDate, setEventDate] = useState(formatDate(defaultDate))
+  const [eventDate, setEventDate] = useState(formatDateISO(defaultDate))
   const [startTime, setStartTime] = useState<string | null>(null)
   const [customStart, setCustomStart] = useState(false)
   const [durationMinutes, setDurationMinutes] = useState<number | null>(60)
@@ -82,18 +69,20 @@ export function CreateEventSheet({
   const [recurrenceInterval, setRecurrenceInterval] = useState(1)
   const [assignedTo, setAssignedTo] = useState<string | null>(null)
   const [allDay, setAllDay] = useState(false)
-  const [endDate, setEndDate] = useState(formatDate(defaultDate))
+  const [endDate, setEndDate] = useState(formatDateISO(defaultDate))
 
   const titleRef = useRef<HTMLInputElement>(null)
   const dateInputRef = useRef<HTMLInputElement>(null)
   const timeInputRef = useRef<HTMLInputElement>(null)
   const endTimeInputRef = useRef<HTMLInputElement>(null)
 
+  useScrollLock(open)
+
   function resetForm(): void {
     setTitle('')
     setDescription('')
     setShowDetails(false)
-    setEventDate(formatDate(defaultDate))
+    setEventDate(formatDateISO(defaultDate))
     setStartTime(null)
     setCustomStart(false)
     setDurationMinutes(60)
@@ -103,7 +92,7 @@ export function CreateEventSheet({
     setRecurrenceInterval(1)
     setAssignedTo(null)
     setAllDay(false)
-    setEndDate(formatDate(defaultDate))
+    setEndDate(formatDateISO(defaultDate))
   }
 
   // Reset form when sheet opens (handles reopening with different defaultDate)
@@ -167,13 +156,13 @@ export function CreateEventSheet({
     if (!isSameDay(defaultDate, today) && !isSameDay(defaultDate, tomorrow)) {
       options.push({
         label: defaultDate.toLocaleDateString('en', { month: 'short', day: 'numeric' }),
-        value: formatDate(defaultDate),
+        value: formatDateISO(defaultDate),
       })
     }
 
     options.push(
-      { label: 'Today', value: formatDate(today) },
-      { label: 'Tomorrow', value: formatDate(tomorrow) },
+      { label: 'Today', value: formatDateISO(today) },
+      { label: 'Tomorrow', value: formatDateISO(tomorrow) },
     )
 
     return options
