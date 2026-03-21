@@ -80,6 +80,10 @@ export function hasToken(): boolean {
   return !!getFreshToken()
 }
 
+export function getAccessToken(): string | undefined {
+  return getFreshToken()
+}
+
 async function doRefresh(): Promise<string | undefined> {
   if (!refreshToken) return undefined
   // Deduplicate: if a refresh is already in flight, share the same promise

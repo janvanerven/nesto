@@ -1,13 +1,14 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 import { motion } from 'framer-motion'
 
+const MORE_PATHS = ['/cards', '/settings', '/documents']
+
 const tabs = [
   { to: '/' as const, label: 'Home', icon: HomeIcon },
   { to: '/tasks' as const, label: 'Reminders', icon: CheckIcon },
   { to: '/calendar' as const, label: 'Calendar', icon: CalendarIcon },
   { to: '/lists' as const, label: 'Lists', icon: ListIcon },
-  { to: '/cards' as const, label: 'Cards', icon: CardIcon },
-  { to: '/settings' as const, label: 'More', icon: SettingsIcon },
+  { to: '/more' as const, label: 'More', icon: MoreIcon },
 ]
 
 export function BottomNav() {
@@ -18,7 +19,9 @@ export function BottomNav() {
     <nav className="fixed bottom-0 left-0 right-0 bg-surface border-t border-text/5 pb-[env(safe-area-inset-bottom)]">
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto">
         {tabs.map((tab) => {
-          const isActive = currentPath === tab.to || (tab.to !== '/' && currentPath.startsWith(tab.to))
+          const isActive = currentPath === tab.to
+            || (tab.to !== '/' && currentPath.startsWith(tab.to))
+            || (tab.to === '/more' && MORE_PATHS.some(p => currentPath.startsWith(p)))
           return (
             <Link
               key={tab.to}
@@ -94,26 +97,15 @@ function ListIcon({ active }: { active: boolean }) {
   )
 }
 
-function CardIcon({ active }: { active: boolean }) {
+function MoreIcon({ active }: { active: boolean }) {
   return (
     <svg
       width="24" height="24" viewBox="0 0 24 24" fill="none"
       stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
       className={active ? 'text-primary' : 'text-text-muted'}
     >
-      <rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" />
-    </svg>
-  )
-}
-
-function SettingsIcon({ active }: { active: boolean }) {
-  return (
-    <svg
-      width="24" height="24" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-      className={active ? 'text-primary' : 'text-text-muted'}
-    >
-      <circle cx="12" cy="12" r="1" /><circle cx="12" cy="5" r="1" /><circle cx="12" cy="19" r="1" />
+      <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
     </svg>
   )
 }

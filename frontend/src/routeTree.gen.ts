@@ -12,16 +12,20 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as MoreRouteImport } from './routes/more'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ListsRouteImport } from './routes/lists'
+import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as CardsRouteImport } from './routes/cards'
 import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ListsIndexRouteImport } from './routes/lists.index'
 import { Route as CardsIndexRouteImport } from './routes/cards.index'
+import { Route as DocumentsIndexRouteImport } from './routes/documents.index'
 import { Route as ListsListIdRouteImport } from './routes/lists.$listId'
 import { Route as CardsCardIdRouteImport } from './routes/cards.$cardId'
+import { Route as DocumentsDocIdRouteImport } from './routes/documents.$docId'
 
 const TasksRoute = TasksRouteImport.update({
   id: '/tasks',
@@ -38,9 +42,19 @@ const OnboardingRoute = OnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MoreRoute = MoreRouteImport.update({
+  id: '/more',
+  path: '/more',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocumentsRoute = DocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ListsRoute = ListsRouteImport.update({
@@ -88,32 +102,49 @@ const CardsCardIdRoute = CardsCardIdRouteImport.update({
   path: '/$cardId',
   getParentRoute: () => CardsRoute,
 } as any)
+const DocumentsIndexRoute = DocumentsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DocumentsRoute,
+} as any)
+const DocumentsDocIdRoute = DocumentsDocIdRouteImport.update({
+  id: '/$docId',
+  path: '/$docId',
+  getParentRoute: () => DocumentsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/callback': typeof CallbackRoute
   '/cards': typeof CardsRouteWithChildren
+  '/documents': typeof DocumentsRouteWithChildren
   '/lists': typeof ListsRouteWithChildren
   '/login': typeof LoginRoute
+  '/more': typeof MoreRoute
   '/onboarding': typeof OnboardingRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
   '/cards/$cardId': typeof CardsCardIdRoute
   '/lists/$listId': typeof ListsListIdRoute
+  '/documents/$docId': typeof DocumentsDocIdRoute
   '/cards/': typeof CardsIndexRoute
   '/lists/': typeof ListsIndexRoute
+  '/documents/': typeof DocumentsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/callback': typeof CallbackRoute
+  '/documents': typeof DocumentsIndexRoute
   '/login': typeof LoginRoute
+  '/more': typeof MoreRoute
   '/onboarding': typeof OnboardingRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
   '/cards/$cardId': typeof CardsCardIdRoute
   '/lists/$listId': typeof ListsListIdRoute
+  '/documents/$docId': typeof DocumentsDocIdRoute
   '/cards': typeof CardsIndexRoute
   '/lists': typeof ListsIndexRoute
 }
@@ -123,15 +154,19 @@ export interface FileRoutesById {
   '/calendar': typeof CalendarRoute
   '/callback': typeof CallbackRoute
   '/cards': typeof CardsRouteWithChildren
+  '/documents': typeof DocumentsRouteWithChildren
   '/lists': typeof ListsRouteWithChildren
   '/login': typeof LoginRoute
+  '/more': typeof MoreRoute
   '/onboarding': typeof OnboardingRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
   '/cards/$cardId': typeof CardsCardIdRoute
   '/lists/$listId': typeof ListsListIdRoute
+  '/documents/$docId': typeof DocumentsDocIdRoute
   '/cards/': typeof CardsIndexRoute
   '/lists/': typeof ListsIndexRoute
+  '/documents/': typeof DocumentsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -140,43 +175,54 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/callback'
     | '/cards'
+    | '/documents'
     | '/lists'
     | '/login'
+    | '/more'
     | '/onboarding'
     | '/settings'
     | '/tasks'
     | '/cards/$cardId'
     | '/lists/$listId'
+    | '/documents/$docId'
     | '/cards/'
     | '/lists/'
+    | '/documents/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/calendar'
     | '/callback'
     | '/login'
+    | '/more'
     | '/onboarding'
     | '/settings'
     | '/tasks'
     | '/cards/$cardId'
     | '/lists/$listId'
+    | '/documents/$docId'
     | '/cards'
     | '/lists'
+    | '/documents'
   id:
     | '__root__'
     | '/'
     | '/calendar'
     | '/callback'
     | '/cards'
+    | '/documents'
     | '/lists'
     | '/login'
+    | '/more'
     | '/onboarding'
     | '/settings'
     | '/tasks'
     | '/cards/$cardId'
     | '/lists/$listId'
+    | '/documents/$docId'
     | '/cards/'
     | '/lists/'
+    | '/documents/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -184,8 +230,10 @@ export interface RootRouteChildren {
   CalendarRoute: typeof CalendarRoute
   CallbackRoute: typeof CallbackRoute
   CardsRoute: typeof CardsRouteWithChildren
+  DocumentsRoute: typeof DocumentsRouteWithChildren
   ListsRoute: typeof ListsRouteWithChildren
   LoginRoute: typeof LoginRoute
+  MoreRoute: typeof MoreRoute
   OnboardingRoute: typeof OnboardingRoute
   SettingsRoute: typeof SettingsRoute
   TasksRoute: typeof TasksRoute
@@ -214,6 +262,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/more': {
+      id: '/more'
+      path: '/more'
+      fullPath: '/more'
+      preLoaderRoute: typeof MoreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -226,6 +281,13 @@ declare module '@tanstack/react-router' {
       path: '/lists'
       fullPath: '/lists'
       preLoaderRoute: typeof ListsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/documents': {
+      id: '/documents'
+      path: '/documents'
+      fullPath: '/documents'
+      preLoaderRoute: typeof DocumentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cards': {
@@ -284,6 +346,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CardsCardIdRouteImport
       parentRoute: typeof CardsRoute
     }
+    '/documents/': {
+      id: '/documents/'
+      path: '/'
+      fullPath: '/documents/'
+      preLoaderRoute: typeof DocumentsIndexRouteImport
+      parentRoute: typeof DocumentsRoute
+    }
+    '/documents/$docId': {
+      id: '/documents/$docId'
+      path: '/$docId'
+      fullPath: '/documents/$docId'
+      preLoaderRoute: typeof DocumentsDocIdRouteImport
+      parentRoute: typeof DocumentsRoute
+    }
   }
 }
 
@@ -311,13 +387,27 @@ const ListsRouteChildren: ListsRouteChildren = {
 
 const ListsRouteWithChildren = ListsRoute._addFileChildren(ListsRouteChildren)
 
+interface DocumentsRouteChildren {
+  DocumentsDocIdRoute: typeof DocumentsDocIdRoute
+  DocumentsIndexRoute: typeof DocumentsIndexRoute
+}
+
+const DocumentsRouteChildren: DocumentsRouteChildren = {
+  DocumentsDocIdRoute: DocumentsDocIdRoute,
+  DocumentsIndexRoute: DocumentsIndexRoute,
+}
+
+const DocumentsRouteWithChildren = DocumentsRoute._addFileChildren(DocumentsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalendarRoute: CalendarRoute,
   CallbackRoute: CallbackRoute,
   CardsRoute: CardsRouteWithChildren,
+  DocumentsRoute: DocumentsRouteWithChildren,
   ListsRoute: ListsRouteWithChildren,
   LoginRoute: LoginRoute,
+  MoreRoute: MoreRoute,
   OnboardingRoute: OnboardingRoute,
   SettingsRoute: SettingsRoute,
   TasksRoute: TasksRoute,

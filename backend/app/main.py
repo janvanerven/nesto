@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import async_session
-from app.routers import auth, calendar_sync, events, households, loyalty_cards, shopping_lists, tasks
+from app.routers import auth, calendar_sync, documents, events, households, loyalty_cards, shopping_lists, tasks
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +101,7 @@ async def _calendar_sync_loop():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     os.makedirs("data", exist_ok=True)
+    os.makedirs("data/documents", exist_ok=True)
     digest_task = asyncio.create_task(_digest_scheduler_loop())
     sync_task = asyncio.create_task(_calendar_sync_loop())
     logger.info("Digest scheduler started (daily@%02d:00, weekly@Sun %02d:00)",
@@ -142,6 +143,8 @@ app.include_router(households.router)
 app.include_router(shopping_lists.router)
 app.include_router(tasks.router)
 app.include_router(loyalty_cards.router)
+app.include_router(documents.router)
+app.include_router(documents.tags_router)
 app.include_router(calendar_sync.connections_router)
 app.include_router(calendar_sync.external_events_router)
 app.include_router(calendar_sync.feed_token_router)
