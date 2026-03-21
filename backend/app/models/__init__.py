@@ -1,3 +1,4 @@
+from app.models.calendar_sync import CalendarConnection, ExternalEvent
 from app.models.event import Event
 from app.models.household import Household, HouseholdInvite, HouseholdMember
 from app.models.loyalty_card import LoyaltyCard
@@ -15,4 +16,6 @@ __all__ = [
     "ShoppingList",
     "ShoppingItem",
     "LoyaltyCard",
+    "CalendarConnection",
+    "ExternalEvent",
 ]
