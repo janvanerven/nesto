@@ -5,9 +5,12 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useHouseholds, useHouseholdMembers } from '@/api/households'
 import { useEvents, useCreateEvent, useUpdateEvent, useDeleteEvent } from '@/api/events'
 import type { CalendarEvent } from '@/api/events'
+import { useExternalEvents } from '@/api/calendar-sync'
+import type { ExternalEventOccurrence } from '@/api/calendar-sync'
 import { expandRecurrences } from '@/utils/recurrence'
 import { WeekStrip } from '@/components/calendar/week-strip'
 import { EventCard } from '@/components/calendar/event-card'
+import { ExternalEventCard } from '@/components/calendar/external-event-card'
 import { CreateEventSheet } from '@/components/calendar/create-event-sheet'
 import { EditEventSheet } from '@/components/calendar/edit-event-sheet'
 import { Fab, Card } from '@/components/ui'
@@ -67,6 +70,7 @@ function CalendarContent({ householdId }: { householdId: string }) {
   }, [weekStart])
 
   const { data: events = [], isLoading } = useEvents(householdId, fetchStart, fetchEnd)
+  const { data: externalEvents = [] } = useExternalEvents(householdId, fetchStart, fetchEnd)
   const { data: members = [] } = useHouseholdMembers(householdId)
   const createMutation = useCreateEvent(householdId)
   const updateMutation = useUpdateEvent(householdId)
@@ -100,6 +104,53 @@ function CalendarContent({ householdId }: { householdId: string }) {
       })
   }, [occurrences, selectedDate])
 
+  type CalendarOccurrence =
+    | { type: 'native'; occurrence: typeof dayOccurrences[0] }
+    | { type: 'external'; occurrence: ExternalEventOccurrence; occurrenceStart: Date; occurrenceEnd: Date }
+
+  const mergedDayOccurrences = useMemo((): CalendarOccurrence[] => {
+    const dayStart = new Date(selectedDate)
+    dayStart.setHours(0, 0, 0, 0)
+    const dayEnd = new Date(selectedDate)
+    dayEnd.setHours(23, 59, 59, 999)
+
+    const native: CalendarOccurrence[] = dayOccurrences.map((occ) => ({
+      type: 'native' as const,
+      occurrence: occ,
+    }))
+
+    const external: CalendarOccurrence[] = externalEvents
+      .filter((e) => {
+        const start = new Date(e.start_time)
+        const end = new Date(e.end_time)
+        return start <= dayEnd && end >= dayStart
+      })
+      .map((e) => ({
+        type: 'external' as const,
+        occurrence: e,
+        occurrenceStart: new Date(e.start_time),
+        occurrenceEnd: new Date(e.end_time),
+      }))
+
+    return [...native, ...external].sort((a, b) => {
+      const aAllDay = a.type === 'native' ? (a.occurrence.event.all_day ? 0 : 1) : (a.occurrence.all_day ? 0 : 1)
+      const bAllDay = b.type === 'native' ? (b.occurrence.event.all_day ? 0 : 1) : (b.occurrence.all_day ? 0 : 1)
+      if (aAllDay !== bAllDay) return aAllDay - bAllDay
+      const aStart = a.type === 'native' ? a.occurrence.occurrenceStart : a.occurrenceStart
+      const bStart = b.type === 'native' ? b.occurrence.occurrenceStart : b.occurrenceStart
+      return aStart.getTime() - bStart.getTime()
+    })
+  }, [dayOccurrences, externalEvents, selectedDate])
+
+  const allOccurrences = useMemo(() => {
+    const externalOccs = externalEvents.map((e) => ({
+      event: { id: e.id, all_day: e.all_day } as any,
+      occurrenceStart: new Date(e.start_time),
+      occurrenceEnd: new Date(e.end_time),
+    }))
+    return [...occurrences, ...externalOccs]
+  }, [occurrences, externalEvents])
+
   function navigateWeek(direction: -1 | 1): void {
     setWeekStart((prev) => {
       const next = new Date(prev)
@@ -131,7 +182,7 @@ function CalendarContent({ householdId }: { householdId: string }) {
           onSelectDate={setSelectedDate}
           onNavigate={navigateWeek}
           onJumpToDate={jumpToDate}
-          occurrences={occurrences}
+          occurrences={allOccurrences}
         />
       </Card>
 
@@ -146,7 +197,7 @@ function CalendarContent({ householdId }: { householdId: string }) {
             />
           ))}
         </div>
-      ) : dayOccurrences.length === 0 ? (
+      ) : mergedDayOccurrences.length === 0 ? (
         <Card className="text-center py-8">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-3 text-text-muted/40">
             <rect x="3" y="4" width="18" height="18" rx="2" />
@@ -158,26 +209,37 @@ function CalendarContent({ householdId }: { householdId: string }) {
       ) : (
         <motion.div className="space-y-3">
           <AnimatePresence>
-            {dayOccurrences.map((occ, i) => (
+            {mergedDayOccurrences.map((item, i) => (
               <motion.div
-                key={`${occ.event.id}-${occ.occurrenceStart.toISOString()}`}
+                key={item.type === 'native'
+                  ? `${item.occurrence.event.id}-${item.occurrence.occurrenceStart.toISOString()}`
+                  : `ext-${item.occurrence.id}`
+                }
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, x: -200 }}
                 transition={{ delay: i * 0.05 }}
               >
-                <EventCard
-                  occurrence={occ}
-                  members={members}
-                  onClick={() => setEditEvent(occ.event)}
-                />
+                {item.type === 'native' ? (
+                  <EventCard
+                    occurrence={item.occurrence}
+                    members={members}
+                    onClick={() => setEditEvent(item.occurrence.event)}
+                  />
+                ) : (
+                  <ExternalEventCard
+                    occurrence={item.occurrence}
+                    occurrenceStart={item.occurrenceStart}
+                    occurrenceEnd={item.occurrenceEnd}
+                  />
+                )}
               </motion.div>
             ))}
           </AnimatePresence>
         </motion.div>
       )}
 
-      <Fab pulse={dayOccurrences.length === 0} onClick={() => setShowCreate(true)}>
+      <Fab pulse={mergedDayOccurrences.length === 0} onClick={() => setShowCreate(true)}>
         +
       </Fab>
 
