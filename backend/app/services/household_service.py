@@ -30,17 +30,16 @@ async def list_user_households(db: AsyncSession, user_id: str) -> list[Household
 
 
 async def get_household(db: AsyncSession, household_id: str, user_id: str) -> Household:
-    # Verify membership
+    # Single JOIN: verify membership and fetch household in one query.
+    # Return 404 for both not-found and not-a-member to avoid leaking existence.
     result = await db.execute(
-        select(HouseholdMember).where(
-            HouseholdMember.household_id == household_id,
+        select(Household)
+        .join(HouseholdMember, Household.id == HouseholdMember.household_id)
+        .where(
+            Household.id == household_id,
             HouseholdMember.user_id == user_id,
         )
     )
-    if not result.scalar_one_or_none():
-        raise HTTPException(status_code=403, detail="Not a member of this household")
-
-    result = await db.execute(select(Household).where(Household.id == household_id))
     household = result.scalar_one_or_none()
     if not household:
         raise HTTPException(status_code=404, detail="Household not found")

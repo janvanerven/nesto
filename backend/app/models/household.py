@@ -18,7 +18,7 @@ class Household(Base):
 class HouseholdMember(Base):
     __tablename__ = "household_members"
 
-    household_id: Mapped[str] = mapped_column(Text, ForeignKey("households.id"), primary_key=True)
+    household_id: Mapped[str] = mapped_column(Text, ForeignKey("households.id", ondelete="CASCADE"), primary_key=True)
     user_id: Mapped[str] = mapped_column(Text, ForeignKey("users.id"), primary_key=True)
     joined_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     feed_token: Mapped[str | None] = mapped_column(Text, nullable=True, unique=True)
@@ -28,7 +28,7 @@ class HouseholdInvite(Base):
     __tablename__ = "household_invites"
 
     id: Mapped[str] = mapped_column(Text, primary_key=True)
-    household_id: Mapped[str] = mapped_column(Text, ForeignKey("households.id"), nullable=False)
+    household_id: Mapped[str] = mapped_column(Text, ForeignKey("households.id", ondelete="CASCADE"), nullable=False)
     created_by: Mapped[str] = mapped_column(Text, ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)

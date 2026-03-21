@@ -10,7 +10,7 @@ class ShoppingList(Base):
     __tablename__ = "shopping_lists"
 
     id: Mapped[str] = mapped_column(Text, primary_key=True)
-    household_id: Mapped[str] = mapped_column(Text, ForeignKey("households.id"), nullable=False)
+    household_id: Mapped[str] = mapped_column(Text, ForeignKey("households.id", ondelete="CASCADE"), nullable=False)
     name: Mapped[str] = mapped_column(Text, nullable=False, default="")
     priority: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
     status: Mapped[str] = mapped_column(Text, nullable=False, default="active")

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Any
 
@@ -16,22 +17,38 @@ logger = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
 
 _jwks_client: PyJWKClient | None = None
+_jwks_lock = asyncio.Lock()
 
 
-def _get_jwks_client() -> PyJWKClient:
-    """Return a cached PyJWKClient, discovering the JWKS URI on first call."""
+async def _get_jwks_client() -> PyJWKClient:
+    """Return a cached PyJWKClient, discovering the JWKS URI on first call.
+
+    Uses an asyncio.Lock to prevent concurrent initialization races, and
+    runs the blocking httpx.get in a thread so the event loop is not blocked.
+    """
     global _jwks_client
-    if _jwks_client is None:
+    if _jwks_client is not None:
+        return _jwks_client
+
+    async with _jwks_lock:
+        # Re-check after acquiring the lock — another coroutine may have
+        # already completed initialization while we were waiting.
+        if _jwks_client is not None:
+            return _jwks_client
+
         issuer = settings.oidc_issuer_url.rstrip("/")
         discovery_url = f"{issuer}/.well-known/openid-configuration"
-        # Synchronous fetch at startup — only happens once
-        resp = httpx.get(discovery_url, follow_redirects=True, timeout=10.0)
-        resp.raise_for_status()
-        jwks_uri = resp.json()["jwks_uri"]
+
+        def _fetch_jwks_uri() -> str:
+            resp = httpx.get(discovery_url, follow_redirects=True, timeout=10.0)
+            resp.raise_for_status()
+            return resp.json()["jwks_uri"]
+
+        jwks_uri = await asyncio.to_thread(_fetch_jwks_uri)
         _jwks_client = PyJWKClient(
             jwks_uri,
             cache_jwk_set=True,
-            lifespan=86400,  # 24 hours, matches previous TTL
+            lifespan=86400,  # 24 hours
         )
     return _jwks_client
 
@@ -44,7 +61,7 @@ async def decode_token(
 
     token = credentials.credentials
     try:
-        client = _get_jwks_client()
+        client = await _get_jwks_client()
         signing_key = client.get_signing_key_from_jwt(token)
         payload = jwt.decode(
             token,

@@ -10,7 +10,7 @@ class LoyaltyCard(Base):
     __tablename__ = "loyalty_cards"
 
     id: Mapped[str] = mapped_column(Text, primary_key=True)
-    household_id: Mapped[str] = mapped_column(Text, ForeignKey("households.id"), nullable=False)
+    household_id: Mapped[str] = mapped_column(Text, ForeignKey("households.id", ondelete="CASCADE"), nullable=False)
     store_name: Mapped[str] = mapped_column(Text, nullable=False)
     barcode_number: Mapped[str] = mapped_column(Text, nullable=False)
     barcode_format: Mapped[str] = mapped_column(Text, nullable=False)

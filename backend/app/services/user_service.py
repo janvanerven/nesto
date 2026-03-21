@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -10,17 +10,42 @@ from app.schemas.user import UserUpdate
 
 _UPDATABLE_FIELDS = {"first_name", "avatar_url", "email_digest_daily", "email_digest_weekly"}
 
+# Cap last_login writes to once per hour to avoid a DB write on every request.
+_LAST_LOGIN_THROTTLE = timedelta(hours=1)
+
 
 async def upsert_user(db: AsyncSession, sub: str, email: str, name: str, avatar: str | None = None) -> User:
     result = await db.execute(select(User).where(User.id == sub))
     user = result.scalar_one_or_none()
 
     if user:
-        user.email = email
-        user.display_name = name
-        if not user.avatar_url:
+        now = datetime.now(timezone.utc)
+        dirty = False
+
+        if user.email != email:
+            user.email = email
+            dirty = True
+        if user.display_name != name:
+            user.display_name = name
+            dirty = True
+        if avatar and not user.avatar_url:
             user.avatar_url = avatar
-        user.last_login = datetime.now(timezone.utc)
+            dirty = True
+
+        # Throttle last_login to at most once per hour
+        last_login_naive = user.last_login
+        if last_login_naive is not None:
+            # DB stores naive UTC; make it timezone-aware for comparison
+            last_login_aware = last_login_naive.replace(tzinfo=timezone.utc)
+        else:
+            last_login_aware = None
+
+        if last_login_aware is None or (now - last_login_aware) >= _LAST_LOGIN_THROTTLE:
+            user.last_login = now
+            dirty = True
+
+        if not dirty:
+            return user
     else:
         user = User(
             id=sub,

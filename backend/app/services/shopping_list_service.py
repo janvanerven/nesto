@@ -1,7 +1,7 @@
 import uuid
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.shopping_list import ShoppingItem, ShoppingList
@@ -118,11 +118,12 @@ async def complete_shopping_list(
 ) -> dict:
     sl = await _get_list_or_404(db, list_id, household_id)
     sl.status = "archived"
-    items_result = await db.execute(
-        select(ShoppingItem).where(ShoppingItem.list_id == sl.id, ShoppingItem.checked == False)
+    # Bulk update instead of row-by-row to avoid N+1 writes
+    await db.execute(
+        update(ShoppingItem)
+        .where(ShoppingItem.list_id == sl.id, ShoppingItem.checked == False)  # noqa: E712
+        .values(checked=True)
     )
-    for item in items_result.scalars().all():
-        item.checked = True
     await db.commit()
     await db.refresh(sl)
 

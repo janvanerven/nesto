@@ -12,7 +12,7 @@ class CalendarConnection(Base):
 
     id: Mapped[str] = mapped_column(Text, primary_key=True)
     user_id: Mapped[str] = mapped_column(Text, ForeignKey("users.id"), nullable=False)
-    household_id: Mapped[str] = mapped_column(Text, ForeignKey("households.id"), nullable=False)
+    household_id: Mapped[str] = mapped_column(Text, ForeignKey("households.id", ondelete="CASCADE"), nullable=False)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     provider: Mapped[str] = mapped_column(Text, nullable=False)
     server_url: Mapped[str] = mapped_column(Text, nullable=False)
