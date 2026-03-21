@@ -17,6 +17,7 @@ dependencies = [
     "caldav>=1.4.0",
     "icalendar>=6.0.0",
     "cryptography>=43.0.0",
+    "Pillow>=11.0.0",
 ]
 
 [project.optional-dependencies]
