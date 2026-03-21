@@ -8,3 +8,4 @@ dist/
 *.db-shm
 .venv/
 backups/
+.worktrees/
