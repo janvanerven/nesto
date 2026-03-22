@@ -98,6 +98,10 @@ async def update_birthday(
     effective_day = updates.get("birth_day", birthday.birth_day)
     effective_year = updates.get("birth_year", birthday.birth_year)
 
+    # Reject future birth years (parity with BirthdayCreate validator)
+    if effective_year is not None and effective_year > date.today().year:
+        raise HTTPException(status_code=422, detail="Birth year cannot be in the future")
+
     # Validate the resulting combination (catches Feb 31, Apr 31, etc.)
     _validate_month_day(effective_month, effective_day, effective_year)
 
