@@ -11,6 +11,7 @@
   --color-accent-light: #FF8787;
   --color-success: #00B894;
   --color-warning: #FDCB6E;
+  --color-birthday: #E879A0;
   --color-surface: #FFFFFF;
   --color-background: #F8F7FF;
   --color-text: #2D3436;
@@ -60,4 +61,5 @@ body {
   --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.3);
   --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.4);
   --shadow-fab: 0 4px 12px rgba(139, 124, 240, 0.4);
+  --color-birthday: #F09EBA;
 }
