@@ -1,7 +1,7 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 import { motion } from 'framer-motion'
 
-const MORE_PATHS = ['/cards', '/settings', '/documents']
+const MORE_PATHS = ['/cards', '/settings', '/documents', '/birthdays']
 
 const tabs = [
   { to: '/' as const, label: 'Home', icon: HomeIcon },
