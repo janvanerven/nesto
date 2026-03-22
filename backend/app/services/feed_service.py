@@ -6,6 +6,7 @@ from icalendar import Calendar, Event as ICalEvent
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.birthday import Birthday
 from app.models.event import Event
 from app.models.household import HouseholdMember
 
@@ -49,6 +50,31 @@ def _event_to_vevent(event: Event) -> ICalEvent:
     return vevent
 
 
+def _birthday_to_vevent(birthday: Birthday) -> ICalEvent:
+    vevent = ICalEvent()
+    vevent.add("uid", f"birthday-{birthday.id}@nesto")
+
+    # Summary: include birth year if known (static, doesn't go stale in cached feeds)
+    # Don't embed "turns N" — it bakes a specific age into the RRULE'd event summary
+    # that becomes wrong in subsequent years when the calendar app caches the feed.
+    if birthday.birth_year:
+        vevent.add("summary", f"\U0001f382 {birthday.person_name}'s Birthday (born {birthday.birth_year})")
+    else:
+        vevent.add("summary", f"\U0001f382 {birthday.person_name}'s Birthday")
+
+    # Use 2000 as reference year when birth_year is unknown.
+    # MUST be a leap year so Feb 29 birthdays don't raise ValueError.
+    # (1900 is NOT a leap year — date(1900, 2, 29) crashes.)
+    ref_year = birthday.birth_year or 2000
+    start = date(ref_year, birthday.birth_month, birthday.birth_day)
+    vevent.add("dtstart", start)
+    # DTEND is required by RFC 5545; exclusive, so day after for all-day events
+    vevent.add("dtend", start + timedelta(days=1))
+    vevent.add("rrule", {"freq": "YEARLY"})
+
+    return vevent
+
+
 async def generate_feed(db: AsyncSession, user_id: str, household_id: str) -> str:
     result = await db.execute(
         select(Event).where(
@@ -58,6 +84,9 @@ async def generate_feed(db: AsyncSession, user_id: str, household_id: str) -> st
     )
     events = result.scalars().all()
 
+    from app.services.birthday_service import get_birthdays_for_feed
+    birthdays = await get_birthdays_for_feed(db, household_id)
+
     cal = Calendar()
     cal.add("prodid", "-//Nesto//Calendar//EN")
     cal.add("version", "2.0")
@@ -65,6 +94,9 @@ async def generate_feed(db: AsyncSession, user_id: str, household_id: str) -> st
 
     for event in events:
         cal.add_component(_event_to_vevent(event))
+
+    for birthday in birthdays:
+        cal.add_component(_birthday_to_vevent(birthday))
 
     return cal.to_ical().decode()
 
