@@ -26,7 +26,7 @@ Separate `birth_month` + `birth_day` integers avoid needing a dummy year when bi
 
 CRUD at `/api/households/{household_id}/birthdays`:
 
-- `GET /` — list all birthdays, with computed `age` field (nullable). Supports optional `start` and `end` query params (ISO date strings) for calendar date-range filtering by month/day.
+- `GET /` — list all birthdays, with computed `age` field (nullable). No date-range filtering needed — the list is always small (household-scoped) and the frontend filters client-side for calendar display.
 - `POST /` — create birthday
 - `PATCH /{birthdayId}` — update birthday
 - `DELETE /{birthdayId}` — delete birthday
@@ -35,7 +35,7 @@ Response schema includes a computed `age` field: current age if `birth_year` is 
 
 ## Calendar Integration
 
-- Frontend calendar page fetches birthdays alongside events for the visible date range using the `start`/`end` query params.
+- Frontend calendar page fetches all household birthdays and filters client-side to the selected date.
 - Birthdays render as all-day event cards with a cake icon and distinct color.
 - Tapping a birthday on the calendar opens an edit-birthday sheet.
 
@@ -44,8 +44,9 @@ Response schema includes a computed `age` field: current age if `birth_year` is 
 The existing feed at `/api/calendar/feed/{token}.ics` adds birthday VEVENTs:
 
 - `RRULE:FREQ=YEARLY`
-- `DTSTART` uses birth_year if known, otherwise a reference year
-- Summary format: `🎂 {name}'s Birthday` or `🎂 {name}'s Birthday (turns {age})` if birth_year is known
+- `DTSTART` uses birth_year if known, otherwise 2000 (a leap year, to avoid ValueError on Feb 29)
+- `DTEND` = `DTSTART + 1 day` (required by RFC 5545 for all-day events)
+- Summary format: `🎂 {name}'s Birthday` or `🎂 {name}'s Birthday (born {year})` — uses static birth year, not "turns N", to avoid stale age in cached feeds
 
 ## Frontend
 
@@ -65,4 +66,6 @@ Add "Birthdays" entry with cake icon.
 
 - **Standalone table** (not reusing events) — birthdays have different fields and semantics (always yearly, no time, person-centric).
 - **Month/day integers** (not a Date column) — avoids dummy year, simplifies range queries.
-- **Server-computed age** — single source of truth, accounts for date correctly.
+- **Server-computed age** — single source of truth, accounts for date correctly. Known limitation: timezone drift around midnight UTC may briefly show wrong age label for users in far-offset timezones.
+- **Leap year handling** — Feb 29 allowed without birth_year (leap day birthdays exist). Feb 29 with a non-leap birth_year is rejected. ICS feed uses year 2000 as reference (a leap year).
+- **Cross-field validation on PATCH** — service validates the merged month/day/year after applying partial updates, since the schema can't validate partial fields in isolation.
