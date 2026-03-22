@@ -1,4 +1,5 @@
 from app.models.calendar_sync import CalendarConnection, ExternalEvent
+from app.models.birthday import Birthday
 from app.models.document import Document, DocumentTag, DocumentTagLink
 from app.models.event import Event
 from app.models.household import Household, HouseholdInvite, HouseholdMember
@@ -17,6 +18,7 @@ __all__ = [
     "ShoppingList",
     "ShoppingItem",
     "LoyaltyCard",
+    "Birthday",
     "CalendarConnection",
     "ExternalEvent",
     "Document",
