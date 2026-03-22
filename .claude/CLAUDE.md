@@ -17,18 +17,18 @@ backend/app/
   config.py        # Pydantic Settings with validators
   database.py      # Async SQLAlchemy engine, session, SQLite pragmas
   auth.py          # JWT decode via PyJWKClient, user auto-upsert
-  models/          # SQLAlchemy ORM (user, household, task, event, shopping_list, loyalty_card, calendar_sync, document)
+  models/          # SQLAlchemy ORM (user, household, task, event, shopping_list, loyalty_card, calendar_sync, document, birthday)
   schemas/         # Pydantic request/response models with validation
-  routers/         # API routes: /api/auth, /api/households, /api/households/{id}/tasks, /api/households/{id}/events, /api/households/{id}/members, /api/households/{id}/lists, /api/households/{id}/cards, /api/households/{id}/documents, /api/households/{id}/document-tags, /api/calendar/*
-  services/        # Business logic (user_service, household_service, task_service, event_service, shopping_list_service, loyalty_card_service, digest_service, calendar_connection_service, calendar_sync_service, feed_service, external_event_service, crypto_service, document_service)
+  routers/         # API routes: /api/auth, /api/households, /api/households/{id}/tasks, /api/households/{id}/events, /api/households/{id}/members, /api/households/{id}/lists, /api/households/{id}/cards, /api/households/{id}/documents, /api/households/{id}/document-tags, /api/households/{id}/birthdays, /api/calendar/*
+  services/        # Business logic (user_service, household_service, task_service, event_service, shopping_list_service, loyalty_card_service, digest_service, calendar_connection_service, calendar_sync_service, feed_service, external_event_service, crypto_service, document_service, birthday_service)
 backend/alembic/   # Async migrations
 backend/tests/     # pytest-asyncio tests
 
 frontend/src/
-  routes/          # TanStack Router file-based routes (__root, index, login, callback, tasks, onboarding, settings, calendar, lists, lists.$listId, cards, cards.$cardId, documents, documents.index, documents.$docId, more)
-  api/             # apiFetch client with token refresh + session expiry, React Query hooks per domain (calendar-sync.ts for CalDAV connections + external events, documents.ts for document CRUD + file serving)
+  routes/          # TanStack Router file-based routes (__root, index, login, callback, tasks, onboarding, settings, calendar, lists, lists.$listId, cards, cards.$cardId, documents, documents.index, documents.$docId, birthdays, birthdays.index, more)
+  api/             # apiFetch client with token refresh + session expiry, React Query hooks per domain (calendar-sync.ts for CalDAV connections + external events, documents.ts for document CRUD + file serving, birthdays.ts for birthday CRUD)
   auth/            # OIDC config and provider
-  components/      # ui/ (Button, Card, Input, Avatar, Fab, PriorityDot), layout/ (bottom-nav), tasks/ (task-card, create-task-sheet, edit-task-sheet), calendar/ (week-strip, event-card, external-event-card, create-event-sheet, edit-event-sheet, add-calendar-sheet), lists/ (list-card, create-list-sheet, edit-list-sheet), cards/ (loyalty-card-card, create-card-sheet, edit-card-sheet, barcode-display), documents/ (upload-document-sheet)
+  components/      # ui/ (Button, Card, Input, Avatar, Fab, PriorityDot), layout/ (bottom-nav), tasks/ (task-card, create-task-sheet, edit-task-sheet), calendar/ (week-strip, event-card, external-event-card, birthday-card, create-event-sheet, edit-event-sheet, add-calendar-sheet), lists/ (list-card, create-list-sheet, edit-list-sheet), cards/ (loyalty-card-card, create-card-sheet, edit-card-sheet, barcode-display), documents/ (upload-document-sheet), birthdays/ (birthday-form, birthday-card, create-birthday-sheet, edit-birthday-sheet)
   stores/          # Zustand stores (auth-store, theme-store)
   utils/           # recurrence.ts (client-side recurring event expansion)
   styles/          # Tailwind CSS v4 theme with light/dark mode
@@ -67,7 +67,7 @@ OIDC config is injected at runtime via `window.__NESTO_CONFIG__` (set by `/confi
 - **Font:** Outfit (Google Fonts, variable weight 300-700)
 - **Dark mode:** System preference by default, manual toggle in settings, stored in localStorage (`nesto-theme`)
 - **Onboarding:** First name step → household create/join. First name stored on user model.
-- **Navigation:** Bottom nav uses a "More" tab that groups Cards, Documents, and Settings into a secondary hub page.
+- **Navigation:** Bottom nav uses a "More" tab that groups Cards, Documents, Birthdays, and Settings into a secondary hub page.
 
 ## Testing
 
@@ -87,7 +87,7 @@ cd backend && pytest tests/  # asyncio_mode = "auto"
 
 ## Database
 
-SQLite with WAL mode, async via aiosqlite. Tables: users, households, household_members (+ feed_token), household_invites, tasks, events, shopping_lists, shopping_items, loyalty_cards, calendar_connections, external_events, documents, document_tags, document_tag_links. Alembic for migrations. Indexes on all FK/filter columns.
+SQLite with WAL mode, async via aiosqlite. Tables: users, households, household_members (+ feed_token), household_invites, tasks, events, shopping_lists, shopping_items, loyalty_cards, calendar_connections, external_events, documents, document_tags, document_tag_links, birthdays. Alembic for migrations. Indexes on all FK/filter columns.
 
 User model includes: id, email, display_name, first_name (nullable), avatar_url, created_at, last_login, email_digest_daily, email_digest_weekly.
 
@@ -117,6 +117,8 @@ Automated daily backup service copies DB to `./backups/` with 7-day retention.
 - `GET /api/households/{id}/documents/{docId}/thumbnail` — Serve image thumbnail (authenticated)
 - `GET/POST /api/households/{id}/document-tags` — List/create document tags
 - `DELETE /api/households/{id}/document-tags/{tagId}` — Delete tag
+- `GET/POST /api/households/{id}/birthdays` — List/create birthdays (with computed age)
+- `PATCH/DELETE /api/households/{id}/birthdays/{birthdayId}` — Update/delete birthday
 - `GET/POST /api/calendar/connections` — List/create CalDAV connections
 - `PATCH/DELETE /api/calendar/connections/{id}` — Update/delete connection
 - `POST /api/calendar/connections/{id}/sync` — Trigger immediate sync
