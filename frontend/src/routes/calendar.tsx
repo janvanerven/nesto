@@ -14,6 +14,10 @@ import { EventCard } from '@/components/calendar/event-card'
 import { ExternalEventCard } from '@/components/calendar/external-event-card'
 import { CreateEventSheet } from '@/components/calendar/create-event-sheet'
 import { EditEventSheet } from '@/components/calendar/edit-event-sheet'
+import { useBirthdays, useUpdateBirthday, useDeleteBirthday } from '@/api/birthdays'
+import type { Birthday } from '@/api/birthdays'
+import { CalendarBirthdayCard } from '@/components/calendar/birthday-card'
+import { EditBirthdaySheet } from '@/components/birthdays/edit-birthday-sheet'
 import { Fab, Card } from '@/components/ui'
 
 export const Route = createFileRoute('/calendar')({
@@ -76,6 +80,10 @@ function CalendarContent({ householdId }: { householdId: string }) {
   const { data: events = [], isLoading } = useEvents(householdId, fetchStart, fetchEnd)
   const { data: externalEvents = [] } = useExternalEvents(householdId, fetchStart, fetchEnd)
   const { data: members = [] } = useHouseholdMembers(householdId)
+  const { data: allBirthdays = [] } = useBirthdays(householdId)
+  const updateBirthdayMutation = useUpdateBirthday(householdId)
+  const deleteBirthdayMutation = useDeleteBirthday(householdId)
+  const [editBirthday, setEditBirthday] = useState<Birthday | null>(null)
   const createMutation = useCreateEvent(householdId)
   const updateMutation = useUpdateEvent(householdId)
   const deleteMutation = useDeleteEvent(householdId)
@@ -111,6 +119,7 @@ function CalendarContent({ householdId }: { householdId: string }) {
   type CalendarOccurrence =
     | { type: 'native'; occurrence: typeof dayOccurrences[0] }
     | { type: 'external'; occurrence: ExternalEventOccurrence; occurrenceStart: Date; occurrenceEnd: Date }
+    | { type: 'birthday'; birthday: Birthday }
 
   const mergedDayOccurrences = useMemo((): CalendarOccurrence[] => {
     const dayStart = new Date(selectedDate)
@@ -136,15 +145,23 @@ function CalendarContent({ householdId }: { householdId: string }) {
         occurrenceEnd: new Date(e.end_time),
       }))
 
-    return [...native, ...external].sort((a, b) => {
-      const aAllDay = a.type === 'native' ? (a.occurrence.event.all_day ? 0 : 1) : (a.occurrence.all_day ? 0 : 1)
-      const bAllDay = b.type === 'native' ? (b.occurrence.event.all_day ? 0 : 1) : (b.occurrence.all_day ? 0 : 1)
+    const birthdayItems: CalendarOccurrence[] = allBirthdays
+      .filter((b) => {
+        const selMonth = selectedDate.getMonth() + 1
+        const selDay = selectedDate.getDate()
+        return b.birth_month === selMonth && b.birth_day === selDay
+      })
+      .map((b) => ({ type: 'birthday' as const, birthday: b }))
+
+    return [...native, ...external, ...birthdayItems].sort((a, b) => {
+      const aAllDay = a.type === 'birthday' ? 0 : a.type === 'native' ? (a.occurrence.event.all_day ? 0 : 1) : (a.occurrence.all_day ? 0 : 1)
+      const bAllDay = b.type === 'birthday' ? 0 : b.type === 'native' ? (b.occurrence.event.all_day ? 0 : 1) : (b.occurrence.all_day ? 0 : 1)
       if (aAllDay !== bAllDay) return aAllDay - bAllDay
-      const aStart = a.type === 'native' ? a.occurrence.occurrenceStart : a.occurrenceStart
-      const bStart = b.type === 'native' ? b.occurrence.occurrenceStart : b.occurrenceStart
+      const aStart = a.type === 'native' ? a.occurrence.occurrenceStart : a.type === 'external' ? a.occurrenceStart : new Date(0)
+      const bStart = b.type === 'native' ? b.occurrence.occurrenceStart : b.type === 'external' ? b.occurrenceStart : new Date(0)
       return aStart.getTime() - bStart.getTime()
     })
-  }, [dayOccurrences, externalEvents, selectedDate])
+  }, [dayOccurrences, externalEvents, selectedDate, allBirthdays])
 
   const allOccurrences = useMemo(() => {
     const externalOccs = externalEvents.map((e) => ({
@@ -152,8 +169,22 @@ function CalendarContent({ householdId }: { householdId: string }) {
       occurrenceStart: new Date(e.start_time),
       occurrenceEnd: new Date(e.end_time),
     }))
-    return [...occurrences, ...externalOccs]
-  }, [occurrences, externalEvents])
+    const birthdayOccs: typeof externalOccs = []
+    for (const b of allBirthdays) {
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(weekStart)
+        d.setDate(d.getDate() + i)
+        if (d.getMonth() + 1 === b.birth_month && d.getDate() === b.birth_day) {
+          birthdayOccs.push({
+            event: { id: `birthday-${b.id}`, all_day: true } as any,
+            occurrenceStart: d,
+            occurrenceEnd: d,
+          })
+        }
+      }
+    }
+    return [...occurrences, ...externalOccs, ...birthdayOccs]
+  }, [occurrences, externalEvents, allBirthdays, weekStart])
 
   function navigateWeek(direction: -1 | 1): void {
     setWeekStart((prev) => {
@@ -217,6 +248,8 @@ function CalendarContent({ householdId }: { householdId: string }) {
               <motion.div
                 key={item.type === 'native'
                   ? `${item.occurrence.event.id}-${item.occurrence.occurrenceStart.toISOString()}`
+                  : item.type === 'birthday'
+                  ? `birthday-${item.birthday.id}`
                   : `ext-${item.occurrence.id}`
                 }
                 initial={{ opacity: 0, y: 10 }}
@@ -229,6 +262,11 @@ function CalendarContent({ householdId }: { householdId: string }) {
                     occurrence={item.occurrence}
                     members={members}
                     onClick={() => setEditEvent(item.occurrence.event)}
+                  />
+                ) : item.type === 'birthday' ? (
+                  <CalendarBirthdayCard
+                    birthday={item.birthday}
+                    onClick={() => setEditBirthday(item.birthday)}
                   />
                 ) : (
                   <ExternalEventCard
@@ -273,6 +311,21 @@ function CalendarContent({ householdId }: { householdId: string }) {
         }}
         isPending={updateMutation.isPending || deleteMutation.isPending}
         members={members}
+      />
+
+      <EditBirthdaySheet
+        birthday={editBirthday}
+        open={editBirthday !== null}
+        onClose={() => setEditBirthday(null)}
+        onSubmit={async (update) => {
+          await updateBirthdayMutation.mutateAsync(update)
+          setEditBirthday(null)
+        }}
+        onDelete={async (birthdayId) => {
+          await deleteBirthdayMutation.mutateAsync(birthdayId)
+          setEditBirthday(null)
+        }}
+        isPending={updateBirthdayMutation.isPending || deleteBirthdayMutation.isPending}
       />
     </div>
   )
