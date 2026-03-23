@@ -14,6 +14,12 @@ import {
   useRegenerateFeedToken,
 } from '@/api/calendar-sync'
 import { AddCalendarSheet } from '@/components/calendar/add-calendar-sheet'
+import {
+  useSekuraConnection,
+  useSaveSekuraKey,
+  useDeleteSekuraKey,
+  useTestSekuraConnection,
+} from '@/api/sekura'
 
 export const Route = createFileRoute('/settings')({
   component: SettingsPage,
@@ -88,6 +94,12 @@ function SettingsPage() {
           <CalendarSyncSection householdId={household.id} />
         </Card>
       )}
+
+      {/* Document Storage */}
+      <Card className="mb-4">
+        <h2 className="font-bold text-text mb-3">Document Storage</h2>
+        <SekuraSection />
+      </Card>
 
       {/* Notifications */}
       <Card className="mb-4">
@@ -484,6 +496,134 @@ function ToggleRow({ label, description, enabled, onChange, disabled }: {
           `}
         />
       </button>
+    </div>
+  )
+}
+
+function SekuraSection() {
+  const { data: connection, isLoading } = useSekuraConnection()
+  const saveMutation = useSaveSekuraKey()
+  const deleteMutation = useDeleteSekuraKey()
+  const testMutation = useTestSekuraConnection()
+  const [apiKey, setApiKey] = useState('')
+  const [saveError, setSaveError] = useState('')
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
+  const [confirmRemove, setConfirmRemove] = useState(false)
+
+  const handleSave = async () => {
+    if (!apiKey.trim()) return
+    setSaveError('')
+    setTestResult(null)
+    try {
+      await saveMutation.mutateAsync(apiKey.trim())
+      setApiKey('')
+    } catch (e: unknown) {
+      setSaveError(e instanceof Error ? e.message : 'Failed to save API key')
+    }
+  }
+
+  const handleTest = async () => {
+    setTestResult(null)
+    try {
+      const result = await testMutation.mutateAsync()
+      setTestResult(result)
+    } catch (e: unknown) {
+      setTestResult({ ok: false, message: e instanceof Error ? e.message : 'Test failed' })
+    }
+  }
+
+  const handleRemove = async () => {
+    setConfirmRemove(false)
+    setTestResult(null)
+    setSaveError('')
+    await deleteMutation.mutateAsync()
+  }
+
+  if (isLoading) {
+    return <div className="h-10 bg-background rounded-xl animate-pulse" />
+  }
+
+  if (connection?.configured) {
+    return (
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0" />
+          <p className="text-sm text-text">
+            Connected
+            {connection.key_scope && (
+              <span className="text-text-muted ml-1">({connection.key_scope} access)</span>
+            )}
+          </p>
+        </div>
+
+        {testResult && (
+          <div
+            className={`text-xs rounded-xl p-3 mb-3 ${
+              testResult.ok
+                ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                : 'bg-accent/10 text-accent'
+            }`}
+          >
+            {testResult.message}
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={handleTest}
+            disabled={testMutation.isPending}
+          >
+            {testMutation.isPending ? 'Testing...' : 'Test connection'}
+          </Button>
+
+          {confirmRemove ? (
+            <>
+              <Button size="sm" variant="danger" onClick={handleRemove} disabled={deleteMutation.isPending}>
+                {deleteMutation.isPending ? '...' : 'Confirm'}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setConfirmRemove(false)}>
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmRemove(true)}
+              className="text-xs text-accent font-medium px-2"
+            >
+              Remove
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <p className="text-sm text-text-muted mb-3">
+        Connect a Sekura API key to enable hierarchical document storage.
+      </p>
+
+      <Input
+        type="password"
+        value={apiKey}
+        onChange={(e) => setApiKey(e.target.value)}
+        placeholder="sk_sekura_..."
+        className="mb-3 !h-10"
+      />
+
+      {saveError && <p className="text-xs text-accent mb-3">{saveError}</p>}
+
+      <Button
+        size="sm"
+        onClick={handleSave}
+        disabled={!apiKey.trim() || saveMutation.isPending}
+      >
+        {saveMutation.isPending ? 'Connecting...' : 'Connect'}
+      </Button>
     </div>
   )
 }

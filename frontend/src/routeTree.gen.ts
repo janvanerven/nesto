@@ -26,6 +26,8 @@ import { Route as DocumentsIndexRouteImport } from './routes/documents.index'
 import { Route as ListsListIdRouteImport } from './routes/lists.$listId'
 import { Route as CardsCardIdRouteImport } from './routes/cards.$cardId'
 import { Route as DocumentsDocIdRouteImport } from './routes/documents.$docId'
+import { Route as DocumentsFileFIleIdRouteImport } from './routes/documents.file.$fileId'
+import { Route as DocumentsFolderFolderIdRouteImport } from './routes/documents.folder.$folderId'
 
 const TasksRoute = TasksRouteImport.update({
   id: '/tasks',
@@ -112,6 +114,16 @@ const DocumentsDocIdRoute = DocumentsDocIdRouteImport.update({
   path: '/$docId',
   getParentRoute: () => DocumentsRoute,
 } as any)
+const DocumentsFileFileIdRoute = DocumentsFileFIleIdRouteImport.update({
+  id: '/file/$fileId',
+  path: '/file/$fileId',
+  getParentRoute: () => DocumentsRoute,
+} as any)
+const DocumentsFolderFolderIdRoute = DocumentsFolderFolderIdRouteImport.update({
+  id: '/folder/$folderId',
+  path: '/folder/$folderId',
+  getParentRoute: () => DocumentsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -128,6 +140,8 @@ export interface FileRoutesByFullPath {
   '/cards/$cardId': typeof CardsCardIdRoute
   '/lists/$listId': typeof ListsListIdRoute
   '/documents/$docId': typeof DocumentsDocIdRoute
+  '/documents/file/$fileId': typeof DocumentsFileFileIdRoute
+  '/documents/folder/$folderId': typeof DocumentsFolderFolderIdRoute
   '/cards/': typeof CardsIndexRoute
   '/lists/': typeof ListsIndexRoute
   '/documents/': typeof DocumentsIndexRoute
@@ -145,6 +159,8 @@ export interface FileRoutesByTo {
   '/cards/$cardId': typeof CardsCardIdRoute
   '/lists/$listId': typeof ListsListIdRoute
   '/documents/$docId': typeof DocumentsDocIdRoute
+  '/documents/file/$fileId': typeof DocumentsFileFileIdRoute
+  '/documents/folder/$folderId': typeof DocumentsFolderFolderIdRoute
   '/cards': typeof CardsIndexRoute
   '/lists': typeof ListsIndexRoute
 }
@@ -164,6 +180,8 @@ export interface FileRoutesById {
   '/cards/$cardId': typeof CardsCardIdRoute
   '/lists/$listId': typeof ListsListIdRoute
   '/documents/$docId': typeof DocumentsDocIdRoute
+  '/documents/file/$fileId': typeof DocumentsFileFileIdRoute
+  '/documents/folder/$folderId': typeof DocumentsFolderFolderIdRoute
   '/cards/': typeof CardsIndexRoute
   '/lists/': typeof ListsIndexRoute
   '/documents/': typeof DocumentsIndexRoute
@@ -185,6 +203,8 @@ export interface FileRouteTypes {
     | '/cards/$cardId'
     | '/lists/$listId'
     | '/documents/$docId'
+    | '/documents/file/$fileId'
+    | '/documents/folder/$folderId'
     | '/cards/'
     | '/lists/'
     | '/documents/'
@@ -201,6 +221,8 @@ export interface FileRouteTypes {
     | '/cards/$cardId'
     | '/lists/$listId'
     | '/documents/$docId'
+    | '/documents/file/$fileId'
+    | '/documents/folder/$folderId'
     | '/cards'
     | '/lists'
     | '/documents'
@@ -220,6 +242,8 @@ export interface FileRouteTypes {
     | '/cards/$cardId'
     | '/lists/$listId'
     | '/documents/$docId'
+    | '/documents/file/$fileId'
+    | '/documents/folder/$folderId'
     | '/cards/'
     | '/lists/'
     | '/documents/'
@@ -360,6 +384,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocumentsDocIdRouteImport
       parentRoute: typeof DocumentsRoute
     }
+    '/documents/file/$fileId': {
+      id: '/documents/file/$fileId'
+      path: '/file/$fileId'
+      fullPath: '/documents/file/$fileId'
+      preLoaderRoute: typeof DocumentsFileFIleIdRouteImport
+      parentRoute: typeof DocumentsRoute
+    }
+    '/documents/folder/$folderId': {
+      id: '/documents/folder/$folderId'
+      path: '/folder/$folderId'
+      fullPath: '/documents/folder/$folderId'
+      preLoaderRoute: typeof DocumentsFolderFolderIdRouteImport
+      parentRoute: typeof DocumentsRoute
+    }
   }
 }
 
@@ -389,11 +427,15 @@ const ListsRouteWithChildren = ListsRoute._addFileChildren(ListsRouteChildren)
 
 interface DocumentsRouteChildren {
   DocumentsDocIdRoute: typeof DocumentsDocIdRoute
+  DocumentsFileFileIdRoute: typeof DocumentsFileFileIdRoute
+  DocumentsFolderFolderIdRoute: typeof DocumentsFolderFolderIdRoute
   DocumentsIndexRoute: typeof DocumentsIndexRoute
 }
 
 const DocumentsRouteChildren: DocumentsRouteChildren = {
   DocumentsDocIdRoute: DocumentsDocIdRoute,
+  DocumentsFileFileIdRoute: DocumentsFileFileIdRoute,
+  DocumentsFolderFolderIdRoute: DocumentsFolderFolderIdRoute,
   DocumentsIndexRoute: DocumentsIndexRoute,
 }
 

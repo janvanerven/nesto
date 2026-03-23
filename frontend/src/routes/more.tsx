@@ -1,21 +1,43 @@
 import { createFileRoute, Navigate, Link } from '@tanstack/react-router'
 import { useAuth } from 'react-oidc-context'
+import type { ReactNode } from 'react'
 import { Card } from '@/components/ui'
+import { useSekuraConnection } from '@/api/sekura'
 
 export const Route = createFileRoute('/more')({
   component: MorePage,
 })
 
-const items = [
-  { to: '/cards' as const, label: 'Loyalty Cards', description: 'Store and scan your loyalty cards', icon: CardIcon },
-  { to: '/documents' as const, label: 'Documents', description: 'Warranties, receipts, and manuals', icon: DocIcon },
-  { to: '/birthdays' as const, label: 'Birthdays', description: 'Never forget a birthday', icon: BirthdayIcon },
-  { to: '/settings' as const, label: 'Settings', description: 'Profile, household, and preferences', icon: GearIcon },
+type MoreItem = {
+  to: '/cards' | '/documents' | '/birthdays' | '/settings'
+  label: string
+  description: string
+  icon: () => ReactNode
+}
+
+const allItems: MoreItem[] = [
+  { to: '/cards', label: 'Loyalty Cards', description: 'Store and scan your loyalty cards', icon: CardIcon },
+  { to: '/documents', label: 'Documents', description: 'Browse files and folders via Sekura', icon: DocIcon },
+  { to: '/birthdays', label: 'Birthdays', description: 'Never forget a birthday', icon: BirthdayIcon },
+  { to: '/settings', label: 'Settings', description: 'Profile, household, and preferences', icon: GearIcon },
 ]
 
 function MorePage() {
   const auth = useAuth()
+  // Prefetch connection status on mount — avoids flash of Documents item
+  const { data: connection, isLoading: connectionLoading } = useSekuraConnection()
+
   if (!auth.isAuthenticated) return <Navigate to="/login" />
+
+  // While loading, hide Documents entirely rather than flash it in then out.
+  // Once the query resolves, show Documents only if Sekura is configured.
+  const items = allItems.filter((item) => {
+    if (item.to === '/documents') {
+      if (connectionLoading) return false
+      return connection?.configured === true
+    }
+    return true
+  })
 
   return (
     <div className="pb-4">
@@ -48,7 +70,7 @@ function CardIcon() {
 function DocIcon() {
   return (
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0">
-      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
+      <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
     </svg>
   )
 }
