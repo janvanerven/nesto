@@ -11,7 +11,7 @@ import pytest_asyncio
 import httpx
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.database import Base
 from app.models.household import Household, HouseholdMember
@@ -287,7 +287,7 @@ async def test_sekura_test_connection_success(client, db_session):
 
 @pytest.mark.asyncio
 async def test_sekura_service_list_root_folders():
-    mock_response = AsyncMock()
+    mock_response = MagicMock()
     mock_response.is_success = True
     mock_response.status_code = 200
     mock_response.json.return_value = [
@@ -309,7 +309,7 @@ async def test_sekura_service_list_root_folders():
 
 @pytest.mark.asyncio
 async def test_sekura_service_get_folder_contents():
-    mock_response = AsyncMock()
+    mock_response = MagicMock()
     mock_response.is_success = True
     mock_response.status_code = 200
     mock_response.json.return_value = {"folder": {"id": "f1", "name": "Docs"}, "folders": [], "files": []}
@@ -326,7 +326,7 @@ async def test_sekura_service_get_folder_contents():
 
 @pytest.mark.asyncio
 async def test_sekura_service_create_folder():
-    mock_response = AsyncMock()
+    mock_response = MagicMock()
     mock_response.is_success = True
     mock_response.status_code = 201
     mock_response.json.return_value = {"id": "f2", "name": "New Folder"}
@@ -347,7 +347,7 @@ async def test_sekura_service_create_folder():
 async def test_sekura_service_error_mapping_401():
     """Sekura 401 maps to Nesto 502."""
     from fastapi import HTTPException
-    mock_response = AsyncMock()
+    mock_response = MagicMock()
     mock_response.is_success = False
     mock_response.status_code = 401
     mock_response.reason_phrase = "Unauthorized"
@@ -366,7 +366,7 @@ async def test_sekura_service_error_mapping_401():
 async def test_sekura_service_error_mapping_404():
     """Sekura 404 maps to Nesto 404."""
     from fastapi import HTTPException
-    mock_response = AsyncMock()
+    mock_response = MagicMock()
     mock_response.is_success = False
     mock_response.status_code = 404
     mock_response.reason_phrase = "Not Found"
@@ -387,7 +387,7 @@ async def test_sekura_service_error_mapping_404():
 
 @pytest.mark.asyncio
 async def test_sekura_service_get_file():
-    mock_response = AsyncMock()
+    mock_response = MagicMock()
     mock_response.is_success = True
     mock_response.status_code = 200
     mock_response.json.return_value = {"id": "file1", "name": "report.pdf", "size": 1024}
@@ -405,7 +405,7 @@ async def test_sekura_service_get_file():
 
 @pytest.mark.asyncio
 async def test_sekura_service_rename_file():
-    mock_response = AsyncMock()
+    mock_response = MagicMock()
     mock_response.is_success = True
     mock_response.status_code = 200
     mock_response.json.return_value = {"id": "file1", "name": "renamed.pdf"}
@@ -422,7 +422,7 @@ async def test_sekura_service_rename_file():
 
 @pytest.mark.asyncio
 async def test_sekura_service_delete_file():
-    mock_response = AsyncMock()
+    mock_response = MagicMock()
     mock_response.is_success = True
     mock_response.status_code = 204
     mock_response.json.return_value = {}
@@ -443,7 +443,7 @@ async def test_sekura_service_delete_file():
 
 @pytest.mark.asyncio
 async def test_sekura_service_list_versions():
-    mock_response = AsyncMock()
+    mock_response = MagicMock()
     mock_response.is_success = True
     mock_response.status_code = 200
     mock_response.json.return_value = [{"id": "v1", "version_number": 1, "size": 512}]
@@ -461,7 +461,7 @@ async def test_sekura_service_list_versions():
 
 @pytest.mark.asyncio
 async def test_sekura_service_list_trash():
-    mock_response = AsyncMock()
+    mock_response = MagicMock()
     mock_response.is_success = True
     mock_response.status_code = 200
     mock_response.json.return_value = [{"id": "t1", "name": "deleted.pdf", "type": "file"}]
@@ -479,7 +479,7 @@ async def test_sekura_service_list_trash():
 
 @pytest.mark.asyncio
 async def test_sekura_service_create_share():
-    mock_response = AsyncMock()
+    mock_response = MagicMock()
     mock_response.is_success = True
     mock_response.status_code = 201
     mock_response.json.return_value = {"id": "s1", "permission": "read"}
@@ -513,7 +513,7 @@ async def test_thumbnail_cache_miss_generates_and_caches():
     jpeg_bytes = buf.getvalue()
 
     # Mock metadata response
-    meta_response = AsyncMock()
+    meta_response = MagicMock()
     meta_response.is_success = True
     meta_response.status_code = 200
     meta_response.json.return_value = {
@@ -525,7 +525,7 @@ async def test_thumbnail_cache_miss_generates_and_caches():
     }
 
     # Mock download response
-    download_response = AsyncMock()
+    download_response = MagicMock()
     download_response.is_success = True
     download_response.status_code = 200
     download_response.content = jpeg_bytes
@@ -571,7 +571,7 @@ async def test_thumbnail_returns_none_for_non_image():
     """Returns None for non-image files without downloading."""
     import tempfile
 
-    meta_response = AsyncMock()
+    meta_response = MagicMock()
     meta_response.is_success = True
     meta_response.status_code = 200
     meta_response.json.return_value = {
