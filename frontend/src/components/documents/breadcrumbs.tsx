@@ -19,7 +19,7 @@ export function Breadcrumbs({ ancestors, current }: BreadcrumbsProps) {
         </Link>
 
         {/* Ancestor folders */}
-        {ancestors.map((ancestor) => (
+        {ancestors?.map((ancestor) => (
           <span key={ancestor.id} className="flex items-center gap-1 shrink-0">
             <ChevronIcon />
             <Link
