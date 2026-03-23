@@ -7,6 +7,7 @@ import { useCurrentUser } from '@/api/user'
 import { useTasks } from '@/api/tasks'
 import { useEvents } from '@/api/events'
 import { useShoppingLists } from '@/api/lists'
+import { useBirthdays } from '@/api/birthdays'
 import { Avatar, Card, PriorityDot } from '@/components/ui'
 import { expandRecurrences } from '@/utils/recurrence'
 import { formatDateISO } from '@/utils/dates'
@@ -125,11 +126,44 @@ function UpcomingSummary({ householdId }: { householdId: string }) {
   }, [today])
   const endStr = formatDateISO(end)
 
-  const { data: events, isLoading } = useEvents(householdId, todayStr, endStr)
+  const { data: events, isLoading: loadingEvents } = useEvents(householdId, todayStr, endStr)
+  const { data: birthdays, isLoading: loadingBirthdays } = useBirthdays(householdId)
+  const isLoading = loadingEvents || loadingBirthdays
 
-  const occurrences = events
-    ? expandRecurrences(events, today, end).slice(0, 5)
-    : []
+  const items = useMemo(() => {
+    type Item = { date: Date; label: string; allDay: boolean; key: string }
+    const result: Item[] = []
+
+    if (events) {
+      for (const occ of expandRecurrences(events, today, end)) {
+        result.push({
+          date: occ.occurrenceStart,
+          label: occ.event.title,
+          allDay: occ.event.all_day,
+          key: `event-${occ.event.id}-${occ.occurrenceStart.getTime()}`,
+        })
+      }
+    }
+
+    if (birthdays) {
+      for (const b of birthdays) {
+        for (const year of [today.getFullYear(), today.getFullYear() + 1]) {
+          const date = new Date(year, b.birth_month - 1, b.birth_day)
+          if (date >= today && date < end) {
+            result.push({
+              date,
+              label: `🎂 ${b.person_name}'s Birthday`,
+              allDay: true,
+              key: `birthday-${b.id}`,
+            })
+            break
+          }
+        }
+      }
+    }
+
+    return result.sort((a, b) => a.date.getTime() - b.date.getTime()).slice(0, 5)
+  }, [events, birthdays, today, end])
 
   return (
     <section>
@@ -140,21 +174,21 @@ function UpcomingSummary({ householdId }: { householdId: string }) {
 
       {isLoading ? (
         <Skeleton count={2} />
-      ) : occurrences.length === 0 ? (
+      ) : items.length === 0 ? (
         <Card>
           <p className="text-sm text-text-muted">Nothing scheduled this week</p>
         </Card>
       ) : (
         <Card>
           <div className="space-y-2.5">
-            {occurrences.map((occ, i) => (
-              <div key={`${occ.event.id}-${i}`} className="flex items-center gap-2.5">
+            {items.map((item) => (
+              <div key={item.key} className="flex items-center gap-2.5">
                 <span className="text-xs font-medium text-primary shrink-0 w-20">
-                  {occ.event.all_day
-                    ? formatOccurrenceDateOnly(occ.occurrenceStart)
-                    : formatOccurrenceDate(occ.occurrenceStart)}
+                  {item.allDay
+                    ? formatOccurrenceDateOnly(item.date)
+                    : formatOccurrenceDate(item.date)}
                 </span>
-                <p className="flex-1 text-sm font-medium text-text truncate">{occ.event.title}</p>
+                <p className="flex-1 text-sm font-medium text-text truncate">{item.label}</p>
               </div>
             ))}
           </div>
