@@ -4,6 +4,7 @@ import os
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timezone
 
+import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -101,7 +102,21 @@ async def _calendar_sync_loop():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     os.makedirs("data", exist_ok=True)
-    os.makedirs("data/documents", exist_ok=True)
+    os.makedirs("data/thumbnail-cache", exist_ok=True)
+
+    # Shared httpx client for Sekura proxy (and future HTTP calls)
+    app.state.httpx_client = httpx.AsyncClient(
+        timeout=httpx.Timeout(30.0, read=300.0),
+        limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+    )
+    if settings.sekura_url:
+        from app.services.sekura_service import SekuraService
+        app.state.sekura = SekuraService(
+            base_url=settings.sekura_url,
+            client=app.state.httpx_client,
+        )
+        logger.info("Sekura integration enabled: %s", settings.sekura_url)
+
     digest_task = asyncio.create_task(_digest_scheduler_loop())
     sync_task = asyncio.create_task(_calendar_sync_loop())
     logger.info("Digest scheduler started (daily@%02d:00, weekly@Sun %02d:00)",
@@ -118,6 +133,7 @@ async def lifespan(app: FastAPI):
         await sync_task
     except asyncio.CancelledError:
         pass
+    await app.state.httpx_client.aclose()
 
 
 app = FastAPI(
@@ -132,7 +148,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
@@ -144,8 +160,7 @@ app.include_router(shopping_lists.router)
 app.include_router(tasks.router)
 app.include_router(loyalty_cards.router)
 app.include_router(birthdays.router)
-app.include_router(documents.router)
-app.include_router(documents.tags_router)
+app.include_router(documents.router, prefix="/api")
 app.include_router(calendar_sync.connections_router)
 app.include_router(calendar_sync.external_events_router)
 app.include_router(calendar_sync.feed_token_router)

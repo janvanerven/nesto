@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     secret_key: str = ""
     environment: str = "development"
     cors_origins: list[str] = ["http://localhost:5173"]
+    sekura_url: str = ""
 
     # SMTP for email digests
     smtp_host: str = ""
