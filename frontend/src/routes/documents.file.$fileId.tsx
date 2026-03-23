@@ -6,6 +6,7 @@ import {
   useFile,
   useDeleteFile,
   useRenameFile,
+  useSekuraConnection,
   getFileDownloadUrl,
   getFileThumbnailUrl,
 } from '@/api/sekura'
@@ -31,20 +32,18 @@ function FileDetailPage() {
 function FileDetail({ householdId }: { householdId: string }) {
   const { fileId } = Route.useParams()
   const navigate = useNavigate()
+  const { data: connection } = useSekuraConnection()
   const { data: file, isLoading } = useFile(householdId, fileId)
   const deleteMutation = useDeleteFile(householdId)
   const renameMutation = useRenameFile(householdId)
   const [showRename, setShowRename] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const canWrite = connection?.configured && connection.key_scope === 'readwrite'
 
   const isImage = file?.mime_type?.startsWith('image/')
-  // Use thumbnail for preview if available; fall back to full download URL for images
-  const previewUrl = file
-    ? file.has_thumbnail
-      ? getFileThumbnailUrl(householdId, file.id)
-      : isImage
-      ? getFileDownloadUrl(householdId, file.id)
-      : null
+  // Use thumbnail URL for images; Nesto backend generates thumbnails on demand
+  const previewUrl = file && isImage
+    ? getFileThumbnailUrl(householdId, file.id)
     : null
   const imageSrc = useAuthenticatedImage(previewUrl)
 
@@ -123,14 +122,16 @@ function FileDetail({ householdId }: { householdId: string }) {
       <div className="flex items-center gap-3 mt-2 mb-4">
         <BackButton onClick={handleBack} label="Back" />
         <h1 className="text-2xl font-extrabold text-text flex-1 truncate">{file.name}</h1>
-        <button
-          type="button"
-          onClick={() => setShowRename(true)}
-          className="p-1.5 -mr-1.5 rounded-full text-text-muted hover:bg-text/5 transition-colors"
-          aria-label="Rename file"
-        >
-          <PencilIcon />
-        </button>
+        {canWrite && (
+          <button
+            type="button"
+            onClick={() => setShowRename(true)}
+            className="p-1.5 -mr-1.5 rounded-full text-text-muted hover:bg-text/5 transition-colors"
+            aria-label="Rename file"
+          >
+            <PencilIcon />
+          </button>
+        )}
       </div>
 
       {/* Preview */}
@@ -146,7 +147,7 @@ function FileDetail({ householdId }: { householdId: string }) {
         <Card className="flex flex-col items-center justify-center py-12 mb-4">
           <LargeFileIcon mimeType={file.mime_type} />
           <p className="text-sm font-medium text-text mt-3">{file.name}</p>
-          <p className="text-xs text-text-muted mt-1">{formatBytes(file.size_bytes)}</p>
+          <p className="text-xs text-text-muted mt-1">{formatBytes(file.size)}</p>
         </Card>
       )}
 
@@ -161,13 +162,13 @@ function FileDetail({ householdId }: { householdId: string }) {
         <div className="space-y-1.5">
           <MetaRow label="Name" value={file.name} />
           <MetaRow label="Type" value={file.mime_type} />
-          <MetaRow label="Size" value={formatBytes(file.size_bytes)} />
+          <MetaRow label="Size" value={formatBytes(file.size)} />
           <MetaRow label="Added" value={new Date(file.created_at).toLocaleDateString()} />
         </div>
       </Card>
 
       {/* Delete */}
-      <div className="flex justify-end">
+      {canWrite && <div className="flex justify-end">
         {confirmDelete ? (
           <div className="flex gap-2">
             <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(false)}>
@@ -187,7 +188,7 @@ function FileDetail({ householdId }: { householdId: string }) {
             <span className="text-accent">Delete file</span>
           </Button>
         )}
-      </div>
+      </div>}
 
       {/* Rename sheet */}
       <RenameSheet

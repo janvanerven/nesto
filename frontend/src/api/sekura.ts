@@ -10,7 +10,7 @@ export interface SekuraConnection {
 
 export interface SekuraTestResult {
   ok: boolean
-  message: string
+  error?: string
 }
 
 export interface FolderItem {
@@ -26,12 +26,10 @@ export interface FileItem {
   id: string
   name: string
   folder_id: string | null
-  mime_type: string
-  size_bytes: number
-  etag: string | null
-  has_thumbnail: boolean
+  mime_type: string | null
+  size: number
   created_at: string
-  updated_at: string
+  updated_at?: string
 }
 
 export interface FolderContentsResponse {

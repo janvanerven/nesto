@@ -528,7 +528,7 @@ function SekuraSection() {
       const result = await testMutation.mutateAsync()
       setTestResult(result)
     } catch (e: unknown) {
-      setTestResult({ ok: false, message: e instanceof Error ? e.message : 'Test failed' })
+      setTestResult({ ok: false, error: e instanceof Error ? e.message : 'Test failed' })
     }
   }
 
@@ -564,7 +564,7 @@ function SekuraSection() {
                 : 'bg-accent/10 text-accent'
             }`}
           >
-            {testResult.message}
+            {testResult.ok ? 'Connection successful' : testResult.error}
           </div>
         )}
 

@@ -11,7 +11,8 @@ interface FileCardProps {
 
 export function FileCard({ file, householdId }: FileCardProps) {
   const navigate = useNavigate()
-  const thumbnailUrl = file.has_thumbnail ? getFileThumbnailUrl(householdId, file.id) : null
+  const isImage = file.mime_type?.startsWith('image/')
+  const thumbnailUrl = isImage ? getFileThumbnailUrl(householdId, file.id) : null
   const thumbSrc = useAuthenticatedImage(thumbnailUrl)
 
   return (
@@ -39,18 +40,18 @@ export function FileCard({ file, householdId }: FileCardProps) {
           {file.name}
         </p>
         <p className="text-xs text-text-muted mt-0.5">
-          {formatBytes(file.size_bytes)}
+          {formatBytes(file.size)}
         </p>
       </div>
     </Card>
   )
 }
 
-function FileTypeIcon({ mimeType }: { mimeType: string }) {
-  const isImage = mimeType.startsWith('image/')
+function FileTypeIcon({ mimeType }: { mimeType: string | null }) {
+  const isImage = mimeType?.startsWith('image/')
   const isPdf = mimeType === 'application/pdf'
-  const isVideo = mimeType.startsWith('video/')
-  const isAudio = mimeType.startsWith('audio/')
+  const isVideo = mimeType?.startsWith('video/')
+  const isAudio = mimeType?.startsWith('audio/')
 
   if (isImage) {
     return (
