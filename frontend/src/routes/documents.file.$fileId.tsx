@@ -145,7 +145,7 @@ function FileDetail({ householdId }: { householdId: string }) {
         </div>
       ) : (
         <Card className="flex flex-col items-center justify-center py-12 mb-4">
-          <LargeFileIcon mimeType={file.mime_type} />
+          <LargeFileIcon mimeType={file.mime_type ?? ''} />
           <p className="text-sm font-medium text-text mt-3">{file.name}</p>
           <p className="text-xs text-text-muted mt-1">{formatBytes(file.size)}</p>
         </Card>
@@ -161,7 +161,7 @@ function FileDetail({ householdId }: { householdId: string }) {
         <p className="text-sm font-medium text-text mb-2">Details</p>
         <div className="space-y-1.5">
           <MetaRow label="Name" value={file.name} />
-          <MetaRow label="Type" value={file.mime_type} />
+          <MetaRow label="Type" value={file.mime_type ?? 'Unknown'} />
           <MetaRow label="Size" value={formatBytes(file.size)} />
           <MetaRow label="Added" value={new Date(file.created_at).toLocaleDateString()} />
         </div>

@@ -19,15 +19,16 @@ import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as CardsRouteImport } from './routes/cards'
 import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as CalendarRouteImport } from './routes/calendar'
+import { Route as BirthdaysRouteImport } from './routes/birthdays'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ListsIndexRouteImport } from './routes/lists.index'
-import { Route as CardsIndexRouteImport } from './routes/cards.index'
 import { Route as DocumentsIndexRouteImport } from './routes/documents.index'
+import { Route as CardsIndexRouteImport } from './routes/cards.index'
+import { Route as BirthdaysIndexRouteImport } from './routes/birthdays.index'
 import { Route as ListsListIdRouteImport } from './routes/lists.$listId'
 import { Route as CardsCardIdRouteImport } from './routes/cards.$cardId'
-import { Route as DocumentsDocIdRouteImport } from './routes/documents.$docId'
-import { Route as DocumentsFileFIleIdRouteImport } from './routes/documents.file.$fileId'
 import { Route as DocumentsFolderFolderIdRouteImport } from './routes/documents.folder.$folderId'
+import { Route as DocumentsFileFileIdRouteImport } from './routes/documents.file.$fileId'
 
 const TasksRoute = TasksRouteImport.update({
   id: '/tasks',
@@ -54,14 +55,14 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DocumentsRoute = DocumentsRouteImport.update({
-  id: '/documents',
-  path: '/documents',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ListsRoute = ListsRouteImport.update({
   id: '/lists',
   path: '/lists',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocumentsRoute = DocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CardsRoute = CardsRouteImport.update({
@@ -79,6 +80,11 @@ const CalendarRoute = CalendarRouteImport.update({
   path: '/calendar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BirthdaysRoute = BirthdaysRouteImport.update({
+  id: '/birthdays',
+  path: '/birthdays',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -89,10 +95,20 @@ const ListsIndexRoute = ListsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ListsRoute,
 } as any)
+const DocumentsIndexRoute = DocumentsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DocumentsRoute,
+} as any)
 const CardsIndexRoute = CardsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => CardsRoute,
+} as any)
+const BirthdaysIndexRoute = BirthdaysIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => BirthdaysRoute,
 } as any)
 const ListsListIdRoute = ListsListIdRouteImport.update({
   id: '/$listId',
@@ -104,29 +120,20 @@ const CardsCardIdRoute = CardsCardIdRouteImport.update({
   path: '/$cardId',
   getParentRoute: () => CardsRoute,
 } as any)
-const DocumentsIndexRoute = DocumentsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => DocumentsRoute,
-} as any)
-const DocumentsDocIdRoute = DocumentsDocIdRouteImport.update({
-  id: '/$docId',
-  path: '/$docId',
-  getParentRoute: () => DocumentsRoute,
-} as any)
-const DocumentsFileFileIdRoute = DocumentsFileFIleIdRouteImport.update({
-  id: '/file/$fileId',
-  path: '/file/$fileId',
-  getParentRoute: () => DocumentsRoute,
-} as any)
 const DocumentsFolderFolderIdRoute = DocumentsFolderFolderIdRouteImport.update({
   id: '/folder/$folderId',
   path: '/folder/$folderId',
   getParentRoute: () => DocumentsRoute,
 } as any)
+const DocumentsFileFileIdRoute = DocumentsFileFileIdRouteImport.update({
+  id: '/file/$fileId',
+  path: '/file/$fileId',
+  getParentRoute: () => DocumentsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/birthdays': typeof BirthdaysRouteWithChildren
   '/calendar': typeof CalendarRoute
   '/callback': typeof CallbackRoute
   '/cards': typeof CardsRouteWithChildren
@@ -139,18 +146,17 @@ export interface FileRoutesByFullPath {
   '/tasks': typeof TasksRoute
   '/cards/$cardId': typeof CardsCardIdRoute
   '/lists/$listId': typeof ListsListIdRoute
-  '/documents/$docId': typeof DocumentsDocIdRoute
+  '/birthdays/': typeof BirthdaysIndexRoute
+  '/cards/': typeof CardsIndexRoute
+  '/documents/': typeof DocumentsIndexRoute
+  '/lists/': typeof ListsIndexRoute
   '/documents/file/$fileId': typeof DocumentsFileFileIdRoute
   '/documents/folder/$folderId': typeof DocumentsFolderFolderIdRoute
-  '/cards/': typeof CardsIndexRoute
-  '/lists/': typeof ListsIndexRoute
-  '/documents/': typeof DocumentsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/callback': typeof CallbackRoute
-  '/documents': typeof DocumentsIndexRoute
   '/login': typeof LoginRoute
   '/more': typeof MoreRoute
   '/onboarding': typeof OnboardingRoute
@@ -158,15 +164,17 @@ export interface FileRoutesByTo {
   '/tasks': typeof TasksRoute
   '/cards/$cardId': typeof CardsCardIdRoute
   '/lists/$listId': typeof ListsListIdRoute
-  '/documents/$docId': typeof DocumentsDocIdRoute
+  '/birthdays': typeof BirthdaysIndexRoute
+  '/cards': typeof CardsIndexRoute
+  '/documents': typeof DocumentsIndexRoute
+  '/lists': typeof ListsIndexRoute
   '/documents/file/$fileId': typeof DocumentsFileFileIdRoute
   '/documents/folder/$folderId': typeof DocumentsFolderFolderIdRoute
-  '/cards': typeof CardsIndexRoute
-  '/lists': typeof ListsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/birthdays': typeof BirthdaysRouteWithChildren
   '/calendar': typeof CalendarRoute
   '/callback': typeof CallbackRoute
   '/cards': typeof CardsRouteWithChildren
@@ -179,17 +187,18 @@ export interface FileRoutesById {
   '/tasks': typeof TasksRoute
   '/cards/$cardId': typeof CardsCardIdRoute
   '/lists/$listId': typeof ListsListIdRoute
-  '/documents/$docId': typeof DocumentsDocIdRoute
+  '/birthdays/': typeof BirthdaysIndexRoute
+  '/cards/': typeof CardsIndexRoute
+  '/documents/': typeof DocumentsIndexRoute
+  '/lists/': typeof ListsIndexRoute
   '/documents/file/$fileId': typeof DocumentsFileFileIdRoute
   '/documents/folder/$folderId': typeof DocumentsFolderFolderIdRoute
-  '/cards/': typeof CardsIndexRoute
-  '/lists/': typeof ListsIndexRoute
-  '/documents/': typeof DocumentsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/birthdays'
     | '/calendar'
     | '/callback'
     | '/cards'
@@ -202,12 +211,12 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/cards/$cardId'
     | '/lists/$listId'
-    | '/documents/$docId'
+    | '/birthdays/'
+    | '/cards/'
+    | '/documents/'
+    | '/lists/'
     | '/documents/file/$fileId'
     | '/documents/folder/$folderId'
-    | '/cards/'
-    | '/lists/'
-    | '/documents/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -220,15 +229,16 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/cards/$cardId'
     | '/lists/$listId'
-    | '/documents/$docId'
+    | '/birthdays'
+    | '/cards'
+    | '/documents'
+    | '/lists'
     | '/documents/file/$fileId'
     | '/documents/folder/$folderId'
-    | '/cards'
-    | '/lists'
-    | '/documents'
   id:
     | '__root__'
     | '/'
+    | '/birthdays'
     | '/calendar'
     | '/callback'
     | '/cards'
@@ -241,16 +251,17 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/cards/$cardId'
     | '/lists/$listId'
-    | '/documents/$docId'
+    | '/birthdays/'
+    | '/cards/'
+    | '/documents/'
+    | '/lists/'
     | '/documents/file/$fileId'
     | '/documents/folder/$folderId'
-    | '/cards/'
-    | '/lists/'
-    | '/documents/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BirthdaysRoute: typeof BirthdaysRouteWithChildren
   CalendarRoute: typeof CalendarRoute
   CallbackRoute: typeof CallbackRoute
   CardsRoute: typeof CardsRouteWithChildren
@@ -335,6 +346,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CalendarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/birthdays': {
+      id: '/birthdays'
+      path: '/birthdays'
+      fullPath: '/birthdays'
+      preLoaderRoute: typeof BirthdaysRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -349,12 +367,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ListsIndexRouteImport
       parentRoute: typeof ListsRoute
     }
+    '/documents/': {
+      id: '/documents/'
+      path: '/'
+      fullPath: '/documents/'
+      preLoaderRoute: typeof DocumentsIndexRouteImport
+      parentRoute: typeof DocumentsRoute
+    }
     '/cards/': {
       id: '/cards/'
       path: '/'
       fullPath: '/cards/'
       preLoaderRoute: typeof CardsIndexRouteImport
       parentRoute: typeof CardsRoute
+    }
+    '/birthdays/': {
+      id: '/birthdays/'
+      path: '/'
+      fullPath: '/birthdays/'
+      preLoaderRoute: typeof BirthdaysIndexRouteImport
+      parentRoute: typeof BirthdaysRoute
     }
     '/lists/$listId': {
       id: '/lists/$listId'
@@ -370,27 +402,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CardsCardIdRouteImport
       parentRoute: typeof CardsRoute
     }
-    '/documents/': {
-      id: '/documents/'
-      path: '/'
-      fullPath: '/documents/'
-      preLoaderRoute: typeof DocumentsIndexRouteImport
-      parentRoute: typeof DocumentsRoute
-    }
-    '/documents/$docId': {
-      id: '/documents/$docId'
-      path: '/$docId'
-      fullPath: '/documents/$docId'
-      preLoaderRoute: typeof DocumentsDocIdRouteImport
-      parentRoute: typeof DocumentsRoute
-    }
-    '/documents/file/$fileId': {
-      id: '/documents/file/$fileId'
-      path: '/file/$fileId'
-      fullPath: '/documents/file/$fileId'
-      preLoaderRoute: typeof DocumentsFileFIleIdRouteImport
-      parentRoute: typeof DocumentsRoute
-    }
     '/documents/folder/$folderId': {
       id: '/documents/folder/$folderId'
       path: '/folder/$folderId'
@@ -398,8 +409,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocumentsFolderFolderIdRouteImport
       parentRoute: typeof DocumentsRoute
     }
+    '/documents/file/$fileId': {
+      id: '/documents/file/$fileId'
+      path: '/file/$fileId'
+      fullPath: '/documents/file/$fileId'
+      preLoaderRoute: typeof DocumentsFileFileIdRouteImport
+      parentRoute: typeof DocumentsRoute
+    }
   }
 }
+
+interface BirthdaysRouteChildren {
+  BirthdaysIndexRoute: typeof BirthdaysIndexRoute
+}
+
+const BirthdaysRouteChildren: BirthdaysRouteChildren = {
+  BirthdaysIndexRoute: BirthdaysIndexRoute,
+}
+
+const BirthdaysRouteWithChildren = BirthdaysRoute._addFileChildren(
+  BirthdaysRouteChildren,
+)
 
 interface CardsRouteChildren {
   CardsCardIdRoute: typeof CardsCardIdRoute
@@ -413,6 +443,22 @@ const CardsRouteChildren: CardsRouteChildren = {
 
 const CardsRouteWithChildren = CardsRoute._addFileChildren(CardsRouteChildren)
 
+interface DocumentsRouteChildren {
+  DocumentsIndexRoute: typeof DocumentsIndexRoute
+  DocumentsFileFileIdRoute: typeof DocumentsFileFileIdRoute
+  DocumentsFolderFolderIdRoute: typeof DocumentsFolderFolderIdRoute
+}
+
+const DocumentsRouteChildren: DocumentsRouteChildren = {
+  DocumentsIndexRoute: DocumentsIndexRoute,
+  DocumentsFileFileIdRoute: DocumentsFileFileIdRoute,
+  DocumentsFolderFolderIdRoute: DocumentsFolderFolderIdRoute,
+}
+
+const DocumentsRouteWithChildren = DocumentsRoute._addFileChildren(
+  DocumentsRouteChildren,
+)
+
 interface ListsRouteChildren {
   ListsListIdRoute: typeof ListsListIdRoute
   ListsIndexRoute: typeof ListsIndexRoute
@@ -425,24 +471,9 @@ const ListsRouteChildren: ListsRouteChildren = {
 
 const ListsRouteWithChildren = ListsRoute._addFileChildren(ListsRouteChildren)
 
-interface DocumentsRouteChildren {
-  DocumentsDocIdRoute: typeof DocumentsDocIdRoute
-  DocumentsFileFileIdRoute: typeof DocumentsFileFileIdRoute
-  DocumentsFolderFolderIdRoute: typeof DocumentsFolderFolderIdRoute
-  DocumentsIndexRoute: typeof DocumentsIndexRoute
-}
-
-const DocumentsRouteChildren: DocumentsRouteChildren = {
-  DocumentsDocIdRoute: DocumentsDocIdRoute,
-  DocumentsFileFileIdRoute: DocumentsFileFileIdRoute,
-  DocumentsFolderFolderIdRoute: DocumentsFolderFolderIdRoute,
-  DocumentsIndexRoute: DocumentsIndexRoute,
-}
-
-const DocumentsRouteWithChildren = DocumentsRoute._addFileChildren(DocumentsRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BirthdaysRoute: BirthdaysRouteWithChildren,
   CalendarRoute: CalendarRoute,
   CallbackRoute: CallbackRoute,
   CardsRoute: CardsRouteWithChildren,

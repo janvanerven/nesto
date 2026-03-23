@@ -507,7 +507,7 @@ function SekuraSection() {
   const testMutation = useTestSekuraConnection()
   const [apiKey, setApiKey] = useState('')
   const [saveError, setSaveError] = useState('')
-  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
+  const [testResult, setTestResult] = useState<{ ok: boolean; error?: string } | null>(null)
   const [confirmRemove, setConfirmRemove] = useState(false)
 
   const handleSave = async () => {
