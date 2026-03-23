@@ -65,6 +65,20 @@ class SekuraService:
         status = _STATUS_MAP.get(resp.status_code, 502)
         raise HTTPException(status_code=status, detail=detail)
 
+    async def _raise_for_stream_error(self, resp: httpx.Response) -> None:
+        """Error handler for streaming responses — reads body before extracting detail."""
+        if resp.is_success:
+            return
+        await resp.aread()
+        try:
+            body = resp.json()
+            detail = body.get("detail", resp.reason_phrase)
+        except Exception:
+            detail = resp.reason_phrase
+        await resp.aclose()
+        status = _STATUS_MAP.get(resp.status_code, 502)
+        raise HTTPException(status_code=status, detail=detail)
+
     # ------------------------------------------------------------------
     # Connection testing
     # ------------------------------------------------------------------
@@ -93,8 +107,8 @@ class SekuraService:
             return False, "Could not connect to Sekura"
         except httpx.TimeoutException:
             return False, "Connection timed out"
-        except Exception as exc:
-            return False, str(exc)
+        except Exception:
+            return False, "Unexpected error during connection test"
 
     async def detect_key_scope(self, api_key: str) -> str:
         """Detect whether a Sekura API key has read or readwrite scope."""
@@ -229,7 +243,7 @@ class SekuraService:
             headers=self._headers(api_key),
         )
         resp = await self.client.send(req, stream=True)
-        self._raise_for_error(resp)
+        await self._raise_for_stream_error(resp)
         return resp
 
     async def rename_file(
@@ -296,7 +310,7 @@ class SekuraService:
             headers=self._headers(api_key),
         )
         resp = await self.client.send(req, stream=True)
-        self._raise_for_error(resp)
+        await self._raise_for_stream_error(resp)
         return resp
 
     # ------------------------------------------------------------------
@@ -415,9 +429,10 @@ class SekuraService:
         """
         os.makedirs(cache_dir, exist_ok=True)
 
-        # Cache hit: any file starting with file_id prefix
+        # Cache hit: file matching {file_id}_ prefix (underscore prevents prefix collisions)
+        prefix = f"{file_id}_"
         for fname in os.listdir(cache_dir):
-            if fname.startswith(file_id):
+            if fname.startswith(prefix):
                 cached_path = os.path.join(cache_dir, fname)
                 with open(cached_path, "rb") as f:
                     return f.read()
@@ -457,6 +472,15 @@ class SekuraService:
             thumb_bytes = await asyncio.to_thread(self._generate_thumbnail, content)
             if thumb_bytes is None:
                 return None
+
+            # Clean up any stale cache entries for this file_id
+            stale_prefix = f"{file_id}_"
+            for old in os.listdir(cache_dir):
+                if old.startswith(stale_prefix):
+                    try:
+                        os.remove(os.path.join(cache_dir, old))
+                    except OSError:
+                        pass
 
             # Cache with etag-like key derived from updated_at
             etag = meta.get("updated_at", "none").replace(":", "-").replace(" ", "_")
