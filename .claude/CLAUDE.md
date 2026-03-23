@@ -17,18 +17,18 @@ backend/app/
   config.py        # Pydantic Settings with validators
   database.py      # Async SQLAlchemy engine, session, SQLite pragmas
   auth.py          # JWT decode via PyJWKClient, user auto-upsert
-  models/          # SQLAlchemy ORM (user, household, task, event, shopping_list, loyalty_card, calendar_sync, document, birthday)
+  models/          # SQLAlchemy ORM (user, household, task, event, shopping_list, loyalty_card, calendar_sync, sekura, birthday)
   schemas/         # Pydantic request/response models with validation
-  routers/         # API routes: /api/auth, /api/households, /api/households/{id}/tasks, /api/households/{id}/events, /api/households/{id}/members, /api/households/{id}/lists, /api/households/{id}/cards, /api/households/{id}/documents, /api/households/{id}/document-tags, /api/households/{id}/birthdays, /api/calendar/*
-  services/        # Business logic (user_service, household_service, task_service, event_service, shopping_list_service, loyalty_card_service, digest_service, calendar_connection_service, calendar_sync_service, feed_service, external_event_service, crypto_service, document_service, birthday_service)
+  routers/         # API routes: /api/auth, /api/households, /api/households/{id}/tasks, /api/households/{id}/events, /api/households/{id}/members, /api/households/{id}/lists, /api/households/{id}/cards, /api/households/{id}/documents (Sekura proxy), /api/households/{id}/birthdays, /api/calendar/*
+  services/        # Business logic (user_service, household_service, task_service, event_service, shopping_list_service, loyalty_card_service, digest_service, calendar_connection_service, calendar_sync_service, feed_service, external_event_service, crypto_service, sekura_service, sekura_connection_service, birthday_service)
 backend/alembic/   # Async migrations
 backend/tests/     # pytest-asyncio tests
 
 frontend/src/
-  routes/          # TanStack Router file-based routes (__root, index, login, callback, tasks, onboarding, settings, calendar, lists, lists.$listId, cards, cards.$cardId, documents, documents.index, documents.$docId, birthdays, birthdays.index, more)
-  api/             # apiFetch client with token refresh + session expiry, React Query hooks per domain (calendar-sync.ts for CalDAV connections + external events, documents.ts for document CRUD + file serving, birthdays.ts for birthday CRUD)
+  routes/          # TanStack Router file-based routes (__root, index, login, callback, tasks, onboarding, settings, calendar, lists, lists.$listId, cards, cards.$cardId, documents, documents.index, documents.folder.$folderId, documents.file.$fileId, birthdays, birthdays.index, more)
+  api/             # apiFetch client with token refresh + session expiry, React Query hooks per domain (calendar-sync.ts for CalDAV connections + external events, sekura.ts for Sekura document vault, birthdays.ts for birthday CRUD)
   auth/            # OIDC config and provider
-  components/      # ui/ (Button, Card, Input, Avatar, Fab, PriorityDot), layout/ (bottom-nav), tasks/ (task-card, create-task-sheet, edit-task-sheet), calendar/ (week-strip, event-card, external-event-card, birthday-card, create-event-sheet, edit-event-sheet, add-calendar-sheet), lists/ (list-card, create-list-sheet, edit-list-sheet), cards/ (loyalty-card-card, create-card-sheet, edit-card-sheet, barcode-display), documents/ (upload-document-sheet), birthdays/ (birthday-form, birthday-card, create-birthday-sheet, edit-birthday-sheet)
+  components/      # ui/ (Button, Card, Input, Avatar, Fab, PriorityDot), layout/ (bottom-nav), tasks/ (task-card, create-task-sheet, edit-task-sheet), calendar/ (week-strip, event-card, external-event-card, birthday-card, create-event-sheet, edit-event-sheet, add-calendar-sheet), lists/ (list-card, create-list-sheet, edit-list-sheet), cards/ (loyalty-card-card, create-card-sheet, edit-card-sheet, barcode-display), documents/ (folder-contents, breadcrumbs, folder-card, file-card, upload-file-sheet, create-folder-sheet, rename-sheet), birthdays/ (birthday-form, birthday-card, create-birthday-sheet, edit-birthday-sheet)
   stores/          # Zustand stores (auth-store, theme-store)
   utils/           # recurrence.ts (client-side recurring event expansion)
   styles/          # Tailwind CSS v4 theme with light/dark mode
@@ -87,7 +87,7 @@ cd backend && pytest tests/  # asyncio_mode = "auto"
 
 ## Database
 
-SQLite with WAL mode, async via aiosqlite. Tables: users, households, household_members (+ feed_token), household_invites, tasks, events, shopping_lists, shopping_items, loyalty_cards, calendar_connections, external_events, documents, document_tags, document_tag_links, birthdays. Alembic for migrations. Indexes on all FK/filter columns.
+SQLite with WAL mode, async via aiosqlite. Tables: users, households, household_members (+ feed_token), household_invites, tasks, events, shopping_lists, shopping_items, loyalty_cards, calendar_connections, external_events, sekura_connections, birthdays. Alembic for migrations. Indexes on all FK/filter columns.
 
 User model includes: id, email, display_name, first_name (nullable), avatar_url, created_at, last_login, email_digest_daily, email_digest_weekly.
 
@@ -111,12 +111,20 @@ Automated daily backup service copies DB to `./backups/` with 7-day retention.
 - `PATCH/DELETE /api/households/{id}/lists/{listId}/items/{itemId}` — Update/delete item
 - `GET/POST /api/households/{id}/cards` — List/create loyalty cards
 - `PATCH/DELETE /api/households/{id}/cards/{cardId}` — Update/delete loyalty card
-- `GET/POST /api/households/{id}/documents` — List/upload documents (multipart, max 25MB)
-- `GET/PATCH/DELETE /api/households/{id}/documents/{docId}` — Get/update/delete document
-- `GET /api/households/{id}/documents/{docId}/file` — Serve document file (authenticated)
-- `GET /api/households/{id}/documents/{docId}/thumbnail` — Serve image thumbnail (authenticated)
-- `GET/POST /api/households/{id}/document-tags` — List/create document tags
-- `DELETE /api/households/{id}/document-tags/{tagId}` — Delete tag
+- `GET/POST /api/households/{id}/documents/folders` — Root folder listing / create folder (Sekura proxy)
+- `GET /api/households/{id}/documents/folders/tree` — Full folder tree
+- `GET /api/households/{id}/documents/folders/{folderId}/contents` — Folder contents
+- `PUT/DELETE /api/households/{id}/documents/folders/{folderId}` — Rename-move / delete folder
+- `POST /api/households/{id}/documents/files` — Upload file (multipart)
+- `GET /api/households/{id}/documents/files/{fileId}` — File metadata
+- `GET /api/households/{id}/documents/files/{fileId}/download` — Stream file download
+- `GET /api/households/{id}/documents/files/{fileId}/thumbnail` — Cached image thumbnail
+- `PUT/DELETE /api/households/{id}/documents/files/{fileId}` — Rename-move / delete file
+- `GET/POST /api/households/{id}/documents/files/{fileId}/versions` — List / upload versions
+- `GET/POST/DELETE /api/households/{id}/documents/trash` — List / restore / empty trash
+- `GET/POST/PUT/DELETE /api/households/{id}/documents/shares` — Sharing CRUD
+- `GET/POST/DELETE /api/auth/me/sekura` — Sekura connection management
+- `POST /api/auth/me/sekura/test` — Test Sekura connection
 - `GET/POST /api/households/{id}/birthdays` — List/create birthdays (with computed age)
 - `PATCH/DELETE /api/households/{id}/birthdays/{birthdayId}` — Update/delete birthday
 - `GET/POST /api/calendar/connections` — List/create CalDAV connections
@@ -130,5 +138,5 @@ Automated daily backup service copies DB to `./backups/` with 7-day retention.
 ## Environment Variables
 
 OIDC: `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_REDIRECT_URI` (shared by backend + frontend; injected at runtime in prod via config.js, via VITE_ env vars in dev)
-Backend: `SECRET_KEY`, `DATABASE_URL`, `CORS_ORIGINS`, `ENVIRONMENT`
+Backend: `SECRET_KEY`, `DATABASE_URL`, `CORS_ORIGINS`, `ENVIRONMENT`, `SEKURA_URL` (optional, Sekura document vault base URL)
 SMTP (optional): `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_USE_TLS`
