@@ -13,6 +13,7 @@ class Household(Base):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     created_by: Mapped[str] = mapped_column(Text, ForeignKey("users.id"), nullable=False)
+    timezone: Mapped[str] = mapped_column(Text, nullable=False, default="UTC", server_default="UTC")
 
 
 class HouseholdMember(Base):
