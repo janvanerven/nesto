@@ -13,7 +13,7 @@ class ReminderSent(Base):
     entity_type: Mapped[str] = mapped_column(Text, nullable=False)   # "task" or "event"
     entity_id: Mapped[str] = mapped_column(Text, nullable=False)
     occurrence_date: Mapped[date] = mapped_column(Date, nullable=False)
-    channel: Mapped[str] = mapped_column(Text, nullable=False, default="email")
+    channel: Mapped[str] = mapped_column(Text, nullable=False, default="email", server_default="email")
     sent_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     __table_args__ = (
