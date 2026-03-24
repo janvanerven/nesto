@@ -1,9 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { useRef, useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { Button, Input, Avatar } from '@/components/ui'
 import type { Task, TaskUpdate } from '@/api/tasks'
 import type { HouseholdMember } from '@/api/households'
-import { getDateOptions } from '@/utils/dates'
 import { useScrollLock } from '@/utils/use-scroll-lock'
 
 interface EditReminderSheetProps {
@@ -48,11 +47,6 @@ export function EditReminderSheet({
   const [recurrence, setRecurrence] = useState<string | null>(null)
   const [recurrenceInterval, setRecurrenceInterval] = useState(1)
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const dateInputRef = useRef<HTMLInputElement>(null)
-
-  // Memoised: Date objects are created once, not on every keystroke
-  const dateOptions = useMemo(() => getDateOptions(), [])
-  const isCustomDate = dueDate && !dateOptions.some((o) => o.value === dueDate)
 
   useScrollLock(open)
 
@@ -187,49 +181,16 @@ export function EditReminderSheet({
                 </div>
               )}
 
-              {/* Due date quick-pick */}
-              <div>
-                <label className="text-sm font-medium text-text-muted mb-2 block">Due date</label>
-                <div className="flex gap-2 flex-wrap relative">
-                  {dateOptions.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setDueDate(dueDate === opt.value ? null : opt.value)}
-                      className={`
-                        px-3 py-1.5 rounded-full text-sm font-medium transition-all
-                        ${dueDate === opt.value
-                          ? 'bg-primary text-white shadow-md'
-                          : 'bg-text/5 text-text-muted'
-                        }
-                      `}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => dateInputRef.current?.showPicker()}
-                    className={`
-                      relative px-3 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer
-                      ${isCustomDate
-                        ? 'bg-primary text-white shadow-md'
-                        : 'bg-text/5 text-text-muted'
-                      }
-                    `}
-                  >
-                    {isCustomDate
-                      ? new Date(dueDate + 'T00:00:00').toLocaleDateString('en', { month: 'short', day: 'numeric' })
-                      : 'Pick date'}
-                  </button>
-                  <input
-                    ref={dateInputRef}
-                    type="date"
-                    className="sr-only"
-                    onChange={(e) => setDueDate(e.target.value || null)}
-                  />
-                </div>
-              </div>
+              {/* Due date */}
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-text-muted">Due date</span>
+                <input
+                  type="date"
+                  value={dueDate ?? ''}
+                  onChange={(e) => setDueDate(e.target.value || null)}
+                  className="px-4 py-2.5 rounded-[var(--radius-input)] border-2 border-text/10 bg-surface text-text text-base font-medium focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                />
+              </label>
 
               {/* Recurrence (only when due date is set) */}
               {dueDate && (

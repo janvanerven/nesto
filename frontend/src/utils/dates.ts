@@ -17,17 +17,3 @@ export function isSameDay(a: Date, b: Date): boolean {
   )
 }
 
-/** Quick-pick date options used by task sheets. */
-export function getDateOptions(): { label: string; value: string }[] {
-  const today = new Date()
-  const tomorrow = new Date(today)
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  const nextWeek = new Date(today)
-  nextWeek.setDate(nextWeek.getDate() + 7)
-
-  return [
-    { label: 'Today', value: formatDateISO(today) },
-    { label: 'Tomorrow', value: formatDateISO(tomorrow) },
-    { label: 'Next week', value: formatDateISO(nextWeek) },
-  ]
-}

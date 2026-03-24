@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Button, Input, Avatar } from '@/components/ui'
 import type { EventCreate } from '@/api/events'
 import type { HouseholdMember } from '@/api/households'
-import { isSameDay, formatDateISO } from '@/utils/dates'
+import { formatDateISO } from '@/utils/dates'
 import { useScrollLock } from '@/utils/use-scroll-lock'
 
 interface CreateEventSheetProps {
@@ -72,7 +72,6 @@ export function CreateEventSheet({
   const [endDate, setEndDate] = useState(formatDateISO(defaultDate))
 
   const titleRef = useRef<HTMLInputElement>(null)
-  const dateInputRef = useRef<HTMLInputElement>(null)
   const timeInputRef = useRef<HTMLInputElement>(null)
   const endTimeInputRef = useRef<HTMLInputElement>(null)
 
@@ -145,31 +144,6 @@ export function CreateEventSheet({
     resetForm()
   }
 
-  function getDateOptions(): { label: string; value: string }[] {
-    const today = new Date()
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
-
-    const options: { label: string; value: string }[] = []
-
-    // Add the selected calendar day as first option if it's not today or tomorrow
-    if (!isSameDay(defaultDate, today) && !isSameDay(defaultDate, tomorrow)) {
-      options.push({
-        label: defaultDate.toLocaleDateString('en', { month: 'short', day: 'numeric' }),
-        value: formatDateISO(defaultDate),
-      })
-    }
-
-    options.push(
-      { label: 'Today', value: formatDateISO(today) },
-      { label: 'Tomorrow', value: formatDateISO(tomorrow) },
-    )
-
-    return options
-  }
-
-  const dateOptions = getDateOptions()
-  const isCustomDate = eventDate && !dateOptions.some((o) => o.value === eventDate)
   const isPresetTime = TIME_PRESETS.some((p) => p.value === startTime)
   const canSubmit = title.trim() && (allDay || startTime) && !isPending
 
@@ -252,54 +226,16 @@ export function CreateEventSheet({
                 </div>
               </div>
 
-              {/* Date quick-pick */}
-              <div>
-                <label className="text-sm font-medium text-text-muted mb-2 block">Date</label>
-                <div className="flex gap-2 flex-wrap relative">
-                  {dateOptions.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setEventDate(opt.value)}
-                      className={`
-                        px-3 py-1.5 rounded-full text-sm font-medium transition-all
-                        ${eventDate === opt.value
-                          ? 'bg-primary text-white shadow-md'
-                          : 'bg-text/5 text-text-muted'
-                        }
-                      `}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => dateInputRef.current?.showPicker()}
-                    className={`
-                      relative px-3 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer
-                      ${isCustomDate
-                        ? 'bg-primary text-white shadow-md'
-                        : 'bg-text/5 text-text-muted'
-                      }
-                    `}
-                  >
-                    {isCustomDate
-                      ? new Date(eventDate + 'T00:00:00').toLocaleDateString('en', {
-                          month: 'short',
-                          day: 'numeric',
-                        })
-                      : 'Pick date'}
-                  </button>
-                  <input
-                    ref={dateInputRef}
-                    type="date"
-                    className="sr-only"
-                    onChange={(e) => {
-                      if (e.target.value) setEventDate(e.target.value)
-                    }}
-                  />
-                </div>
-              </div>
+              {/* Date */}
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-text-muted">Date</span>
+                <input
+                  type="date"
+                  value={eventDate}
+                  onChange={(e) => { if (e.target.value) setEventDate(e.target.value) }}
+                  className="px-4 py-2.5 rounded-[var(--radius-input)] border-2 border-text/10 bg-surface text-text text-base font-medium focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                />
+              </label>
 
               {/* End date (for all-day events) */}
               {allDay && (
