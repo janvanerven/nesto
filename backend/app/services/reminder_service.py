@@ -2,8 +2,9 @@ import logging
 import uuid
 from datetime import date, datetime, timedelta, timezone
 
-import aiosmtplib
 from email.message import EmailMessage
+
+import aiosmtplib
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -138,7 +139,7 @@ async def run_event_reminders(db: AsyncSession) -> int:
                 HouseholdMember.user_id == User.id,
             ).where(
                 HouseholdMember.household_id == event.household_id,
-                User.reminders_events == True,
+                User.reminders_events.is_(True),
             )
         )
         users = members_result.scalars().all()
