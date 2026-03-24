@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User
 from app.schemas.user import UserUpdate
 
-_UPDATABLE_FIELDS = {"first_name", "avatar_url", "email_digest_daily", "email_digest_weekly"}
+_UPDATABLE_FIELDS = {"first_name", "avatar_url", "email_digest_daily", "email_digest_weekly", "reminders_tasks", "reminders_events"}
 
 # Cap last_login writes to once per hour to avoid a DB write on every request.
 _LAST_LOGIN_THROTTLE = timedelta(hours=1)

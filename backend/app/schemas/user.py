@@ -11,6 +11,8 @@ class UserResponse(BaseModel):
     avatar_url: str | None
     email_digest_daily: bool
     email_digest_weekly: bool
+    reminders_tasks: bool
+    reminders_events: bool
     created_at: datetime
     last_login: datetime
 
@@ -22,6 +24,8 @@ class UserUpdate(BaseModel):
     avatar_url: str | None = None
     email_digest_daily: bool | None = None
     email_digest_weekly: bool | None = None
+    reminders_tasks: bool | None = None
+    reminders_events: bool | None = None
 
     @field_validator("avatar_url")
     @classmethod
