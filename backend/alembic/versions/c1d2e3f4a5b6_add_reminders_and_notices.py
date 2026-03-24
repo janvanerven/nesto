@@ -10,11 +10,12 @@ import sqlalchemy as sa
 
 revision: str = 'c1d2e3f4a5b6'
 down_revision: Union[str, Sequence[str], None] = 'b3c4d5e6f7a8'
-branch_labels = None
-depends_on = None
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    """Upgrade schema."""
     # reminders_sent — deduplication table for email/push reminders
     op.create_table('reminders_sent',
         sa.Column('id', sa.Text(), nullable=False),
@@ -54,6 +55,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Downgrade schema."""
     op.drop_column('households', 'timezone')
     op.drop_column('users', 'reminders_events')
     op.drop_column('users', 'reminders_tasks')
