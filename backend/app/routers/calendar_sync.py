@@ -138,7 +138,7 @@ async def get_feed_token(
         raise HTTPException(status_code=400, detail="No household found")
 
     token = await get_or_create_feed_token(db, user_id, households[0].id)
-    base_url = str(request.base_url).rstrip("/")
+    base_url = str(request.base_url).rstrip("/").replace("http://", "https://", 1)
     return FeedTokenResponse(token=token, url=f"{base_url}/api/calendar/feed/{token}.ics")
 
 
@@ -153,7 +153,7 @@ async def regenerate_token(
         raise HTTPException(status_code=400, detail="No household found")
 
     token = await regenerate_feed_token(db, user_id, households[0].id)
-    base_url = str(request.base_url).rstrip("/")
+    base_url = str(request.base_url).rstrip("/").replace("http://", "https://", 1)
     return FeedTokenResponse(token=token, url=f"{base_url}/api/calendar/feed/{token}.ics")
 
 
