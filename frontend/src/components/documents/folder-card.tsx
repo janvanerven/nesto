@@ -19,9 +19,11 @@ export function FolderCard({ folder }: FolderCardProps) {
       <p className="text-sm font-semibold text-text leading-tight line-clamp-2 w-full">
         {folder.name}
       </p>
-      <p className="text-xs text-text-muted">
-        {folder.item_count === 1 ? '1 item' : `${folder.item_count} items`}
-      </p>
+      {folder.item_count != null && (
+        <p className="text-xs text-text-muted">
+          {folder.item_count === 1 ? '1 item' : `${folder.item_count} items`}
+        </p>
+      )}
     </Card>
   )
 }

@@ -161,8 +161,8 @@ export function FolderContents({ householdId, folderId }: FolderContentsProps) {
         </div>
       )}
 
-      {/* FAB — only shown when user has write access */}
-      {canWrite && (
+      {/* FAB — only shown when user has write access and is inside a folder */}
+      {canWrite && !!folderId && (
         <>
           {/* Backdrop to close FAB menu */}
           <AnimatePresence>
