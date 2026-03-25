@@ -12,3 +12,6 @@ export const oidcConfig = {
   automaticSilentRenew: true,
   userStore: new WebStorageStateStore({ store: window.localStorage }),
 }
+
+export const vapidPublicKey: string =
+  cfg.VAPID_PUBLIC_KEY || import.meta.env.VITE_VAPID_PUBLIC_KEY || ''
