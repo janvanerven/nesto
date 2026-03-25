@@ -1,11 +1,19 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, field_validator
 
 
 class CommentCreate(BaseModel):
-    content: str = Field(min_length=1, max_length=2000)
-    mentions: list[str] = Field(default_factory=list)
+    content: str
+    mentions: list[str] = []
+
+    @field_validator("content")
+    @classmethod
+    def content_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("content cannot be empty")
+        return v
 
 
 class CommentResponse(BaseModel):
