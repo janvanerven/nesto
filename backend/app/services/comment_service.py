@@ -86,16 +86,10 @@ async def create_comment(
 async def delete_comment(
     db: AsyncSession,
     comment_id: str,
-    entity_type: str,
-    entity_id: str,
     requester_id: str,
 ) -> None:
     result = await db.execute(
-        select(Comment).where(
-            Comment.id == comment_id,
-            Comment.entity_type == entity_type,
-            Comment.entity_id == entity_id,
-        )
+        select(Comment).where(Comment.id == comment_id)
     )
     comment = result.scalar_one_or_none()
     if not comment:
