@@ -3,6 +3,7 @@ from app.models.birthday import Birthday
 from app.models.event import Event
 from app.models.household import Household, HouseholdInvite, HouseholdMember
 from app.models.loyalty_card import LoyaltyCard
+from app.models.push_subscription import PushSubscription
 from app.models.sekura import SekuraConnection
 from app.models.shopping_list import ShoppingItem, ShoppingList
 from app.models.task import Task
@@ -22,4 +23,5 @@ __all__ = [
     "CalendarConnection",
     "ExternalEvent",
     "SekuraConnection",
+    "PushSubscription",
 ]
