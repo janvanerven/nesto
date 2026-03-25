@@ -14,6 +14,7 @@ from app.models.household import HouseholdMember
 from app.models.reminder_sent import ReminderSent
 from app.models.task import Task
 from app.models.user import User
+from app.services.push_service import send_push_to_user
 
 logger = logging.getLogger(__name__)
 
@@ -66,10 +67,7 @@ async def _get_user(db: AsyncSession, user_id: str) -> User | None:
 
 
 async def run_task_reminders(db: AsyncSession) -> int:
-    """Send morning-of email reminders for tasks due today. Returns count sent."""
-    if not settings.smtp_host:
-        return 0
-
+    """Send morning-of reminders (email + push) for tasks due today. Returns count sent."""
     today = date.today()
     sent = 0
 
@@ -92,29 +90,40 @@ async def run_task_reminders(db: AsyncSession) -> int:
             continue
 
         await _record_sent(db, "task", task.id, today)  # stamp before send
+
+        if settings.smtp_host:
+            try:
+                await _send_email(
+                    to=user.email,
+                    subject=f"Reminder: {task.title}",
+                    body=(
+                        f"Hi {user.first_name or user.display_name},\n\n"
+                        f"This is a reminder that '{task.title}' is due today.\n\n"
+                        f"— Nesto"
+                    ),
+                )
+                sent += 1
+                logger.info("Task reminder sent: task=%s user=%s", task.id, user.email)
+            except Exception:
+                logger.exception("Failed to send task reminder for task %s", task.id)
+
         try:
-            await _send_email(
-                to=user.email,
-                subject=f"Reminder: {task.title}",
-                body=(
-                    f"Hi {user.first_name or user.display_name},\n\n"
-                    f"This is a reminder that '{task.title}' is due today.\n\n"
-                    f"— Nesto"
-                ),
+            await send_push_to_user(
+                db,
+                user.id,
+                title=f"Due today: {task.title}",
+                body=f"Your reminder '{task.title}' is due today.",
+                url="/tasks",
             )
-            sent += 1
-            logger.info("Task reminder sent: task=%s user=%s", task.id, user.email)
+            await db.commit()
         except Exception:
-            logger.exception("Failed to send task reminder for task %s", task.id)
+            logger.exception("Failed to send push reminder for task %s", task.id)
 
     return sent
 
 
 async def run_event_reminders(db: AsyncSession) -> int:
-    """Send ~1-hour-before email reminders for upcoming events. Returns count sent."""
-    if not settings.smtp_host:
-        return 0
-
+    """Send ~1-hour-before reminders (email + push) for upcoming events. Returns count sent."""
     now = datetime.now(timezone.utc).replace(tzinfo=None)  # naive UTC to match DB
     window_start = now + timedelta(minutes=45)
     window_end = now + timedelta(minutes=75)
@@ -147,21 +156,35 @@ async def run_event_reminders(db: AsyncSession) -> int:
         await _record_sent(db, "event", event.id, occurrence_date)  # stamp before sends
 
         for user in users:
+            start_local = event.start_time.strftime("%H:%M")
+
+            if settings.smtp_host:
+                try:
+                    await _send_email(
+                        to=user.email,
+                        subject=f"Starting soon: {event.title}",
+                        body=(
+                            f"Hi {user.first_name or user.display_name},\n\n"
+                            f"'{event.title}' starts at {start_local} today.\n\n"
+                            f"— Nesto"
+                        ),
+                    )
+                    sent += 1
+                    logger.info("Event reminder sent: event=%s user=%s", event.id, user.email)
+                except Exception:
+                    logger.exception("Failed to send event reminder for event %s to %s", event.id, user.email)
+
             try:
-                start_local = event.start_time.strftime("%H:%M")
-                await _send_email(
-                    to=user.email,
-                    subject=f"Starting soon: {event.title}",
-                    body=(
-                        f"Hi {user.first_name or user.display_name},\n\n"
-                        f"'{event.title}' starts at {start_local} today.\n\n"
-                        f"— Nesto"
-                    ),
+                await send_push_to_user(
+                    db,
+                    user.id,
+                    title=f"Starting soon: {event.title}",
+                    body=f"'{event.title}' starts at {start_local} today.",
+                    url="/calendar",
                 )
-                sent += 1
-                logger.info("Event reminder sent: event=%s user=%s", event.id, user.email)
+                await db.commit()
             except Exception:
-                logger.exception("Failed to send event reminder for event %s to %s", event.id, user.email)
+                logger.exception("Failed to send push reminder for event %s to %s", event.id, user.id)
 
     return sent
 

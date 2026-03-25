@@ -58,9 +58,9 @@ async def test_different_channel_not_deduplicated(db):
 
 
 @pytest.mark.asyncio
-async def test_run_task_reminders_skips_without_smtp(db):
+async def test_run_task_reminders_returns_zero_with_no_tasks(db):
     from app.services.reminder_service import run_task_reminders
-    # smtp_host is not set in test env — should return 0 immediately
+    # no tasks in DB, no smtp/vapid configured — should return 0
     count = await run_task_reminders(db)
     assert count == 0
 
