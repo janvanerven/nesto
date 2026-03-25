@@ -22,7 +22,7 @@ def upgrade() -> None:
         sa.Column('author_id', sa.Text(), nullable=False),
         sa.Column('content', sa.Text(), nullable=False),
         sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-        sa.ForeignKeyConstraint(['author_id'], ['users.id'], ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['author_id'], ['users.id']),
         sa.PrimaryKeyConstraint('id'),
     )
     op.create_index('ix_comments_entity', 'comments', ['entity_type', 'entity_id', 'created_at'])
