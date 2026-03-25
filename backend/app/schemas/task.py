@@ -47,5 +47,6 @@ class TaskResponse(BaseModel):
     last_completed_at: datetime | None
     created_at: datetime
     updated_at: datetime
+    comment_count: int = 0
 
     model_config = {"from_attributes": True}
