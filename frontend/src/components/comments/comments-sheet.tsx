@@ -326,7 +326,8 @@ export function CommentsSheet({
                             {isOwn && (
                               <button
                                 type="button"
-                                onClick={() => deleteComment.mutate(comment.id)}
+                                onClick={() => { if (!deleteComment.isPending) deleteComment.mutate(comment.id) }}
+                                disabled={deleteComment.isPending}
                                 aria-label="Delete comment"
                                 className="
                                   absolute -top-2 -right-2
@@ -380,7 +381,7 @@ export function CommentsSheet({
                     bg-surface rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.16)]
                     border border-text/8 overflow-hidden z-10
                   "
-                  role="listbox"
+                  role="menu"
                   aria-label="Mention suggestions"
                 >
                   <div className="px-3 py-2 border-b border-text/6">
@@ -394,8 +395,7 @@ export function CommentsSheet({
                       <button
                         key={member.id}
                         type="button"
-                        role="option"
-                        aria-selected="false"
+                        role="menuitem"
                         onMouseDown={(e) => {
                           // mousedown fires before textarea blur — prevent blur first
                           e.preventDefault()
