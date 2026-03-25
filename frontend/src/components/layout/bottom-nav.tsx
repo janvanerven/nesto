@@ -8,6 +8,7 @@ const tabs = [
   { to: '/tasks' as const, label: 'Reminders', icon: CheckIcon },
   { to: '/calendar' as const, label: 'Calendar', icon: CalendarIcon },
   { to: '/lists' as const, label: 'Lists', icon: ListIcon },
+  { to: '/notices' as const, label: 'Board', icon: BoardIcon },
   { to: '/more' as const, label: 'More', icon: MoreIcon },
 ]
 
@@ -93,6 +94,19 @@ function ListIcon({ active }: { active: boolean }) {
       className={active ? 'text-primary' : 'text-text-muted'}
     >
       <path d="M9 5h11M9 12h11M9 19h11M5 5v.01M5 12v.01M5 19v.01" />
+    </svg>
+  )
+}
+
+function BoardIcon({ active }: { active: boolean }) {
+  return (
+    <svg
+      width="24" height="24" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      className={active ? 'text-primary' : 'text-text-muted'}
+    >
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+      <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
     </svg>
   )
 }

@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as NoticesRouteImport } from './routes/notices'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
@@ -30,6 +31,11 @@ import { Route as CardsCardIdRouteImport } from './routes/cards.$cardId'
 import { Route as DocumentsFolderFolderIdRouteImport } from './routes/documents.folder.$folderId'
 import { Route as DocumentsFileFileIdRouteImport } from './routes/documents.file.$fileId'
 
+const NoticesRoute = NoticesRouteImport.update({
+  id: '/notices',
+  path: '/notices',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TasksRoute = TasksRouteImport.update({
   id: '/tasks',
   path: '/tasks',
@@ -141,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/lists': typeof ListsRouteWithChildren
   '/login': typeof LoginRoute
   '/more': typeof MoreRoute
+  '/notices': typeof NoticesRoute
   '/onboarding': typeof OnboardingRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
@@ -159,6 +166,7 @@ export interface FileRoutesByTo {
   '/callback': typeof CallbackRoute
   '/login': typeof LoginRoute
   '/more': typeof MoreRoute
+  '/notices': typeof NoticesRoute
   '/onboarding': typeof OnboardingRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
@@ -182,6 +190,7 @@ export interface FileRoutesById {
   '/lists': typeof ListsRouteWithChildren
   '/login': typeof LoginRoute
   '/more': typeof MoreRoute
+  '/notices': typeof NoticesRoute
   '/onboarding': typeof OnboardingRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
@@ -206,6 +215,7 @@ export interface FileRouteTypes {
     | '/lists'
     | '/login'
     | '/more'
+    | '/notices'
     | '/onboarding'
     | '/settings'
     | '/tasks'
@@ -224,6 +234,7 @@ export interface FileRouteTypes {
     | '/callback'
     | '/login'
     | '/more'
+    | '/notices'
     | '/onboarding'
     | '/settings'
     | '/tasks'
@@ -246,6 +257,7 @@ export interface FileRouteTypes {
     | '/lists'
     | '/login'
     | '/more'
+    | '/notices'
     | '/onboarding'
     | '/settings'
     | '/tasks'
@@ -269,6 +281,7 @@ export interface RootRouteChildren {
   ListsRoute: typeof ListsRouteWithChildren
   LoginRoute: typeof LoginRoute
   MoreRoute: typeof MoreRoute
+  NoticesRoute: typeof NoticesRoute
   OnboardingRoute: typeof OnboardingRoute
   SettingsRoute: typeof SettingsRoute
   TasksRoute: typeof TasksRoute
@@ -302,6 +315,13 @@ declare module '@tanstack/react-router' {
       path: '/more'
       fullPath: '/more'
       preLoaderRoute: typeof MoreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notices': {
+      id: '/notices'
+      path: '/notices'
+      fullPath: '/notices'
+      preLoaderRoute: typeof NoticesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -481,6 +501,7 @@ const rootRouteChildren: RootRouteChildren = {
   ListsRoute: ListsRouteWithChildren,
   LoginRoute: LoginRoute,
   MoreRoute: MoreRoute,
+  NoticesRoute: NoticesRoute,
   OnboardingRoute: OnboardingRoute,
   SettingsRoute: SettingsRoute,
   TasksRoute: TasksRoute,
