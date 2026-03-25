@@ -107,6 +107,8 @@ function SettingsPage() {
         <NotificationsSection
           dailyEnabled={user?.email_digest_daily ?? false}
           weeklyEnabled={user?.email_digest_weekly ?? false}
+          remindersTasksEnabled={user?.reminders_tasks ?? true}
+          remindersEventsEnabled={user?.reminders_events ?? true}
         />
       </Card>
 
@@ -440,11 +442,35 @@ function EditNameSection({ currentName }: { currentName: string }) {
   )
 }
 
-function NotificationsSection({ dailyEnabled, weeklyEnabled }: { dailyEnabled: boolean; weeklyEnabled: boolean }) {
+function NotificationsSection({
+  dailyEnabled,
+  weeklyEnabled,
+  remindersTasksEnabled,
+  remindersEventsEnabled,
+}: {
+  dailyEnabled: boolean
+  weeklyEnabled: boolean
+  remindersTasksEnabled: boolean
+  remindersEventsEnabled: boolean
+}) {
   const updateUser = useUpdateUser()
 
   return (
     <div className="space-y-3">
+      <ToggleRow
+        label="Task reminders"
+        description="Email on the morning a task is due"
+        enabled={remindersTasksEnabled}
+        onChange={(v) => updateUser.mutate({ reminders_tasks: v })}
+        disabled={updateUser.isPending}
+      />
+      <ToggleRow
+        label="Event reminders"
+        description="Email 1 hour before an event starts"
+        enabled={remindersEventsEnabled}
+        onChange={(v) => updateUser.mutate({ reminders_events: v })}
+        disabled={updateUser.isPending}
+      />
       <ToggleRow
         label="Daily digest"
         description="Morning email with today's events and reminders"
