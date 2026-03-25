@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import async_session
-from app.routers import auth, birthdays, calendar_sync, documents, events, households, loyalty_cards, notices, push, shopping_lists, tasks
+from app.routers import auth, birthdays, calendar_sync, comments, documents, events, households, loyalty_cards, notices, push, shopping_lists, tasks
 
 logger = logging.getLogger(__name__)
 
@@ -189,6 +189,7 @@ app.include_router(tasks.router)
 app.include_router(loyalty_cards.router)
 app.include_router(birthdays.router)
 app.include_router(notices.router)
+app.include_router(comments.router)
 app.include_router(push.router)
 app.include_router(documents.router, prefix="/api")
 app.include_router(calendar_sync.connections_router)

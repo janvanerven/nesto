@@ -108,6 +108,42 @@ async def send_push_to_users(
     return total
 
 
+async def notify_mentioned_users(
+    mentioner_name: str,
+    mentioned_user_ids: list[str],
+    entity_type: str,
+    entity_id: str,
+    household_id: str,
+) -> None:
+    """Fire push notifications to mentioned users.
+
+    Intended to be called as a FastAPI BackgroundTask — opens its own DB session.
+    entity_type is 'task' or 'event'; url points to the relevant page.
+    """
+    if not mentioned_user_ids:
+        return
+    url = f"/tasks" if entity_type == "task" else "/calendar"
+    try:
+        async with async_session() as db:
+            sent = await send_push_to_users(
+                db,
+                mentioned_user_ids,
+                title=f"{mentioner_name} mentioned you",
+                body="You were mentioned in a comment",
+                url=url,
+            )
+            await db.commit()
+            if sent:
+                logger.info(
+                    "Mention push sent to %d user(s) for %s=%s",
+                    sent, entity_type, entity_id,
+                )
+    except Exception:
+        logger.exception(
+            "Failed to send mention push for %s=%s", entity_type, entity_id
+        )
+
+
 async def notify_household_new_notice(household_id: str, author_id: str, content_preview: str) -> None:
     """Fire push notifications to all household members except the author.
 
