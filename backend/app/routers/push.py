@@ -1,6 +1,7 @@
 import uuid
+from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, field_validator
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,10 +24,6 @@ class PushSubscriptionCreate(BaseModel):
         if not v.startswith('https://'):
             raise ValueError('endpoint must be an https:// URL')
         return v
-
-
-class PushSubscriptionDelete(BaseModel):
-    endpoint: str
 
 
 @router.post("", status_code=204)
@@ -59,15 +56,15 @@ async def save_push_subscription(
 
 @router.delete("", status_code=204)
 async def delete_push_subscription(
-    body: PushSubscriptionDelete,
+    endpoint: Annotated[str, Query(description="Push subscription endpoint URL to remove")],
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """Delete a push subscription by endpoint."""
+    """Delete a push subscription by endpoint (passed as ?endpoint=... query parameter)."""
     await db.execute(
         delete(PushSubscription).where(
             PushSubscription.user_id == user_id,
-            PushSubscription.endpoint == body.endpoint,
+            PushSubscription.endpoint == endpoint,
         )
     )
     await db.commit()

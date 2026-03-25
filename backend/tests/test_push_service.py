@@ -77,6 +77,9 @@ async def test_send_push_success():
             count = await send_push_to_user(session, USER_ID, "Hello", "World", "/tasks")
         assert count == 1
         mock_sync.assert_called_once()
+        call_kwargs = mock_sync.call_args
+        assert call_kwargs[0][0]["endpoint"] == "https://push.example.com/sub1"
+        assert call_kwargs[0][2] == "fake-key"  # vapid_private_key
     finally:
         await session.close()
         await engine.dispose()

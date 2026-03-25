@@ -74,9 +74,8 @@ export function useSavePushSubscription() {
 export function useDeletePushSubscription() {
   return useMutation({
     mutationFn: (endpoint: string) =>
-      apiFetch<void>('/auth/me/push-subscription', {
+      apiFetch<void>(`/auth/me/push-subscription?endpoint=${encodeURIComponent(endpoint)}`, {
         method: 'DELETE',
-        body: JSON.stringify({ endpoint }),
       }),
   })
 }

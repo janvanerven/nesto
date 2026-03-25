@@ -113,23 +113,26 @@ async def notify_household_new_notice(household_id: str, author_id: str, content
 
     Intended to be called as a FastAPI BackgroundTask — opens its own DB session.
     """
-    async with async_session() as db:
-        result = await db.execute(
-            select(HouseholdMember.user_id).where(
-                HouseholdMember.household_id == household_id,
-                HouseholdMember.user_id != author_id,
+    try:
+        async with async_session() as db:
+            result = await db.execute(
+                select(HouseholdMember.user_id).where(
+                    HouseholdMember.household_id == household_id,
+                    HouseholdMember.user_id != author_id,
+                )
             )
-        )
-        user_ids = [row[0] for row in result.fetchall()]
-        if not user_ids:
-            return
-        sent = await send_push_to_users(
-            db,
-            user_ids,
-            title="New notice",
-            body=f"{content_preview[:80]}{'…' if len(content_preview) > 80 else ''}",
-            url="/notices",
-        )
-        await db.commit()
-        if sent:
-            logger.info("Notice push sent to %d member(s) in household=%s", sent, household_id)
+            user_ids = [row[0] for row in result.fetchall()]
+            if not user_ids:
+                return
+            sent = await send_push_to_users(
+                db,
+                user_ids,
+                title="New notice",
+                body=f"{content_preview[:80]}{'…' if len(content_preview) > 80 else ''}",
+                url="/notices",
+            )
+            await db.commit()
+            if sent:
+                logger.info("Notice push sent to %d member(s) in household=%s", sent, household_id)
+    except Exception:
+        logger.exception("Failed to send notice push for household=%s", household_id)
