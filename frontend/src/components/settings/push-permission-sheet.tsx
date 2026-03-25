@@ -5,6 +5,7 @@ import { useScrollLock } from '@/utils/use-scroll-lock'
 interface PushPermissionSheetProps {
   open: boolean
   onConfirm: () => void
+  /** Called on both backdrop tap and "Not now" — caller must handle recordPushDismissal on both paths */
   onDismiss: () => void
 }
 

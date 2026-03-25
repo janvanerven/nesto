@@ -11,10 +11,10 @@ function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
 }
 
 function arrayBufferToBase64Url(buf: ArrayBuffer): string {
-  return btoa(String.fromCharCode(...new Uint8Array(buf)))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '')
+  let binary = ''
+  const bytes = new Uint8Array(buf)
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
 export async function getSwRegistration(): Promise<ServiceWorkerRegistration | null> {
