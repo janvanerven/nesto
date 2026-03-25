@@ -71,7 +71,7 @@ async def list_tasks(
     result = await db.execute(query)
     rows = result.all()
     return [
-        TaskResponse.model_validate(task, from_attributes=True, update={"comment_count": count})
+        TaskResponse(**{**{c.key: getattr(task, c.key) for c in task.__table__.columns}, "comment_count": count})
         for task, count in rows
     ]
 
