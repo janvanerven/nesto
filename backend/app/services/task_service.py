@@ -3,12 +3,14 @@ from datetime import date, datetime, timezone
 from dateutil.relativedelta import relativedelta
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy import select as sa_select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.comment import Comment
 from app.models.household import HouseholdMember
 from app.models.task import Task
-from app.schemas.task import TaskCreate, TaskUpdate
+from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
 
 
 async def _verify_household_member(db: AsyncSession, household_id: str, user_id: str) -> None:
@@ -47,8 +49,18 @@ async def list_tasks(
     assigned_to: str | None = None,
     limit: int = 100,
     offset: int = 0,
-) -> list[Task]:
-    query = select(Task).where(Task.household_id == household_id)
+) -> list[TaskResponse]:
+    comment_count_subquery = (
+        sa_select(func.count(Comment.id))
+        .where(
+            Comment.entity_type == "task",
+            Comment.entity_id == Task.id,
+        )
+        .scalar_subquery()
+    )
+    query = select(Task, comment_count_subquery.label("comment_count")).where(
+        Task.household_id == household_id
+    )
     if status is not None:
         query = query.where(Task.status == status)
     if priority is not None:
@@ -58,7 +70,11 @@ async def list_tasks(
     query = query.order_by(Task.priority.asc(), Task.created_at.desc())
     query = query.limit(limit).offset(offset)
     result = await db.execute(query)
-    return list(result.scalars().all())
+    rows = result.all()
+    return [
+        TaskResponse.model_validate({**task.__dict__, "comment_count": count})
+        for task, count in rows
+    ]
 
 
 async def create_task(db: AsyncSession, household_id: str, user_id: str, data: TaskCreate) -> Task:

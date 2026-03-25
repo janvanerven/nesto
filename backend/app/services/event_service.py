@@ -1,12 +1,14 @@
 import uuid
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy import select as sa_select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.comment import Comment
 from app.models.event import Event
 from app.models.household import HouseholdMember
-from app.schemas.event import EventCreate, EventUpdate
+from app.schemas.event import EventCreate, EventResponse, EventUpdate
 
 
 async def _verify_household_member(db: AsyncSession, household_id: str, user_id: str) -> None:
@@ -30,9 +32,17 @@ async def list_events(
     household_id: str,
     start: "date | None" = None,
     end: "date | None" = None,
-) -> list[Event]:
+) -> list[EventResponse]:
     from datetime import datetime, time
-    query = select(Event).where(
+    comment_count_subquery = (
+        sa_select(func.count(Comment.id))
+        .where(
+            Comment.entity_type == "event",
+            Comment.entity_id == Event.id,
+        )
+        .scalar_subquery()
+    )
+    query = select(Event, comment_count_subquery.label("comment_count")).where(
         Event.household_id == household_id,
     )
     if start and end:
@@ -46,7 +56,11 @@ async def list_events(
         )
     query = query.order_by(Event.start_time.asc())
     result = await db.execute(query)
-    return list(result.scalars().all())
+    rows = result.all()
+    return [
+        EventResponse.model_validate({**event.__dict__, "comment_count": count})
+        for event, count in rows
+    ]
 
 
 async def create_event(db: AsyncSession, household_id: str, user_id: str, data: EventCreate) -> Event:
