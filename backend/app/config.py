@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     digest_daily_hour: int = 6
     digest_weekly_hour: int = 18
 
+    # VAPID keys for Web Push (generate with: see docs/plans/2026-03-25-phase2-push-notifications.md)
+    vapid_private_key: str = ""
+    vapid_public_key: str = ""
+
     @field_validator("secret_key")
     @classmethod
     def validate_secret_key(cls, v: str) -> str:
