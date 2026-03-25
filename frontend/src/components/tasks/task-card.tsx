@@ -6,12 +6,14 @@ import type { HouseholdMember } from '@/api/households'
 interface TaskCardProps {
   task: Task
   members?: HouseholdMember[]
+  commentCount?: number
   onComplete: (id: string) => void
   onDelete: (id: string) => void
   onEdit?: (task: Task) => void
+  onComments?: () => void
 }
 
-export function TaskCard({ task, members = [], onComplete, onDelete, onEdit }: TaskCardProps) {
+export function TaskCard({ task, members = [], commentCount = 0, onComplete, onDelete, onEdit, onComments }: TaskCardProps) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const isDone = task.status === 'done'
   const assignee = task.assigned_to ? members.find((m) => m.id === task.assigned_to) : null
@@ -63,6 +65,21 @@ export function TaskCard({ task, members = [], onComplete, onDelete, onEdit }: T
             </div>
           )}
         </div>
+
+        {/* Comment button */}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onComments?.() }}
+          className="flex items-center gap-1 text-text-muted hover:text-primary transition-colors shrink-0"
+          aria-label={`${commentCount} comments`}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+          </svg>
+          {commentCount > 0 && (
+            <span className="text-xs font-medium text-primary">{commentCount}</span>
+          )}
+        </button>
 
         {/* Assignee avatar */}
         {assignee && (

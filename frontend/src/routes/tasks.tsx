@@ -7,6 +7,7 @@ import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '@/api/tas
 import { TaskCard } from '@/components/tasks/task-card'
 import { CreateReminderSheet } from '@/components/tasks/create-task-sheet'
 import { EditReminderSheet } from '@/components/tasks/edit-task-sheet'
+import { CommentsSheet } from '@/components/comments/comments-sheet'
 import { Fab, Card } from '@/components/ui'
 import type { Task } from '@/api/tasks'
 
@@ -56,6 +57,7 @@ function TasksContent({
   editingTask: Task | null
   setEditingTask: (t: Task | null) => void
 }) {
+  const [commentingTask, setCommentingTask] = useState<Task | null>(null)
   const { data: tasks, isLoading } = useTasks(householdId, { status: filter })
   const { data: members = [] } = useHouseholdMembers(householdId)
   const createMutation = useCreateTask(householdId)
@@ -128,9 +130,11 @@ function TasksContent({
                 <TaskCard
                   task={task}
                   members={members}
+                  commentCount={task.comment_count ?? 0}
                   onComplete={(id) => updateMutation.mutate({ taskId: id, status: 'done' })}
                   onDelete={(id) => deleteMutation.mutate(id)}
                   onEdit={(t) => setEditingTask(t)}
+                  onComments={() => setCommentingTask(task)}
                 />
               </motion.div>
             ))}
@@ -170,6 +174,16 @@ function TasksContent({
         }}
         isPending={createMutation.isPending}
         members={members}
+      />
+
+      {/* Comments sheet */}
+      <CommentsSheet
+        isOpen={!!commentingTask}
+        onClose={() => setCommentingTask(null)}
+        householdId={householdId}
+        entityType="task"
+        entityId={commentingTask?.id ?? ''}
+        entityTitle={commentingTask?.title ?? ''}
       />
     </div>
   )
