@@ -4,7 +4,6 @@ from dateutil.relativedelta import relativedelta
 
 from fastapi import HTTPException
 from sqlalchemy import func, select
-from sqlalchemy import select as sa_select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.comment import Comment
@@ -51,7 +50,7 @@ async def list_tasks(
     offset: int = 0,
 ) -> list[TaskResponse]:
     comment_count_subquery = (
-        sa_select(func.count(Comment.id))
+        select(func.count(Comment.id))
         .where(
             Comment.entity_type == "task",
             Comment.entity_id == Task.id,
@@ -72,7 +71,7 @@ async def list_tasks(
     result = await db.execute(query)
     rows = result.all()
     return [
-        TaskResponse.model_validate({**task.__dict__, "comment_count": count})
+        TaskResponse.model_validate(task, from_attributes=True, update={"comment_count": count})
         for task, count in rows
     ]
 
