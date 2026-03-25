@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user_id
@@ -6,6 +6,7 @@ from app.database import get_db
 from app.schemas.notice import NoticeCreate, NoticePatch, NoticeResponse
 from app.services.household_service import get_household
 from app.services import notice_service as svc
+from app.services.push_service import notify_household_new_notice
 
 router = APIRouter(prefix="/api/households/{household_id}/notices", tags=["notices"])
 
@@ -26,11 +27,14 @@ async def list_notices(
 async def create_notice(
     household_id: str,
     body: NoticeCreate,
+    background_tasks: BackgroundTasks,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     await get_household(db, household_id, user_id)
-    return await svc.create_notice(db, household_id, user_id, body)
+    notice = await svc.create_notice(db, household_id, user_id, body)
+    background_tasks.add_task(notify_household_new_notice, household_id, user_id, notice.content)
+    return notice
 
 
 @router.patch("/{notice_id}", response_model=NoticeResponse)
