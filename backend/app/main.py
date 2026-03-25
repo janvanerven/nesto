@@ -99,6 +99,27 @@ async def _calendar_sync_loop():
             logger.exception("Calendar sync scheduler error")
 
 
+async def _reminder_scheduler_loop() -> None:
+    """Background loop that sends task/event email reminders every 15 minutes."""
+    while True:
+        try:
+            await asyncio.sleep(900)  # 15 minutes
+            from app.services.reminder_service import run_reminders, cleanup_old_reminders
+            async with async_session() as db:
+                sent = await run_reminders(db)
+                if sent:
+                    logger.info("Reminder scheduler: %d reminder(s) sent", sent)
+            # Weekly cleanup: run on Sundays only to avoid overhead
+            now = datetime.now(timezone.utc)
+            if now.weekday() == 6:
+                async with async_session() as db:
+                    await cleanup_old_reminders(db)
+        except asyncio.CancelledError:
+            break
+        except Exception:
+            logger.exception("Reminder scheduler error")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     os.makedirs("data", exist_ok=True)
@@ -119,18 +140,25 @@ async def lifespan(app: FastAPI):
 
     digest_task = asyncio.create_task(_digest_scheduler_loop())
     sync_task = asyncio.create_task(_calendar_sync_loop())
+    reminder_task = asyncio.create_task(_reminder_scheduler_loop())
     logger.info("Digest scheduler started (daily@%02d:00, weekly@Sun %02d:00)",
                 settings.digest_daily_hour, settings.digest_weekly_hour)
     logger.info("Calendar sync scheduler started (every 5 minutes)")
+    logger.info("Reminder scheduler started (every 15 minutes)")
     yield
     digest_task.cancel()
     sync_task.cancel()
+    reminder_task.cancel()
     try:
         await digest_task
     except asyncio.CancelledError:
         pass
     try:
         await sync_task
+    except asyncio.CancelledError:
+        pass
+    try:
+        await reminder_task
     except asyncio.CancelledError:
         pass
     await app.state.httpx_client.aclose()
