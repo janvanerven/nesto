@@ -122,7 +122,7 @@ async def notify_mentioned_users(
     """
     if not mentioned_user_ids:
         return
-    url = f"/tasks" if entity_type == "task" else "/calendar"
+    url = "/tasks" if entity_type == "task" else "/calendar"
     try:
         async with async_session() as db:
             sent = await send_push_to_users(
