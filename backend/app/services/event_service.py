@@ -57,7 +57,7 @@ async def list_events(
     result = await db.execute(query)
     rows = result.all()
     return [
-        EventResponse.model_validate(event, from_attributes=True, update={"comment_count": count})
+        EventResponse(**{**{c.key: getattr(event, c.key) for c in event.__table__.columns}, "comment_count": count})
         for event, count in rows
     ]
 
