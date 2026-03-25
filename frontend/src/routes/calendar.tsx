@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useHouseholds, useHouseholdMembers } from '@/api/households'
 import { useEvents, useCreateEvent, useUpdateEvent, useDeleteEvent } from '@/api/events'
 import type { CalendarEvent } from '@/api/events'
+import { CommentsSheet } from '@/components/comments/comments-sheet'
 import { useExternalEvents } from '@/api/calendar-sync'
 import type { ExternalEventOccurrence } from '@/api/calendar-sync'
 import { expandRecurrences } from '@/utils/recurrence'
@@ -64,6 +65,7 @@ function CalendarContent({ householdId }: { householdId: string }) {
   const [weekStart, setWeekStart] = useState<Date>(() => getMonday(today))
   const [showCreate, setShowCreate] = useState(false)
   const [editEvent, setEditEvent] = useState<CalendarEvent | null>(null)
+  const [commentingEvent, setCommentingEvent] = useState<CalendarEvent | null>(null)
 
   const fetchStart = useMemo(() => {
     const d = new Date(weekStart)
@@ -261,7 +263,9 @@ function CalendarContent({ householdId }: { householdId: string }) {
                   <EventCard
                     occurrence={item.occurrence}
                     members={members}
+                    commentCount={item.occurrence.event.comment_count ?? 0}
                     onClick={() => setEditEvent(item.occurrence.event)}
+                    onComments={() => setCommentingEvent(item.occurrence.event)}
                   />
                 ) : item.type === 'birthday' ? (
                   <CalendarBirthdayCard
@@ -326,6 +330,15 @@ function CalendarContent({ householdId }: { householdId: string }) {
           setEditBirthday(null)
         }}
         isPending={updateBirthdayMutation.isPending || deleteBirthdayMutation.isPending}
+      />
+
+      <CommentsSheet
+        isOpen={!!commentingEvent}
+        onClose={() => setCommentingEvent(null)}
+        householdId={householdId}
+        entityType="event"
+        entityId={commentingEvent?.id ?? ''}
+        entityTitle={commentingEvent?.title ?? ''}
       />
     </div>
   )

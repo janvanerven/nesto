@@ -5,7 +5,9 @@ import type { EventOccurrence } from '@/utils/recurrence'
 interface EventCardProps {
   occurrence: EventOccurrence
   members: HouseholdMember[]
+  commentCount?: number
   onClick: () => void
+  onComments?: () => void
 }
 
 const RECURRENCE_LABELS: Record<string, string> = {
@@ -22,7 +24,7 @@ const RECURRENCE_PLURAL_UNITS: Record<string, string> = {
   yearly: 'years',
 }
 
-export function EventCard({ occurrence, members, onClick }: EventCardProps) {
+export function EventCard({ occurrence, members, commentCount = 0, onClick, onComments }: EventCardProps) {
   const { event, occurrenceStart, occurrenceEnd } = occurrence
   const isRecurring = !!event.recurrence_rule
   const assignee = event.assigned_to
@@ -56,6 +58,21 @@ export function EventCard({ occurrence, members, onClick }: EventCardProps) {
             </span>
           )}
         </div>
+        {/* Comment button */}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onComments?.() }}
+          className="flex items-center gap-1 text-text-muted hover:text-primary transition-colors shrink-0"
+          aria-label={`${commentCount} comments`}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+          </svg>
+          {commentCount > 0 && (
+            <span className="text-xs font-medium text-primary">{commentCount}</span>
+          )}
+        </button>
+
         {assignee && (
           <Avatar
             name={assignee.display_name}

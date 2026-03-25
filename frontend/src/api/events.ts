@@ -16,6 +16,7 @@ export interface CalendarEvent {
   recurrence_end: string | null
   created_at: string
   updated_at: string
+  comment_count?: number
 }
 
 export interface EventCreate {
