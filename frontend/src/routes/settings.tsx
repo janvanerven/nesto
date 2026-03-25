@@ -3,7 +3,7 @@ import { useAuth } from 'react-oidc-context'
 import { useCurrentUser, useUpdateUser } from '@/api/user'
 import { useHouseholds, useHouseholdMembers, useCreateInvite, useUpdateHousehold } from '@/api/households'
 import { Avatar, Button, Card, Input } from '@/components/ui'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useThemeStore } from '@/stores/theme-store'
 import {
   useCalendarConnections,
@@ -20,6 +20,14 @@ import {
   useDeleteSekuraKey,
   useTestSekuraConnection,
 } from '@/api/sekura'
+import {
+  getCurrentPushSubscription,
+  subscribeToPush,
+  useSavePushSubscription,
+  useDeletePushSubscription,
+  recordPushDismissal,
+} from '@/api/push'
+import { PushPermissionSheet } from '@/components/settings/push-permission-sheet'
 
 export const Route = createFileRoute('/settings')({
   component: SettingsPage,
@@ -457,6 +465,8 @@ function NotificationsSection({
 
   return (
     <div className="space-y-3">
+      <BrowserNotificationsToggle />
+      <div className="border-t border-text/10 pt-3 space-y-3">
       <ToggleRow
         label="Task reminders"
         description="Email on the morning a task is due"
@@ -485,7 +495,85 @@ function NotificationsSection({
         onChange={(v) => updateUser.mutate({ email_digest_weekly: v })}
         disabled={updateUser.isPending}
       />
+      </div>
     </div>
+  )
+}
+
+function BrowserNotificationsToggle() {
+  const [enabled, setEnabled] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [showSheet, setShowSheet] = useState(false)
+  const [permissionDenied, setPermissionDenied] = useState(false)
+  const saveSub = useSavePushSubscription()
+  const deleteSub = useDeletePushSubscription()
+
+  useEffect(() => {
+    if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+      setLoading(false)
+      return
+    }
+    if (Notification.permission === 'denied') {
+      setPermissionDenied(true)
+      setLoading(false)
+      return
+    }
+    getCurrentPushSubscription().then((sub) => {
+      setEnabled(sub !== null)
+      setLoading(false)
+    })
+  }, [])
+
+  const handleEnable = async () => {
+    const sub = await subscribeToPush()
+    if (!sub) return
+    await saveSub.mutateAsync(sub)
+    setEnabled(true)
+    setShowSheet(false)
+  }
+
+  const handleDisable = async () => {
+    const sub = await getCurrentPushSubscription()
+    if (sub) {
+      await deleteSub.mutateAsync(sub.endpoint)
+      await sub.unsubscribe()
+    }
+    setEnabled(false)
+  }
+
+  const handleToggle = () => {
+    if (enabled) {
+      handleDisable()
+    } else {
+      setShowSheet(true)
+    }
+  }
+
+  if (!('Notification' in window) || !('serviceWorker' in navigator)) return null
+  if (loading) return <div className="h-10 bg-background rounded-xl animate-pulse" />
+
+  return (
+    <>
+      <ToggleRow
+        label="Browser notifications"
+        description={
+          permissionDenied
+            ? 'Blocked in browser settings — allow in site permissions to enable'
+            : 'Push alerts for reminders, events, and notices'
+        }
+        enabled={enabled}
+        onChange={handleToggle}
+        disabled={permissionDenied || saveSub.isPending || deleteSub.isPending}
+      />
+      <PushPermissionSheet
+        open={showSheet}
+        onConfirm={handleEnable}
+        onDismiss={() => {
+          recordPushDismissal()
+          setShowSheet(false)
+        }}
+      />
+    </>
   )
 }
 
