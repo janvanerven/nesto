@@ -63,7 +63,7 @@ export function CreateFolderSheet({ open, onClose, householdId, parentId }: Crea
             onAnimationComplete={(def: { y?: string | number }) => {
               if (def.y === 0) nameRef.current?.focus()
             }}
-            className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-3xl p-6 pb-[env(safe-area-inset-bottom)] z-50 max-w-lg mx-auto"
+            className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-3xl p-6 pb-[env(safe-area-inset-bottom)] z-50 max-w-lg mx-auto max-h-[85vh] overflow-y-auto"
           >
             <div className="w-12 h-1.5 bg-text/10 rounded-full mx-auto mb-6" />
             <h2 className="text-lg font-bold text-text mb-5">New folder</h2>

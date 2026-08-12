@@ -30,7 +30,7 @@ export function Avatar({ src, name, size = 'md', ringColor, ring: showRing = tru
   return (
     <div
       className={`${sizeMap[size]} rounded-full flex items-center justify-center font-bold ${showRing ? 'ring-2' : ''} overflow-hidden`}
-      style={showRing ? { ringColor: ring, '--tw-ring-color': ring } as React.CSSProperties : undefined}
+      style={showRing ? { '--tw-ring-color': ring } as React.CSSProperties : undefined}
     >
       {src ? (
         <img src={src} alt={name} className="w-full h-full object-cover" />

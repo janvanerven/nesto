@@ -18,7 +18,9 @@ export function ListCard({ list, onClick }: ListCardProps) {
           <p className={`font-semibold text-text ${isArchived ? 'text-text-muted' : ''}`}>
             {list.name || 'Untitled list'}
           </p>
-          <p className="text-xs text-text-muted mt-0.5">{progress} items</p>
+          <p className="text-xs text-text-muted mt-0.5">
+            {list.item_count > 0 ? `${progress} items` : 'Empty'}
+          </p>
         </div>
         {/* Progress indicator */}
         {list.item_count > 0 && (

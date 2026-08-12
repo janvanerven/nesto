@@ -307,10 +307,7 @@ export function CommentsSheet({
                         >
                           {/* Author + timestamp */}
                           <div className={`flex items-baseline gap-2 ${isOwn ? 'flex-row-reverse' : ''}`}>
-                            <span
-                              className="text-xs font-semibold text-primary leading-none"
-                              style={{ color: 'var(--color-primary)' }}
-                            >
+                            <span className="text-xs font-semibold text-primary leading-none">
                               {isOwn ? 'You' : comment.author_name}
                             </span>
                             <span className="text-[11px] text-text-muted/70 leading-none">

@@ -67,7 +67,7 @@ export function EditListSheet({ list, open, onClose, onSubmit, onDelete, isPendi
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-3xl p-6 pb-[env(safe-area-inset-bottom)] z-50 max-w-lg mx-auto"
+            className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-3xl p-6 pb-[env(safe-area-inset-bottom)] z-50 max-w-lg mx-auto max-h-[85vh] overflow-y-auto"
           >
             <div className="w-12 h-1.5 bg-text/10 rounded-full mx-auto mb-6" />
             <div className="flex items-center justify-between mb-4">
@@ -75,6 +75,7 @@ export function EditListSheet({ list, open, onClose, onSubmit, onDelete, isPendi
               <button
                 type="button"
                 onClick={onClose}
+                aria-label="Close"
                 className="p-1.5 -mr-1.5 rounded-full text-text-muted hover:bg-text/5 transition-colors"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

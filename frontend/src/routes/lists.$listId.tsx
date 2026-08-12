@@ -205,6 +205,7 @@ function ListDetailContent({ householdId, listId }: { householdId: string; listI
                       onClick={() =>
                         updateItemMutation.mutate({ itemId: item.id, checked: !item.checked })
                       }
+                      aria-label={item.checked ? 'Uncheck item' : 'Check item'}
                       className={`
                         w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 transition-all
                         ${item.checked
@@ -246,6 +247,7 @@ function ListDetailContent({ householdId, listId }: { householdId: string; listI
                           setConfirmDeleteItem(item.id)
                         }
                       }}
+                      aria-label="Delete item"
                       className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-all ${
                         confirmDeleteItem === item.id ? 'text-accent bg-accent/10' : 'text-text-muted hover:text-accent hover:bg-accent/10'
                       }`}

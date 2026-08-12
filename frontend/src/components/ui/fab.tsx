@@ -8,6 +8,7 @@ export function Fab({ pulse = false, children, ...props }: FabProps) {
   return (
     <motion.button
       whileTap={{ scale: 0.9 }}
+      aria-label="Add"
       className={`
         fixed bottom-20 right-4
         w-14 h-14 rounded-full
