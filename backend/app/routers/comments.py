@@ -1,10 +1,8 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user_id
 from app.database import get_db
-from app.models.user import User
 from app.schemas.comment import CommentCreate, CommentResponse
 from app.services.household_service import get_household
 from app.services import comment_service as svc
@@ -50,12 +48,9 @@ async def create_comment(
     await get_household(db, household_id, user_id)
     comment = await svc.create_comment(db, entity_type, entity_id, household_id, user_id, body)
     if body.mentions:
-        result = await db.execute(select(User).where(User.id == user_id))
-        author = result.scalar_one_or_none()
-        mentioner_name = author.display_name if author else "Someone"
         background_tasks.add_task(
             notify_mentioned_users,
-            mentioner_name,
+            comment.author_name,
             body.mentions,
             entity_type,
             entity_id,

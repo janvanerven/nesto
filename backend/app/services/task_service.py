@@ -3,12 +3,12 @@ from datetime import date, datetime, timezone
 from dateutil.relativedelta import relativedelta
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.comment import Comment
 from app.models.household import HouseholdMember
 from app.models.task import Task
+from app.services.comment_service import comment_count_subquery
 from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
 
 
@@ -49,17 +49,9 @@ async def list_tasks(
     limit: int = 100,
     offset: int = 0,
 ) -> list[TaskResponse]:
-    comment_count_subquery = (
-        select(func.count(Comment.id))
-        .where(
-            Comment.entity_type == "task",
-            Comment.entity_id == Task.id,
-        )
-        .scalar_subquery()
-    )
-    query = select(Task, comment_count_subquery.label("comment_count")).where(
-        Task.household_id == household_id
-    )
+    query = select(
+        Task, comment_count_subquery("task", Task.id).label("comment_count")
+    ).where(Task.household_id == household_id)
     if status is not None:
         query = query.where(Task.status == status)
     if priority is not None:
@@ -71,7 +63,7 @@ async def list_tasks(
     result = await db.execute(query)
     rows = result.all()
     return [
-        TaskResponse(**{**{c.key: getattr(task, c.key) for c in task.__table__.columns}, "comment_count": count})
+        TaskResponse.model_validate(task).model_copy(update={"comment_count": count})
         for task, count in rows
     ]
 

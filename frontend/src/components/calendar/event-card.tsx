@@ -1,5 +1,5 @@
 import type { HouseholdMember } from '@/api/households'
-import { Avatar, Card } from '@/components/ui'
+import { Avatar, Card, CommentButton } from '@/components/ui'
 import type { EventOccurrence } from '@/utils/recurrence'
 
 interface EventCardProps {
@@ -58,20 +58,7 @@ export function EventCard({ occurrence, members, commentCount = 0, onClick, onCo
             </span>
           )}
         </div>
-        {/* Comment button */}
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onComments?.() }}
-          className="flex items-center gap-1 text-text-muted hover:text-primary transition-colors shrink-0"
-          aria-label={`${commentCount} comments`}
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-          </svg>
-          {commentCount > 0 && (
-            <span className="text-xs font-medium text-primary">{commentCount}</span>
-          )}
-        </button>
+        <CommentButton count={commentCount} onClick={onComments} />
 
         {assignee && (
           <Avatar

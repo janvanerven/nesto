@@ -1,7 +1,7 @@
 import uuid
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.comment import Comment
@@ -12,6 +12,15 @@ from app.models.user import User
 from app.schemas.comment import CommentCreate, CommentResponse
 
 _ENTITY_MODELS = {"task": Task, "event": Event}
+
+
+def comment_count_subquery(entity_type: str, entity_id_col):
+    """Correlated scalar subquery counting comments for an entity column."""
+    return (
+        select(func.count(Comment.id))
+        .where(Comment.entity_type == entity_type, Comment.entity_id == entity_id_col)
+        .scalar_subquery()
+    )
 
 
 async def _require_entity_in_household(
@@ -78,6 +87,9 @@ async def create_comment(
         if invalid:
             raise HTTPException(status_code=400, detail="Mentioned user(s) are not household members")
 
+    author_result = await db.execute(select(User.display_name).where(User.id == author_id))
+    author_name = author_result.scalar_one()
+
     comment = Comment(
         id=str(uuid.uuid4()),
         entity_type=entity_type,
@@ -87,19 +99,14 @@ async def create_comment(
     )
     db.add(comment)
     await db.commit()
+    await db.refresh(comment)  # load server-generated created_at
 
-    result = await db.execute(
-        select(Comment, User)
-        .join(User, Comment.author_id == User.id)
-        .where(Comment.id == comment.id)
-    )
-    comment, user = result.one()
     return CommentResponse(
         id=comment.id,
         entity_type=comment.entity_type,
         entity_id=comment.entity_id,
         author_id=comment.author_id,
-        author_name=user.display_name,
+        author_name=author_name,
         content=comment.content,
         created_at=comment.created_at,
     )

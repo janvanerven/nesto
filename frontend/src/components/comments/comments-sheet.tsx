@@ -16,7 +16,9 @@ interface CommentsSheetProps {
 }
 
 function formatTime(iso: string): string {
-  const date = new Date(iso)
+  // Backend timestamps are UTC but serialized without an offset suffix —
+  // append 'Z' so they aren't misparsed as local time.
+  const date = new Date(/[zZ]|[+-]\d{2}:?\d{2}$/.test(iso) ? iso : `${iso}Z`)
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
   const diffMins = Math.floor(diffMs / 60_000)
@@ -147,8 +149,14 @@ export function CommentsSheet({
   function submitComment() {
     const trimmed = text.trim()
     if (!trimmed || createComment.isPending) return
+    // Only notify mentions whose @Name still appears in the text — the user
+    // may have deleted a mention after selecting it from the dropdown.
+    const activeMentions = mentions.filter((id) => {
+      const member = members.find((m) => m.id === id)
+      return member ? trimmed.includes(`@${member.first_name || member.display_name}`) : false
+    })
     createComment.mutate(
-      { content: trimmed, mentions: mentions.length > 0 ? mentions : undefined },
+      { content: trimmed, mentions: activeMentions.length > 0 ? activeMentions : undefined },
       {
         onSuccess: () => {
           setText('')

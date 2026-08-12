@@ -33,8 +33,11 @@ export function useCreateComment(householdId: string, entityType: 'task' | 'even
         method: 'POST',
         body: JSON.stringify(body),
       }),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ['comments', householdId, entityType, entityId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['comments', householdId, entityType, entityId] })
+      // Card badges render comment_count from the task/event list queries
+      qc.invalidateQueries({ queryKey: [`${entityType}s`, householdId] })
+    },
   })
 }
 
@@ -46,7 +49,9 @@ export function useDeleteComment(householdId: string, entityType: 'task' | 'even
         `/households/${householdId}/comments/${entityType}/${entityId}/${commentId}`,
         { method: 'DELETE' },
       ),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ['comments', householdId, entityType, entityId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['comments', householdId, entityType, entityId] })
+      qc.invalidateQueries({ queryKey: [`${entityType}s`, householdId] })
+    },
   })
 }

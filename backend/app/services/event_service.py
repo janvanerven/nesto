@@ -1,12 +1,12 @@
 import uuid
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.comment import Comment
 from app.models.event import Event
 from app.models.household import HouseholdMember
+from app.services.comment_service import comment_count_subquery
 from app.schemas.event import EventCreate, EventResponse, EventUpdate
 
 
@@ -33,17 +33,9 @@ async def list_events(
     end: "date | None" = None,
 ) -> list[EventResponse]:
     from datetime import datetime, time
-    comment_count_subquery = (
-        select(func.count(Comment.id))
-        .where(
-            Comment.entity_type == "event",
-            Comment.entity_id == Event.id,
-        )
-        .scalar_subquery()
-    )
-    query = select(Event, comment_count_subquery.label("comment_count")).where(
-        Event.household_id == household_id,
-    )
+    query = select(
+        Event, comment_count_subquery("event", Event.id).label("comment_count")
+    ).where(Event.household_id == household_id)
     if start and end:
         range_start = datetime.combine(start, time.min)
         range_end = datetime.combine(end, time.max)
@@ -57,7 +49,7 @@ async def list_events(
     result = await db.execute(query)
     rows = result.all()
     return [
-        EventResponse(**{**{c.key: getattr(event, c.key) for c in event.__table__.columns}, "comment_count": count})
+        EventResponse.model_validate(event).model_copy(update={"comment_count": count})
         for event, count in rows
     ]
 
