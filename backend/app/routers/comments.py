@@ -33,7 +33,7 @@ async def list_comments(
 ):
     _validate_entity_type(entity_type)
     await get_household(db, household_id, user_id)
-    return await svc.list_comments(db, entity_type, entity_id)
+    return await svc.list_comments(db, entity_type, entity_id, household_id)
 
 
 @router.post("/{entity_type}/{entity_id}", response_model=CommentResponse, status_code=201)
@@ -75,4 +75,4 @@ async def delete_comment(
 ):
     _validate_entity_type(entity_type)
     await get_household(db, household_id, user_id)
-    await svc.delete_comment(db, comment_id, user_id)
+    await svc.delete_comment(db, comment_id, user_id, entity_type, entity_id, household_id)

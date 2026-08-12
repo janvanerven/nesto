@@ -5,16 +5,37 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.comment import Comment
+from app.models.event import Event
 from app.models.household import HouseholdMember
+from app.models.task import Task
 from app.models.user import User
 from app.schemas.comment import CommentCreate, CommentResponse
+
+_ENTITY_MODELS = {"task": Task, "event": Event}
+
+
+async def _require_entity_in_household(
+    db: AsyncSession,
+    entity_type: str,
+    entity_id: str,
+    household_id: str,
+) -> None:
+    """Raise 404 unless the entity exists and belongs to the household."""
+    model = _ENTITY_MODELS[entity_type]
+    result = await db.execute(
+        select(model.id).where(model.id == entity_id, model.household_id == household_id)
+    )
+    if result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail=f"{entity_type.capitalize()} not found")
 
 
 async def list_comments(
     db: AsyncSession,
     entity_type: str,
     entity_id: str,
+    household_id: str,
 ) -> list[CommentResponse]:
+    await _require_entity_in_household(db, entity_type, entity_id, household_id)
     result = await db.execute(
         select(Comment, User)
         .join(User, Comment.author_id == User.id)
@@ -44,6 +65,7 @@ async def create_comment(
     author_id: str,
     body: CommentCreate,
 ) -> CommentResponse:
+    await _require_entity_in_household(db, entity_type, entity_id, household_id)
     if body.mentions:
         members_result = await db.execute(
             select(HouseholdMember.user_id).where(
@@ -87,9 +109,17 @@ async def delete_comment(
     db: AsyncSession,
     comment_id: str,
     requester_id: str,
+    entity_type: str,
+    entity_id: str,
+    household_id: str,
 ) -> None:
+    await _require_entity_in_household(db, entity_type, entity_id, household_id)
     result = await db.execute(
-        select(Comment).where(Comment.id == comment_id)
+        select(Comment).where(
+            Comment.id == comment_id,
+            Comment.entity_type == entity_type,
+            Comment.entity_id == entity_id,
+        )
     )
     comment = result.scalar_one_or_none()
     if not comment:

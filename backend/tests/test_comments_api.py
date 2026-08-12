@@ -213,3 +213,75 @@ async def test_task_list_includes_comment_count(client, task_id):
     tasks2 = r2.json()
     the_task2 = next(t for t in tasks2 if t["id"] == task_id)
     assert the_task2["comment_count"] == 1
+
+
+# ---------------------------------------------------------------------------
+# 12. Cross-household access (IDOR): entity must belong to the URL household
+# ---------------------------------------------------------------------------
+OTHER_HOUSEHOLD_ID = "hh-comments-other"
+
+
+@pytest.fixture
+async def other_household_task_id(db_session):
+    """A task in a household the caller is NOT a member of."""
+    session = db_session
+    session.add(User(id="user-outsider", email="out@example.com", display_name="Outsider"))
+    session.add(Household(id=OTHER_HOUSEHOLD_ID, name="Elsewhere", created_by="user-outsider"))
+    session.add(HouseholdMember(household_id=OTHER_HOUSEHOLD_ID, user_id="user-outsider"))
+    tid = str(uuid.uuid4())
+    session.add(Task(
+        id=tid,
+        household_id=OTHER_HOUSEHOLD_ID,
+        title="Other household's task",
+        status="pending",
+        priority=3,
+        created_by="user-outsider",
+    ))
+    await session.commit()
+    return tid
+
+
+async def test_list_comments_foreign_entity_404(client, other_household_task_id):
+    r = await client.get(_comments_url("task", other_household_task_id))
+    assert r.status_code == 404
+
+
+async def test_create_comment_foreign_entity_404(client, other_household_task_id):
+    r = await client.post(
+        _comments_url("task", other_household_task_id),
+        json={"content": "sneaky"},
+    )
+    assert r.status_code == 404
+
+
+async def test_create_comment_nonexistent_entity_404(client):
+    r = await client.post(
+        _comments_url("task", "no-such-task"),
+        json={"content": "orphan"},
+    )
+    assert r.status_code == 404
+
+
+async def test_delete_comment_foreign_entity_404(client, db_session, other_household_task_id):
+    # A comment authored by the caller on the foreign task (planted directly)
+    comment = Comment(
+        id="comment-foreign-001",
+        entity_type="task",
+        entity_id=other_household_task_id,
+        author_id=USER_ID,
+        content="planted",
+    )
+    db_session.add(comment)
+    await db_session.commit()
+
+    r = await client.delete(_comments_url("task", other_household_task_id) + "/comment-foreign-001")
+    assert r.status_code == 404
+
+
+async def test_delete_comment_entity_mismatch_404(client, task_id, db_session):
+    # Comment exists on task A, but delete is attempted via a different entity path
+    r = await client.post(_comments_url("task", task_id), json={"content": "target"})
+    comment_id = r.json()["id"]
+
+    r2 = await client.delete(_comments_url("task", "some-other-task") + f"/{comment_id}")
+    assert r2.status_code == 404
