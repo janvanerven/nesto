@@ -99,7 +99,8 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   if (isTokenExpiring() && refreshToken) {
     try {
       await doRefresh()
-    } catch {
+    } catch (err) {
+      console.error('[auth] pre-flight token refresh failed', err)
       onSessionExpired?.()
       throw new ApiError(401, 'Session expired')
     }
@@ -124,7 +125,8 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
         headers['Authorization'] = `Bearer ${newToken}`
         response = await fetch(`/api${path}`, { ...options, headers })
       }
-    } catch {
+    } catch (err) {
+      console.error('[auth] token refresh after 401 failed', err)
       onSessionExpired?.()
       throw new ApiError(401, 'Session expired')
     }

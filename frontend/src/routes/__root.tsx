@@ -43,15 +43,26 @@ function RootComponent() {
       renewAttempted.current = true
       setIsRenewing(true)
       auth.signinSilent()
-        .catch(() => {
-          // Refresh token also expired or renewal failed — user must log in again
+        .catch((err: unknown) => {
+          // Renewal failed — user must log in again. Log why, so field
+          // reports of unexpected logouts are diagnosable.
+          const hasRefreshToken = !!auth.user?.refresh_token
+          console.error(
+            `[auth] silent renewal failed (stored refresh_token: ${hasRefreshToken})`,
+            err,
+          )
         })
         .finally(() => setIsRenewing(false))
     }
     if (auth.isAuthenticated) {
       renewAttempted.current = false
     }
-  }, [auth.user?.expired, auth.isAuthenticated, auth.isLoading, auth.signinSilent])
+    // No stored user at all after init: either first visit or the browser
+    // evicted localStorage (e.g. Safari ITP) — log to tell the two apart.
+    if (!auth.isLoading && !auth.user && !renewAttempted.current) {
+      console.warn('[auth] no stored OIDC user found — fresh visit or storage was evicted')
+    }
+  }, [auth.user, auth.user?.expired, auth.isAuthenticated, auth.isLoading, auth.signinSilent])
 
   useEffect(() => {
     setTokenGetter(() => auth.user?.access_token)
