@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Button, Input, Avatar } from '@/components/ui'
 import type { EventCreate } from '@/api/events'
 import type { HouseholdMember } from '@/api/households'
-import { formatDateISO } from '@/utils/dates'
+import { addDaysISO, formatDateISO } from '@/utils/dates'
 import { useScrollLock } from '@/utils/use-scroll-lock'
 
 interface CreateEventSheetProps {
@@ -122,8 +122,10 @@ export function CreateEventSheet({
       } else {
         endTimeVal = addMinutes(startTime!, durationMinutes ?? 60)
       }
+      // An end at or before the start means the event crosses midnight
+      const endDateVal = endTimeVal <= startTime! ? addDaysISO(eventDate, 1) : eventDate
       start_time = `${eventDate}T${startTime}:00`
-      end_time = `${eventDate}T${endTimeVal}:00`
+      end_time = `${endDateVal}T${endTimeVal}:00`
     }
 
     const event: EventCreate = {
@@ -290,6 +292,7 @@ export function CreateEventSheet({
                     <input
                       ref={timeInputRef}
                       type="time"
+                      value={startTime ?? ''}
                       className="absolute inset-0 opacity-0 w-full h-full cursor-pointer text-base"
                       onChange={(e) => {
                         if (e.target.value) {
@@ -345,6 +348,7 @@ export function CreateEventSheet({
                       <input
                         ref={endTimeInputRef}
                         type="time"
+                        value={customEndTime}
                         className="absolute inset-0 opacity-0 w-full h-full cursor-pointer text-base"
                         onChange={(e) => {
                           if (e.target.value) {

@@ -3,6 +3,7 @@ import { useRef, useState, useEffect } from 'react'
 import { Button, Input, Avatar } from '@/components/ui'
 import type { CalendarEvent, EventUpdate } from '@/api/events'
 import type { HouseholdMember } from '@/api/households'
+import { addDaysISO } from '@/utils/dates'
 import { useScrollLock } from '@/utils/use-scroll-lock'
 
 interface EditEventSheetProps {
@@ -94,8 +95,10 @@ export function EditEventSheet({
       start_time = `${eventDate}T00:00:00`
       end_time = `${endDate}T23:59:59`
     } else {
+      // An end at or before the start means the event crosses midnight
+      const endDateVal = endTime <= startTime ? addDaysISO(eventDate, 1) : eventDate
       start_time = `${eventDate}T${startTime}:00`
-      end_time = `${eventDate}T${endTime}:00`
+      end_time = `${endDateVal}T${endTime}:00`
     }
 
     const update: EventUpdate & { eventId: string } = {
