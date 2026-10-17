@@ -169,3 +169,19 @@ async def test_overlong_key_rejected_without_echo(client):
     r = await client.put(URL, json={"api_key": key})
     assert r.status_code == 400
     assert key not in r.text
+
+
+@pytest.mark.parametrize("bad_key", ["sk-or-abc\r\ndef", "sk-or-ключ", "sk-or abc", "sk-or-abc\x00"])
+async def test_non_printable_or_non_ascii_key_rejected(client, monkeypatch, bad_key):
+    calls = []
+
+    async def spy(api_key, *, transport=None):
+        calls.append(api_key)
+        return {"label": "x", "limit_remaining": None, "usage": None}
+
+    monkeypatch.setattr(openrouter, "check_key", spy)
+    r = await client.put(URL, json={"api_key": bad_key})
+    assert r.status_code == 400
+    assert r.json()["detail"] == "That doesn't look like an OpenRouter key"
+    assert "ключ" not in r.text and "abc" not in r.text
+    assert calls == []

@@ -469,3 +469,30 @@ def test_build_system_prompt():
     assert "Only propose; never claim something was saved" in prompt
     assert "Reply in the user's language and keep item names as the user said them" in prompt
     assert "If an earlier proposal is corrected, propose it again and set `replaces` to its id" in prompt
+
+
+async def test_date_only_event_start_is_all_day(client, monkeypatch):
+    _script(monkeypatch, [_reply("Ok.", [_tc("propose_event", {"title": "Trip", "start": "2026-10-23"})])])
+    r = await client.post(URL, json=_body("trip on the 23rd"))
+    p = r.json()["proposals"][0]["payload"]
+    assert p["all_day"] is True
+    assert p["start_time"] == "2026-10-23T00:00:00" and p["end_time"] == "2026-10-23T23:59:59"
+
+
+async def test_date_only_start_explicit_not_all_day_stays_timed(client, monkeypatch):
+    _script(monkeypatch, [_reply("Ok.", [_tc("propose_event", {"title": "Trip", "start": "2026-10-23", "all_day": False})])])
+    p = (await client.post(URL, json=_body("x"))).json()["proposals"][0]["payload"]
+    assert p["all_day"] is False and p["end_time"] == "2026-10-23T01:00:00"
+
+
+async def test_turn_timeout_is_504(client, monkeypatch):
+    import asyncio
+
+    async def slow(self, *a, **k):
+        await asyncio.sleep(5)
+
+    monkeypatch.setattr(assistant, "TURN_TIMEOUT_SECONDS", 0.05)
+    monkeypatch.setattr(assistant.OpenRouterClient, "chat", slow)
+    r = await client.post(URL, json=_body("hi"))
+    assert r.status_code == 504
+    assert r.json()["detail"] == "The assistant took too long — try again."

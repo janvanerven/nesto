@@ -49,6 +49,8 @@ export function AssistantBox({ householdId }: { householdId: string }) {
   const [cards, setCards] = useState<Proposal[]>([])
   // A ref, not state: a card can be saved while a turn is in flight, and the merge must see it.
   const savedIds = useRef<Set<string>>(new Set())
+  const cardsRef = useRef<Proposal[]>([])
+  cardsRef.current = cards
   const [reply, setReply] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [trimmed, setTrimmed] = useState(false)
@@ -109,6 +111,10 @@ export function AssistantBox({ householdId }: { householdId: string }) {
 
   function markSaved(id: string) {
     savedIds.current.add(id)
+  }
+
+  function hasOtherUnsaved(id: string) {
+    return cardsRef.current.some((c) => c.id !== id && !savedIds.current.has(c.id))
   }
 
   function dismiss(id: string) {
@@ -202,6 +208,7 @@ export function AssistantBox({ householdId }: { householdId: string }) {
                       householdId={householdId}
                       onSaved={markSaved}
                       onDismiss={dismiss}
+                      hasOtherUnsaved={hasOtherUnsaved}
                     />
                   </motion.div>
                 ))}

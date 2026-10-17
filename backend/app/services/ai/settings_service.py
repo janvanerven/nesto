@@ -47,6 +47,11 @@ async def get_settings_view(db: AsyncSession, household_id: str) -> AiSettingsVi
     return _view(await _get_row(db, household_id))
 
 
+def _is_plain_key(api_key: str) -> bool:
+    """Printable ASCII, no whitespace/control chars (keeps header injection out of requests)."""
+    return bool(api_key) and api_key.isascii() and api_key.isprintable() and not any(c.isspace() for c in api_key)
+
+
 async def save_settings(
     db: AsyncSession,
     household_id: str,
@@ -56,7 +61,9 @@ async def save_settings(
 ) -> AiSettingsView:
     if model is not None and not is_valid_model(model):
         raise HTTPException(400, "Unknown model")
-    if api_key is not None and len(api_key) > 200:
+    if api_key is not None:
+        api_key = api_key.strip()
+    if api_key is not None and (len(api_key) > 200 or not _is_plain_key(api_key)):
         # Plain 400 (not a 422) so the submitted key is never echoed back.
         raise HTTPException(400, "That doesn't look like an OpenRouter key")
     row = await _get_row(db, household_id)

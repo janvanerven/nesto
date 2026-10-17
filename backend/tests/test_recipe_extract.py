@@ -272,3 +272,9 @@ async def test_llm_request_has_privacy_pin(client, monkeypatch):
     _mock_llm(monkeypatch, '{"ingredients":[{"name":"x","quantity":"","staple":false}]}', seen)
     await client.post(_url(), json={"url": RECIPE_URL})
     assert seen[0]["provider"] == {"data_collection": "deny"}
+
+
+async def test_extract_cross_household_404(client):
+    url = f"/api/households/{OTHER_HOUSEHOLD_ID}/lists/{GROCERY_ID}/recipes/extract"
+    r = await client.post(url, json={"url": RECIPE_URL})
+    assert r.status_code == 404

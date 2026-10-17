@@ -33,15 +33,18 @@ interface ProposalCardProps {
   householdId: string
   onSaved: (id: string) => void
   onDismiss: (id: string) => void
+  /** True when other cards in the conversation are still unsaved (read at save time). */
+  hasOtherUnsaved: (id: string) => boolean
 }
 
-export function ProposalCard({ proposal, householdId, onSaved, onDismiss }: ProposalCardProps) {
+export function ProposalCard({ proposal, householdId, onSaved, onDismiss, hasOtherUnsaved }: ProposalCardProps) {
   const navigate = useNavigate()
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState<string | null>(null)
   // Edited values from a sheet replace the proposed payload, so a retry after a failed sheet save keeps them.
   const [payload, setPayload] = useState<Payload>(proposal.payload)
   const [editing, setEditing] = useState(false)
+  const [createdListId, setCreatedListId] = useState<string | null>(null)
 
   // One card targets at most one list, so the bulk mutation can be keyed here unconditionally.
   const listId = proposal.list_id ?? ''
@@ -78,7 +81,9 @@ export function ProposalCard({ proposal, householdId, onSaved, onDismiss }: Prop
           const list = await createList.mutateAsync(data as unknown as ShoppingListCreate)
           setStatus('saved')
           onSaved(proposal.id)
-          navigate({ to: '/lists/$listId', params: { listId: list.id }, search: { suggest: 1 } })
+          // Navigating away would silently drop the other unsaved cards, so only do it when none remain.
+          if (hasOtherUnsaved(proposal.id)) setCreatedListId(list.id)
+          else navigate({ to: '/lists/$listId', params: { listId: list.id }, search: { suggest: 1 } })
           return
         }
       }
@@ -118,7 +123,7 @@ export function ProposalCard({ proposal, householdId, onSaved, onDismiss }: Prop
           {status === 'saved' ? (
             <div className="mt-3 flex items-center justify-between gap-3">
               <span className="text-sm font-bold text-success">✓ Saved</span>
-              <SavedLink type={proposal.type} listId={listId} />
+              <SavedLink type={proposal.type} listId={listId} createdListId={createdListId} />
             </div>
           ) : (
             <>
@@ -166,7 +171,7 @@ export function ProposalCard({ proposal, householdId, onSaved, onDismiss }: Prop
   )
 }
 
-function SavedLink({ type, listId }: { type: ProposalType; listId: string }) {
+function SavedLink({ type, listId, createdListId }: { type: ProposalType; listId: string; createdListId: string | null }) {
   const cls = 'text-sm font-semibold text-primary'
   switch (type) {
     case 'birthday':
@@ -175,6 +180,10 @@ function SavedLink({ type, listId }: { type: ProposalType; listId: string }) {
       return <Link to="/tasks" className={cls}>View reminders →</Link>
     case 'event':
       return <Link to="/calendar" className={cls}>View calendar →</Link>
+    case 'grocery_list':
+      return createdListId
+        ? <Link to="/lists/$listId" params={{ listId: createdListId }} search={{ suggest: 1 }} className={cls}>Open list →</Link>
+        : null
     default:
       return listId
         ? <Link to="/lists/$listId" params={{ listId }} className={cls}>View list →</Link>

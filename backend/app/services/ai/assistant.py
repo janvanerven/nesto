@@ -9,6 +9,7 @@ the frontend saves a proposal through the normal create endpoints.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import uuid
 from datetime import date, datetime, timedelta
@@ -16,6 +17,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 import httpx
+from fastapi import HTTPException
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,6 +36,7 @@ from app.services.shopping_list_service import list_shopping_lists
 _transport: httpx.AsyncBaseTransport | None = None
 
 MAX_CALLS = 3
+TURN_TIMEOUT_SECONDS = 110.0  # stay under nginx's 120s proxy timeout
 MAX_TOKENS = 1000
 MAX_REPLACES = 64
 NOTE_SUMMARY_CHARS = 60
@@ -316,7 +319,12 @@ def _task(args: dict, ctx: _Context) -> tuple[dict, str, str | None]:
 def _event(args: dict, ctx: _Context) -> tuple[dict, str, str | None]:
     if args.get("start") is None:
         raise ToolError("start: field required")
-    all_day = args.get("all_day") is True or str(args.get("all_day")).lower() == "true"
+    flag = str(args.get("all_day")).lower()
+    if flag == "false":
+        all_day = False
+    else:
+        # A date-only start ("2026-10-23") is an all-day event unless explicitly timed.
+        all_day = flag == "true" or (isinstance(args["start"], str) and len(args["start"].strip()) <= 10)
     try:
         start, end = normalise_event_times(args["start"], args.get("end"), all_day, tz=ctx.tz)
     except ValueError as exc:
@@ -440,32 +448,36 @@ async def run_assistant(
     proposals: list[Proposal] = []
     text = ""
     async with OpenRouterClient(api_key, transport=transport or _transport) as client:
-        for call_no in range(MAX_CALLS):
-            result = await client.chat(messages, model=model, tools=TOOLS, max_tokens=MAX_TOKENS)
-            text = (result.text or "").strip()
-            if not result.tool_calls:
-                if text or proposals:
-                    break
-                continue
-            for i, tc in enumerate(result.tool_calls):
-                if not tc.id:
-                    tc.id = f"call_{call_no}_{i}"
-            messages.append(_assistant_message(result))
-            had_error = False
-            for tc in result.tool_calls:
-                try:
-                    if not _has_valid_json_args(tc):
-                        raise ToolError("arguments were not valid JSON")
-                    proposal = _make_proposal(tc, ctx)
-                except ToolError as exc:
-                    had_error = True
-                    content = f"error: {exc}"
-                else:
-                    proposals.append(proposal)
-                    content = f"ok: card {proposal.id} shown"
-                messages.append({"role": "tool", "tool_call_id": tc.id, "content": content})
-            if not had_error:
-                break
+        try:
+            async with asyncio.timeout(TURN_TIMEOUT_SECONDS):
+                for call_no in range(MAX_CALLS):
+                    result = await client.chat(messages, model=model, tools=TOOLS, max_tokens=MAX_TOKENS)
+                    text = (result.text or "").strip()
+                    if not result.tool_calls:
+                        if text or proposals:
+                            break
+                        continue
+                    for i, tc in enumerate(result.tool_calls):
+                        if not tc.id:
+                            tc.id = f"call_{call_no}_{i}"
+                    messages.append(_assistant_message(result))
+                    had_error = False
+                    for tc in result.tool_calls:
+                        try:
+                            if not _has_valid_json_args(tc):
+                                raise ToolError("arguments were not valid JSON")
+                            proposal = _make_proposal(tc, ctx)
+                        except ToolError as exc:
+                            had_error = True
+                            content = f"error: {exc}"
+                        else:
+                            proposals.append(proposal)
+                            content = f"ok: card {proposal.id} shown"
+                        messages.append({"role": "tool", "tool_call_id": tc.id, "content": content})
+                    if not had_error:
+                        break
+        except TimeoutError:
+            raise HTTPException(504, "The assistant took too long — try again.") from None
 
     reply = text or (FALLBACK_WITH_PROPOSALS if proposals else FALLBACK_EMPTY)
     return AssistantResponse(

@@ -61,13 +61,20 @@ async def check_key(api_key: str, *, transport: httpx.AsyncBaseTransport | None 
         async with httpx.AsyncClient(timeout=15.0, transport=transport) as client:
             resp = await client.get(f"{BASE_URL}/key", headers=_headers(api_key))
     except httpx.RequestError as exc:
-        logger.warning("Cannot reach OpenRouter: %s", exc)
+        # Never interpolate the exception: it can embed the Authorization header.
+        logger.warning("Cannot reach OpenRouter (%s)", type(exc).__name__)
         raise HTTPException(502, "Cannot reach OpenRouter")
     if resp.status_code in (401, 403):
         raise HTTPException(400, "OpenRouter rejected the API key")
     if resp.status_code >= 400:
         raise HTTPException(502, f"OpenRouter returned HTTP {resp.status_code}")
-    data = resp.json().get("data", {}) if isinstance(resp.json(), dict) else {}
+    try:
+        payload = resp.json()
+    except ValueError:
+        raise HTTPException(502, "OpenRouter returned an unreadable response")
+    data = payload.get("data") if isinstance(payload, dict) else None
+    if not isinstance(data, dict):
+        data = {}
     return {
         "label": data.get("label") or "",
         "limit_remaining": data.get("limit_remaining"),
@@ -290,10 +297,10 @@ class OpenRouterClient:
         try:
             return await self._chat_once(url, body, model=model)
         except httpx.TimeoutException as exc:
-            logger.warning("OpenRouter request timed out: %s", exc)
+            logger.warning("OpenRouter request timed out (%s)", type(exc).__name__)
             raise HTTPException(502, "OpenRouter request timed out")
         except httpx.RequestError as exc:
-            logger.warning("Cannot reach OpenRouter: %s", exc)
+            logger.warning("Cannot reach OpenRouter (%s)", type(exc).__name__)
             raise HTTPException(502, "Cannot reach OpenRouter")
 
     async def _chat_once(self, url: str, body: dict, *, model: str) -> ChatResult:

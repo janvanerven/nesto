@@ -72,3 +72,29 @@ async def test_key_not_in_logs(caplog):
         with pytest.raises(HTTPException):
             await c.chat(MSGS, model="m/x", max_tokens=10)
     assert "sk-or-secret" not in caplog.text
+
+
+async def test_check_key_non_json_200_is_502():
+    from app.services.ai.openrouter import check_key
+
+    transport = httpx.MockTransport(lambda r: httpx.Response(200, text="<html>hi</html>", headers={"content-type": "text/plain"}))
+    with pytest.raises(HTTPException) as exc:
+        await check_key("sk-or-secret", transport=transport)
+    assert exc.value.status_code == 502 and exc.value.detail == "OpenRouter returned an unreadable response"
+
+
+async def test_request_error_with_key_not_logged(caplog):
+    from app.services.ai.openrouter import check_key
+
+    def boom(request):
+        raise httpx.ConnectError("Illegal header value b'Bearer sk-or-secret'")
+
+    caplog.set_level(logging.DEBUG)
+    with pytest.raises(HTTPException) as exc:
+        await check_key("sk-or-secret", transport=httpx.MockTransport(boom))
+    assert exc.value.status_code == 502
+    assert "sk-or-secret" not in caplog.text
+    async with _client(boom) as c:
+        with pytest.raises(HTTPException):
+            await c.chat(MSGS, model="m/x", max_tokens=10)
+    assert "sk-or-secret" not in caplog.text
