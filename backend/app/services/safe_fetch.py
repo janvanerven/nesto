@@ -22,6 +22,21 @@ _ALLOWED_PORTS = {80, 443}
 _DEFAULT_PORTS = {"http": 80, "https": 443}
 _REDIRECT_STATUSES = {301, 302, 303, 307, 308}
 
+# IPv6 ranges that embed or translate to IPv4 (or are deprecated local scopes);
+# Python reports some of these as is_global, so reject them outright.
+_BLOCKED_V6 = tuple(
+    ipaddress.ip_network(n)
+    for n in (
+        "::/96",  # IPv4-compatible
+        "::ffff:0:0:0/96",  # SIIT
+        "64:ff9b::/96",  # NAT64
+        "64:ff9b:1::/48",  # local-use NAT64
+        "2001::/32",  # Teredo
+        "2002::/16",  # 6to4
+        "fec0::/10",  # deprecated site-local
+    )
+)
+
 Resolver = Callable[[str, int], Awaitable[list[str]]]
 
 
@@ -40,15 +55,21 @@ def _is_allowed_ip(ip: str) -> bool:
         addr = ipaddress.ip_address(ip)
     except ValueError:
         return False
-    if isinstance(addr, ipaddress.IPv6Address) and addr.ipv4_mapped:
-        addr = addr.ipv4_mapped
+    if isinstance(addr, ipaddress.IPv6Address):
+        if addr.ipv4_mapped:
+            addr = addr.ipv4_mapped
+        elif any(addr in net for net in _BLOCKED_V6):
+            return False
     return addr.is_global and not addr.is_multicast
 
 
 def _parse(url: str) -> tuple[str, str, int, str]:
     """Return (scheme, ascii_host, port, path_and_query) or raise FetchError."""
+    url = url.strip()
+    if any(c.isspace() or not c.isprintable() for c in url):
+        raise FetchError("That address isn't allowed")
     try:
-        parts = urlsplit(url.strip())
+        parts = urlsplit(url)
         port = parts.port
     except ValueError:
         raise FetchError("That address isn't allowed")
@@ -115,7 +136,7 @@ async def _fetch(url: str, resolver: Resolver, client: httpx.AsyncClient) -> tup
             charset = response.charset_encoding or "utf-8"
             try:
                 text = body.decode(charset, errors="replace")
-            except LookupError:
+            except (LookupError, UnicodeError):
                 text = body.decode("utf-8", errors="replace")
             return url, text
         finally:
@@ -142,5 +163,5 @@ async def safe_fetch_html(
                 return await _fetch(url, resolver or _default_resolver, client)
     except (TimeoutError, httpx.TimeoutException):
         raise FetchError("That page took too long to load")
-    except httpx.HTTPError:
+    except (httpx.HTTPError, httpx.InvalidURL):
         raise FetchError("Couldn't reach that address")

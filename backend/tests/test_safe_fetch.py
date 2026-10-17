@@ -36,6 +36,15 @@ def fail_transport() -> httpx.MockTransport:
         "::1",
         "::ffff:127.0.0.1",
         "fd00::1",
+        "::7f00:1",
+        "::a00:1",
+        "64:ff9b::a00:1",
+        "64:ff9b:1::a00:1",
+        "::ffff:0:a00:1",
+        "fec0::1",
+        "2002:a00:1::1",
+        "2002:5db8:d822::1",
+        "2001:0:4136:e378:8000:63bf:f5ff:fffe",
     ],
 )
 async def test_rejects_non_global(ip):
@@ -65,6 +74,8 @@ async def test_rejects_if_any_resolved_ip_private():
         "http://user:pass@example.com/",
         "http:///path",
         "not a url",
+        "http://example.com/\x01",
+        "http://example.com/a b",
     ],
 )
 async def test_rejects_bad_scheme_and_port(url):
@@ -241,3 +252,18 @@ async def test_invalid_utf8_replaced():
         transport=httpx.MockTransport(handler),
     )
     assert text == "<p>� ok</p>"
+
+
+@pytest.mark.parametrize("charset", ["idna", "punycode", "no-such-charset"])
+async def test_odd_charset_falls_back_to_utf8(charset):
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200, headers={"content-type": f"text/html; charset={charset}"}, content="<p>é \xff</p>".encode()
+        )
+
+    _, text = await safe_fetch_html(
+        "http://example.com/",
+        resolver=fixed_resolver({"example.com": [PUBLIC_IP]}),
+        transport=httpx.MockTransport(handler),
+    )
+    assert text == "<p>é \xff</p>"
