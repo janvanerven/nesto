@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy import func, select
 
 from app.models.ai_settings import HouseholdAiSettings
-from app.models.birthday import Birthday
+from app.models.contact import Person
 from app.models.event import Event
 from app.models.household import HouseholdMember
 from app.models.shopping_list import ShoppingItem, ShoppingList
@@ -109,7 +109,7 @@ async def test_agent_never_writes(client, db_session, monkeypatch):
     body = r.json()
     assert [p["type"] for p in body["proposals"]] == ["birthday", "task", "event", "list_items", "grocery_list"]
     assert body["reply"] == "Here's what I'd add:"
-    for model in (Birthday, Task, Event, ShoppingItem):
+    for model in (Person, Task, Event, ShoppingItem):
         count = (await db_session.execute(select(func.count()).select_from(model))).scalar_one()
         assert count == 0, model.__tablename__
     lists = (await db_session.execute(select(func.count()).select_from(ShoppingList))).scalar_one()

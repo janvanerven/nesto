@@ -6,7 +6,7 @@ from icalendar import Calendar, Event as ICalEvent
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.birthday import Birthday
+from app.models.contact import Person
 from app.models.event import Event
 from app.models.household import HouseholdMember
 
@@ -50,7 +50,7 @@ def _event_to_vevent(event: Event) -> ICalEvent:
     return vevent
 
 
-def _birthday_to_vevent(birthday: Birthday) -> ICalEvent:
+def _birthday_to_vevent(birthday: Person) -> ICalEvent:
     vevent = ICalEvent()
     vevent.add("uid", f"birthday-{birthday.id}@nesto")
 
@@ -58,9 +58,9 @@ def _birthday_to_vevent(birthday: Birthday) -> ICalEvent:
     # Don't embed "turns N" — it bakes a specific age into the RRULE'd event summary
     # that becomes wrong in subsequent years when the calendar app caches the feed.
     if birthday.birth_year:
-        vevent.add("summary", f"\U0001f382 {birthday.person_name}'s Birthday (born {birthday.birth_year})")
+        vevent.add("summary", f"\U0001f382 {birthday.name}'s Birthday (born {birthday.birth_year})")
     else:
-        vevent.add("summary", f"\U0001f382 {birthday.person_name}'s Birthday")
+        vevent.add("summary", f"\U0001f382 {birthday.name}'s Birthday")
 
     # Use 2000 as reference year when birth_year is unknown.
     # MUST be a leap year so Feb 29 birthdays don't raise ValueError.
