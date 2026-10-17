@@ -57,8 +57,10 @@ export function useContactProposal(householdId: string, proposal: Proposal) {
         return addressIdOf(await createPerson.mutateAsync(data as unknown as PersonCreate))
       case 'person_update':
         return addressIdOf(await updatePerson.mutateAsync({ id: targetId, data: data as PersonUpdate }))
-      default:
+      case 'address_update':
         return addressIdOf(await updateAddress.mutateAsync({ id: targetId, data: data as AddressUpdate }))
+      default:
+        throw new Error(`Not a contact proposal: ${proposal.type}`)
     }
   }
 
@@ -94,6 +96,7 @@ export function ContactEditSheet({ type, householdId, target, open, payload, onC
       {...common}
       initialValues={payload as Partial<PersonCreate>}
       person={target as Person | undefined}
+      hideRecordActions
       onSaved={(p) => onSaved(addressIdOf(p))}
     />
   )

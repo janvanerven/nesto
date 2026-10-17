@@ -148,7 +148,8 @@ export function AddressFormSheet({
                 key={p.id}
                 type="button"
                 onClick={() => onEditPerson?.(p)}
-                className="text-left rounded-xl bg-text/5 px-4 py-3 font-semibold text-text"
+                disabled={!onEditPerson}
+                className="text-left rounded-xl bg-text/5 px-4 py-3 font-semibold text-text disabled:cursor-default"
               >
                 {p.name}
                 {p.birth_month !== null && (
@@ -171,14 +172,16 @@ export function AddressFormSheet({
 
         <FormError error={error} />
         <div className="flex gap-3">
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={isPending}
-            onClick={isEdit ? onAddPerson : () => setPeople((ps) => [...ps, keyed(draftFrom())])}
-          >
-            + Person
-          </Button>
+          {(!isEdit || onAddPerson) && (
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={isPending}
+              onClick={isEdit ? onAddPerson : () => setPeople((ps) => [...ps, keyed(draftFrom())])}
+            >
+              + Person
+            </Button>
+          )}
           <Button type="submit" className="flex-1" disabled={isPending || !label.trim()}>
             {isPending ? 'Saving…' : 'Save'}
           </Button>

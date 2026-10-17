@@ -23,6 +23,11 @@ interface PersonSheetProps {
   defaultAddressId?: string
   /** Called with the saved person after a create or edit (not after delete / remove). */
   onSaved?: (person: Person) => void
+  /**
+   * Editing a proposal: hide actions that write immediately (delete, remove from address,
+   * "New address…") and always show the address picker, so a proposed move is visible.
+   */
+  hideRecordActions?: boolean
   /** Opened from another sheet (layers above it). */
   stacked?: boolean
 }
@@ -35,7 +40,7 @@ interface ContactFields {
 }
 
 export function PersonSheet({
-  open, onClose, householdId, person, initialValues, defaultAddressId, onSaved, stacked,
+  open, onClose, householdId, person, initialValues, defaultAddressId, onSaved, hideRecordActions, stacked,
 }: PersonSheetProps) {
   const createPerson = useCreatePerson(householdId)
   const updatePerson = useUpdatePerson(householdId)
@@ -64,7 +69,7 @@ export function PersonSheet({
 
   const isPending = createPerson.isPending || updatePerson.isPending || deletePerson.isPending
   // Only people who aren't living somewhere get the picker; others use "Remove from address".
-  const showPicker = person ? !person.address_id : !defaultAddressId
+  const showPicker = hideRecordActions || (person ? !person.address_id : !defaultAddressId)
   const set = (key: keyof ContactFields) => (v: string | null) => setFields((f) => ({ ...f, [key]: v }))
 
   async function run(action: () => Promise<unknown>): Promise<void> {
@@ -122,7 +127,7 @@ export function PersonSheet({
             value={fields.addressId}
             onChange={set('addressId')}
             householdId={householdId}
-            personId={person?.id}
+            personId={hideRecordActions ? undefined : person?.id}
             personName={person?.name}
           />
         )}
@@ -132,7 +137,7 @@ export function PersonSheet({
           {isPending ? 'Saving…' : 'Save'}
         </Button>
 
-        {person && (
+        {person && !hideRecordActions && (
           <div className="flex flex-wrap gap-3">
             {person.address_id && (
               <Button

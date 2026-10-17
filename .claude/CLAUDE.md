@@ -30,7 +30,7 @@ frontend/src/
   auth/            # OIDC config and provider
   components/      # ui/ (Button, Card, Input, Avatar, Fab, PriorityDot), layout/ (bottom-nav), tasks/ (task-card, create-task-sheet, edit-task-sheet), calendar/ (week-strip, event-card, external-event-card, birthday-card, create-event-sheet, edit-event-sheet, add-calendar-sheet), lists/ (list-card, create-list-sheet, edit-list-sheet, kind-picker, suggestions-sheet, add-recipe-sheet, recipe-group), cards/ (loyalty-card-card, create-card-sheet, edit-card-sheet, barcode-display), documents/ (folder-contents, breadcrumbs, folder-card, file-card, upload-file-sheet, create-folder-sheet, rename-sheet), birthdays/ (birthday-form, birthday-card, create-birthday-sheet, edit-birthday-sheet), contacts/ (address-card, address-form-sheet, address-picker, person-sheet, person-row, person-draft, delete-address, sheet-parts), assistant/ (assistant-box, proposal-card, contact-proposal), settings/ (assistant-settings)
   stores/          # Zustand stores (auth-store, theme-store)
-  utils/           # recurrence.ts (client-side recurring event expansion), contacts.ts (search, envelope text, map link)
+  utils/           # recurrence.ts (client-side recurring event expansion), contacts.ts (search, envelope text, map link, label suggestion, birthday formatting, person lookup)
   styles/          # Tailwind CSS v4 theme with light/dark mode
 ```
 
@@ -67,7 +67,7 @@ OIDC config is injected at runtime via `window.__NESTO_CONFIG__` (set by `/confi
 - **Font:** Outfit (Google Fonts, variable weight 300-700)
 - **Dark mode:** System preference by default, manual toggle in settings, stored in localStorage (`nesto-theme`)
 - **Onboarding:** First name step → household create/join. First name stored on user model.
-- **AI assistant:** Home-page box proposes cards (birthday/task/event/list items/grocery list, new/updated address or person); household contacts (≤300 people) are in its prompt, so known people are updated rather than duplicated; nothing is written until the user taps Save, which calls the normal create/bulk endpoints. Transcript is client-side only. OpenRouter key + model live in per-household settings (`household_ai_settings`, key encrypted), not env vars. In-memory cap of 200 AI calls/household/day.
+- **AI assistant:** Home-page box proposes cards (birthday/task/event/list items/grocery list, new/updated address or person); household contacts (≤300 people) are in its prompt, so known people are updated rather than duplicated; nothing is written until the user taps Save, which calls the normal create/update/bulk endpoints (contact updates PATCH the person/address). Transcript is client-side only. OpenRouter key + model live in per-household settings (`household_ai_settings`, key encrypted), not env vars. In-memory cap of 200 AI calls/household/day.
 - **Navigation:** Bottom nav uses a "More" tab that groups Cards, Documents, Contacts, Birthdays, and Settings into a secondary hub page.
 
 ## Testing
