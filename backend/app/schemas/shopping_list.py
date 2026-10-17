@@ -100,3 +100,14 @@ class RecipeResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class SuggestedItem(BaseModel):
+    name: str
+    quantity: str
+    count: int
+
+
+class SuggestionResponse(BaseModel):
+    enough_history: bool
+    items: list[SuggestedItem]

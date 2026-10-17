@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user_id
@@ -12,9 +12,10 @@ from app.schemas.shopping_list import (
     ShoppingListCreate,
     ShoppingListResponse,
     ShoppingListUpdate,
+    SuggestionResponse,
 )
 from app.services.household_service import get_household
-from app.services import shopping_list_service as svc
+from app.services import list_suggestion_service, shopping_list_service as svc
 
 router = APIRouter(prefix="/api/households/{household_id}/lists", tags=["lists"])
 
@@ -75,6 +76,20 @@ async def complete_list(
 ):
     await get_household(db, household_id, user_id)
     return await svc.complete_shopping_list(db, list_id, household_id)
+
+
+@router.get("/{list_id}/suggestions", response_model=SuggestionResponse)
+async def get_suggestions(
+    household_id: str,
+    list_id: str,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    await get_household(db, household_id, user_id)
+    shopping_list = await svc._get_list_or_404(db, list_id, household_id)
+    if shopping_list.kind != "groceries":
+        raise HTTPException(status_code=400, detail="Suggestions are only available for grocery lists")
+    return await list_suggestion_service.suggest_items(db, household_id, list_id)
 
 
 # --- Item endpoints ---
