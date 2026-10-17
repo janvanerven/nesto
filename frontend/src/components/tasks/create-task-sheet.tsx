@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button, Input, Avatar } from '@/components/ui'
 import type { TaskCreate } from '@/api/tasks'
 import type { HouseholdMember } from '@/api/households'
@@ -26,18 +26,49 @@ interface CreateReminderSheetProps {
   onSubmit: (task: TaskCreate) => void
   isPending: boolean
   members: HouseholdMember[]
+  /** Prefill applied when the sheet opens; changes while open are ignored. */
+  initialValues?: Partial<TaskCreate>
 }
 
-export function CreateReminderSheet({ open, onClose, onSubmit, isPending, members }: CreateReminderSheetProps) {
+/** TaskCreate fields this sheet doesn't render; carried through to onSubmit. */
+type HiddenTaskFields = Pick<TaskCreate, 'description' | 'category' | 'recurrence_end'>
+const NO_HIDDEN_FIELDS: HiddenTaskFields = {}
+
+export function CreateReminderSheet({ open, onClose, onSubmit, isPending, members, initialValues }: CreateReminderSheetProps) {
   const [title, setTitle] = useState('')
   const [priority, setPriority] = useState(3)
   const [assignedTo, setAssignedTo] = useState<string | null>(null)
   const [dueDate, setDueDate] = useState<string | null>(null)
   const [recurrence, setRecurrence] = useState<string | null>(null)
   const [recurrenceInterval, setRecurrenceInterval] = useState(1)
+  const [hidden, setHidden] = useState<HiddenTaskFields>(NO_HIDDEN_FIELDS)
   const titleRef = useRef<HTMLInputElement>(null)
 
   useScrollLock(open)
+
+  // Prefill when the sheet opens with initialValues. A plain open only drops
+  // hidden fields left by an earlier prefilled open; visible state is untouched.
+  useEffect(() => {
+    if (!open) return
+    if (!initialValues) {
+      setHidden(NO_HIDDEN_FIELDS)
+      return
+    }
+    const p = initialValues.priority
+    const rule = initialValues.recurrence_rule
+    const interval = initialValues.recurrence_interval
+    setTitle(initialValues.title ?? '')
+    setPriority(p !== undefined && Number.isInteger(p) && p >= 1 && p <= 4 ? p : 3)
+    setAssignedTo(initialValues.assigned_to || null)
+    setDueDate(initialValues.due_date || null)
+    setRecurrence(RECURRENCE_OPTIONS.some((o) => o.value === rule) ? rule ?? null : null)
+    setRecurrenceInterval(interval !== undefined && Number.isInteger(interval) && interval >= 1 ? interval : 1)
+    const next: HiddenTaskFields = {}
+    if (initialValues.description != null) next.description = initialValues.description
+    if (initialValues.category != null) next.category = initialValues.category
+    if (initialValues.recurrence_end != null) next.recurrence_end = initialValues.recurrence_end
+    setHidden(next)
+  }, [open])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -51,7 +82,10 @@ export function CreateReminderSheet({ open, onClose, onSubmit, isPending, member
     if (dueDate && recurrence) {
       task.recurrence_rule = recurrence
       task.recurrence_interval = recurrenceInterval
+      if (hidden.recurrence_end !== undefined) task.recurrence_end = hidden.recurrence_end
     }
+    if (hidden.description !== undefined) task.description = hidden.description
+    if (hidden.category !== undefined) task.category = hidden.category
     onSubmit(task)
     setTitle('')
     setPriority(3)
@@ -59,6 +93,7 @@ export function CreateReminderSheet({ open, onClose, onSubmit, isPending, member
     setDueDate(null)
     setRecurrence(null)
     setRecurrenceInterval(1)
+    setHidden(NO_HIDDEN_FIELDS)
   }
 
   const priorities = [

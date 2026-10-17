@@ -1,6 +1,7 @@
 import { createFileRoute, Navigate, useNavigate } from '@tanstack/react-router'
 import { useAuth } from 'react-oidc-context'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useHouseholds, useHouseholdMembers } from '@/api/households'
 import {
@@ -12,28 +13,46 @@ import {
   useUpdateShoppingList,
   useDeleteShoppingList,
   useCompleteShoppingList,
+  useRecipes,
+  useDeleteRecipe,
 } from '@/api/lists'
+import type { ShoppingItem } from '@/api/lists'
+import { useAiSettings } from '@/api/assistant'
 import { EditListSheet } from '@/components/lists/edit-list-sheet'
+import { SuggestionsSheet } from '@/components/lists/suggestions-sheet'
+import { AddRecipeSheet } from '@/components/lists/add-recipe-sheet'
+import { RecipeGroup } from '@/components/lists/recipe-group'
 import { Avatar, Button, Card } from '@/components/ui'
 
 export const Route = createFileRoute('/lists/$listId')({
   component: ListDetailPage,
+  validateSearch: (search: Record<string, unknown>): { suggest?: 1 } =>
+    search.suggest === 1 || search.suggest === '1' ? { suggest: 1 } : {},
 })
 
 function ListDetailPage() {
   const auth = useAuth()
   const { data: households } = useHouseholds()
   const { listId } = Route.useParams()
+  const { suggest } = Route.useSearch()
 
   if (!auth.isAuthenticated) return <Navigate to="/login" />
   if (!households?.length) return <Navigate to="/onboarding" />
 
   const householdId = households[0].id
 
-  return <ListDetailContent householdId={householdId} listId={listId} />
+  return <ListDetailContent householdId={householdId} listId={listId} openSuggest={suggest === 1} />
 }
 
-function ListDetailContent({ householdId, listId }: { householdId: string; listId: string }) {
+function ListDetailContent({
+  householdId,
+  listId,
+  openSuggest,
+}: {
+  householdId: string
+  listId: string
+  openSuggest: boolean
+}) {
   const navigate = useNavigate()
   const { data: lists, isLoading: isLoadingLists } = useShoppingLists(householdId)
   const list = lists?.find((l) => l.id === listId) ?? null
@@ -46,11 +65,23 @@ function ListDetailContent({ householdId, listId }: { householdId: string; listI
   const updateListMutation = useUpdateShoppingList(householdId)
   const deleteListMutation = useDeleteShoppingList(householdId)
   const completeListMutation = useCompleteShoppingList(householdId)
+  const { data: recipes = [] } = useRecipes(householdId, listId)
+  const deleteRecipeMutation = useDeleteRecipe(householdId, listId)
+  const aiEnabled = useAiSettings(householdId).data?.has_key ?? false
 
   const [newItemName, setNewItemName] = useState('')
   const [showEdit, setShowEdit] = useState(false)
   const [confirmComplete, setConfirmComplete] = useState(false)
   const [confirmDeleteItem, setConfirmDeleteItem] = useState<string | null>(null)
+  const [showSuggest, setShowSuggest] = useState(openSuggest)
+  const [showRecipe, setShowRecipe] = useState(false)
+
+  // Open suggestions once for ?suggest=1, then clear the param so back/refresh don't reopen it.
+  useEffect(() => {
+    if (!openSuggest) return
+    setShowSuggest(true)
+    navigate({ to: '/lists/$listId', params: { listId }, search: {}, replace: true })
+  }, [openSuggest, listId, navigate])
 
   // Handle loading and not-found states for the list itself
   if (isLoadingLists) {
@@ -126,6 +157,84 @@ function ListDetailContent({ householdId, listId }: { householdId: string; listI
     }
   }
 
+  function renderItem(item: ShoppingItem): ReactNode {
+    return (
+      <motion.div
+        key={item.id}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, x: -200 }}
+        layout
+      >
+        <Card className={item.checked ? 'opacity-60' : ''}>
+          <div className="flex items-center gap-3">
+            {/* Checkbox */}
+            <button
+              onClick={() =>
+                updateItemMutation.mutate({ itemId: item.id, checked: !item.checked })
+              }
+              aria-label={item.checked ? 'Uncheck item' : 'Check item'}
+              className={`
+                w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 transition-all
+                ${item.checked
+                  ? 'bg-success border-success text-white'
+                  : 'border-text/20 hover:border-success hover:bg-success/10'
+                }
+              `}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 6L9 17l-5-5" />
+              </svg>
+            </button>
+
+            {/* Item content */}
+            <div className="flex-1 min-w-0">
+              <p className={`font-medium text-text text-sm ${item.checked ? 'line-through text-text-muted' : ''}`}>
+                {item.name}
+              </p>
+              {item.quantity && (
+                <p className="text-xs text-text-muted">{item.quantity}</p>
+              )}
+            </div>
+
+            {/* Added by */}
+            {(() => {
+              const adder = item.added_by ? members.find((m) => m.id === item.added_by) : null
+              return adder ? (
+                <Avatar name={adder.display_name} src={adder.avatar_url} size="xs" />
+              ) : null
+            })()}
+
+            {/* Delete */}
+            <button
+              onClick={() => {
+                if (confirmDeleteItem === item.id) {
+                  deleteItemMutation.mutate(item.id)
+                  setConfirmDeleteItem(null)
+                } else {
+                  setConfirmDeleteItem(item.id)
+                }
+              }}
+              aria-label="Delete item"
+              className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-all ${
+                confirmDeleteItem === item.id ? 'text-accent bg-accent/10' : 'text-text-muted hover:text-accent hover:bg-accent/10'
+              }`}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18" /><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" /><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+              </svg>
+            </button>
+          </div>
+        </Card>
+      </motion.div>
+    )
+  }
+
+  const recipeIds = new Set(recipes.map((r) => r.id))
+  const ungrouped = (items ?? []).filter((i) => !i.recipe_id || !recipeIds.has(i.recipe_id))
+  const isGroceries = list?.kind === 'groceries'
+  const isActive = list?.status === 'active'
+
   return (
     <div className="pb-4">
       {/* Header */}
@@ -174,6 +283,20 @@ function ListDetailContent({ householdId, listId }: { householdId: string; listI
         </div>
       )}
 
+      {/* Grocery helpers */}
+      {isGroceries && isActive && (
+        <div className="flex gap-2 mb-4">
+          {items && items.length === 0 && (
+            <Button variant="ghost" onClick={() => setShowSuggest(true)} className="flex-1">
+              Suggest items
+            </Button>
+          )}
+          <Button variant="ghost" onClick={() => setShowRecipe(true)} className="flex-1">
+            Add recipe
+          </Button>
+        </div>
+      )}
+
       {/* Items */}
       {isLoading ? (
         <div className="space-y-2">
@@ -188,80 +311,29 @@ function ListDetailContent({ householdId, listId }: { householdId: string; listI
           <p className="text-sm text-text-muted mt-1">Add items using the form below.</p>
         </Card>
       ) : (
-        <motion.div className="space-y-2">
-          <AnimatePresence>
-            {items.map((item) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: -200 }}
-                layout
+        <>
+          {ungrouped.length > 0 && (
+            <motion.div className="space-y-2">
+              <AnimatePresence>{ungrouped.map((item) => renderItem(item))}</AnimatePresence>
+            </motion.div>
+          )}
+          {recipes.map((recipe) => {
+            const groupItems = items.filter((i) => i.recipe_id === recipe.id)
+            if (!groupItems.length) return null
+            return (
+              <RecipeGroup
+                key={recipe.id}
+                recipe={recipe}
+                onDelete={(recipeId, removeItems) =>
+                  deleteRecipeMutation.mutate({ recipeId, removeItems })
+                }
+                isPending={deleteRecipeMutation.isPending}
               >
-                <Card className={item.checked ? 'opacity-60' : ''}>
-                  <div className="flex items-center gap-3">
-                    {/* Checkbox */}
-                    <button
-                      onClick={() =>
-                        updateItemMutation.mutate({ itemId: item.id, checked: !item.checked })
-                      }
-                      aria-label={item.checked ? 'Uncheck item' : 'Check item'}
-                      className={`
-                        w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 transition-all
-                        ${item.checked
-                          ? 'bg-success border-success text-white'
-                          : 'border-text/20 hover:border-success hover:bg-success/10'
-                        }
-                      `}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
-                    </button>
-
-                    {/* Item content */}
-                    <div className="flex-1 min-w-0">
-                      <p className={`font-medium text-text text-sm ${item.checked ? 'line-through text-text-muted' : ''}`}>
-                        {item.name}
-                      </p>
-                      {item.quantity && (
-                        <p className="text-xs text-text-muted">{item.quantity}</p>
-                      )}
-                    </div>
-
-                    {/* Added by */}
-                    {(() => {
-                      const adder = item.added_by ? members.find((m) => m.id === item.added_by) : null
-                      return adder ? (
-                        <Avatar name={adder.display_name} src={adder.avatar_url} size="xs" />
-                      ) : null
-                    })()}
-
-                    {/* Delete */}
-                    <button
-                      onClick={() => {
-                        if (confirmDeleteItem === item.id) {
-                          deleteItemMutation.mutate(item.id)
-                          setConfirmDeleteItem(null)
-                        } else {
-                          setConfirmDeleteItem(item.id)
-                        }
-                      }}
-                      aria-label="Delete item"
-                      className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-all ${
-                        confirmDeleteItem === item.id ? 'text-accent bg-accent/10' : 'text-text-muted hover:text-accent hover:bg-accent/10'
-                      }`}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M3 6h18" /><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" /><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
-                      </svg>
-                    </button>
-                  </div>
-                </Card>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </motion.div>
+                <AnimatePresence>{groupItems.map((item) => renderItem(item))}</AnimatePresence>
+              </RecipeGroup>
+            )
+          })}
+        </>
       )}
 
       {/* Add item form */}
@@ -312,6 +384,24 @@ function ListDetailContent({ householdId, listId }: { householdId: string; listI
             {updateListMutation.isPending ? 'Reopening...' : 'Reopen list'}
           </Button>
         </div>
+      )}
+
+      {isGroceries && (
+        <>
+          <SuggestionsSheet
+            open={showSuggest}
+            onClose={() => setShowSuggest(false)}
+            householdId={householdId}
+            listId={listId}
+          />
+          <AddRecipeSheet
+            open={showRecipe}
+            onClose={() => setShowRecipe(false)}
+            householdId={householdId}
+            listId={listId}
+            aiEnabled={aiEnabled}
+          />
+        </>
       )}
 
       {/* Edit sheet */}

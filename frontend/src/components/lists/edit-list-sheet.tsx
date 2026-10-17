@@ -1,7 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import { Button, Input } from '@/components/ui'
-import type { ShoppingList, ShoppingListUpdate } from '@/api/lists'
+import { KindPicker } from './kind-picker'
+import type { ListKind, ShoppingList, ShoppingListUpdate } from '@/api/lists'
 import { useScrollLock } from '@/utils/use-scroll-lock'
 
 interface EditListSheetProps {
@@ -16,6 +17,7 @@ interface EditListSheetProps {
 export function EditListSheet({ list, open, onClose, onSubmit, onDelete, isPending }: EditListSheetProps) {
   const [name, setName] = useState('')
   const [priority, setPriority] = useState(3)
+  const [kind, setKind] = useState<ListKind>('other')
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   useScrollLock(open)
@@ -24,6 +26,7 @@ export function EditListSheet({ list, open, onClose, onSubmit, onDelete, isPendi
     if (!list) return
     setName(list.name)
     setPriority(list.priority)
+    setKind(list.kind)
     setConfirmDelete(false)
   }, [list])
 
@@ -32,7 +35,7 @@ export function EditListSheet({ list, open, onClose, onSubmit, onDelete, isPendi
   function handleSubmit(e: React.FormEvent): void {
     e.preventDefault()
     if (!list) return
-    onSubmit({ listId: list.id, name: name.trim(), priority })
+    onSubmit({ listId: list.id, name: name.trim(), priority, kind })
   }
 
   function handleDeleteClick(): void {
@@ -92,6 +95,8 @@ export function EditListSheet({ list, open, onClose, onSubmit, onDelete, isPendi
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Groceries, Birthday wishlist"
               />
+
+              <KindPicker value={kind} onChange={setKind} />
 
               <div>
                 <label className="text-sm font-medium text-text-muted mb-2 block">Priority</label>

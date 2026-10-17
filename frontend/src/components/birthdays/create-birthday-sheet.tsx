@@ -1,8 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui'
 import type { BirthdayCreate } from '@/api/birthdays'
-import { BirthdayFormFields } from './birthday-form'
+import { BirthdayFormFields, MAX_DAYS } from './birthday-form'
 import { useScrollLock } from '@/utils/use-scroll-lock'
 
 interface CreateBirthdaySheetProps {
@@ -10,9 +10,11 @@ interface CreateBirthdaySheetProps {
   onClose: () => void
   onSubmit: (birthday: BirthdayCreate) => void
   isPending: boolean
+  /** Prefill applied when the sheet opens; changes while open are ignored. */
+  initialValues?: Partial<BirthdayCreate>
 }
 
-export function CreateBirthdaySheet({ open, onClose, onSubmit, isPending }: CreateBirthdaySheetProps) {
+export function CreateBirthdaySheet({ open, onClose, onSubmit, isPending, initialValues }: CreateBirthdaySheetProps) {
   const nameRef = useRef<HTMLInputElement>(null)
   const [personName, setPersonName] = useState('')
   const [birthMonth, setBirthMonth] = useState(1)
@@ -21,6 +23,23 @@ export function CreateBirthdaySheet({ open, onClose, onSubmit, isPending }: Crea
   const [yearError, setYearError] = useState<string | null>(null)
 
   useScrollLock(open)
+
+  // Prefill when the sheet opens with initialValues (no-op otherwise)
+  useEffect(() => {
+    if (!open || !initialValues) return
+    const month = Number.isInteger(initialValues.birth_month)
+      && initialValues.birth_month! >= 1 && initialValues.birth_month! <= 12
+      ? initialValues.birth_month!
+      : 1
+    const day = Number.isInteger(initialValues.birth_day) && initialValues.birth_day! >= 1
+      ? Math.min(initialValues.birth_day!, MAX_DAYS[month])
+      : 1
+    setPersonName(initialValues.person_name ?? '')
+    setBirthMonth(month)
+    setBirthDay(day)
+    setBirthYearStr(initialValues.birth_year != null ? String(initialValues.birth_year) : '')
+    setYearError(null)
+  }, [open])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()

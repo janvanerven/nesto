@@ -1,5 +1,6 @@
 import { Card, PriorityDot } from '@/components/ui'
 import type { ShoppingList } from '@/api/lists'
+import { KIND_LABELS } from './kind-picker'
 
 interface ListCardProps {
   list: ShoppingList
@@ -19,6 +20,7 @@ export function ListCard({ list, onClick }: ListCardProps) {
             {list.name || 'Untitled list'}
           </p>
           <p className="text-xs text-text-muted mt-0.5">
+            {list.kind !== 'other' && `${KIND_LABELS[list.kind]} · `}
             {list.item_count > 0 ? `${progress} items` : 'Empty'}
           </p>
         </div>

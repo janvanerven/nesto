@@ -27,6 +27,7 @@ import {
   useDeletePushSubscription,
   recordPushDismissal,
 } from '@/api/push'
+import { AssistantSettings } from '@/components/settings/assistant-settings'
 import { PushPermissionSheet } from '@/components/settings/push-permission-sheet'
 
 export const Route = createFileRoute('/settings')({
@@ -108,6 +109,14 @@ function SettingsPage() {
         <h2 className="font-bold text-text mb-3">Document Storage</h2>
         <SekuraSection />
       </Card>
+
+      {/* Assistant */}
+      {household && (
+        <Card className="mb-4">
+          <h2 className="font-bold text-text mb-3">Assistant</h2>
+          <AssistantSettings householdId={household.id} />
+        </Card>
+      )}
 
       {/* Notifications */}
       <Card className="mb-4">
@@ -518,10 +527,10 @@ function BrowserNotificationsToggle() {
       setLoading(false)
       return
     }
-    getCurrentPushSubscription().then((sub) => {
-      setEnabled(sub !== null)
-      setLoading(false)
-    })
+    getCurrentPushSubscription()
+      .then((sub) => setEnabled(sub !== null))
+      .catch((err) => console.warn('Could not read push subscription', err))
+      .finally(() => setLoading(false))
   }, [])
 
   const handleEnable = async () => {
@@ -543,7 +552,7 @@ function BrowserNotificationsToggle() {
 
   const handleToggle = () => {
     if (enabled) {
-      handleDisable()
+      handleDisable().catch((err) => console.warn('Could not disable push notifications', err))
     } else {
       setShowSheet(true)
     }

@@ -28,6 +28,7 @@ export interface TaskCreate {
   priority?: number
   assigned_to?: string
   due_date?: string
+  category?: string
   recurrence_rule?: string
   recurrence_interval?: number
   recurrence_end?: string
