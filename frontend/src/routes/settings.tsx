@@ -27,6 +27,7 @@ import {
   useDeletePushSubscription,
   recordPushDismissal,
 } from '@/api/push'
+import { AssistantSettings } from '@/components/settings/assistant-settings'
 import { PushPermissionSheet } from '@/components/settings/push-permission-sheet'
 
 export const Route = createFileRoute('/settings')({
@@ -108,6 +109,14 @@ function SettingsPage() {
         <h2 className="font-bold text-text mb-3">Document Storage</h2>
         <SekuraSection />
       </Card>
+
+      {/* Assistant */}
+      {household && (
+        <Card className="mb-4">
+          <h2 className="font-bold text-text mb-3">Assistant</h2>
+          <AssistantSettings householdId={household.id} />
+        </Card>
+      )}
 
       {/* Notifications */}
       <Card className="mb-4">
