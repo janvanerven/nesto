@@ -5,6 +5,8 @@ from app.auth import get_current_user_id
 from app.database import get_db
 from app.schemas.shopping_list import (
     BulkItemsCreate,
+    RecipeExtractRequest,
+    RecipeExtractResponse,
     RecipeResponse,
     ShoppingItemCreate,
     ShoppingItemResponse,
@@ -14,7 +16,9 @@ from app.schemas.shopping_list import (
     ShoppingListUpdate,
     SuggestionResponse,
 )
+from app.services.ai import rate_limit, recipe_extract, settings_service
 from app.services.household_service import get_household
+from app.services.safe_fetch import FetchError, safe_fetch_html
 from app.services import list_suggestion_service, shopping_list_service as svc
 
 router = APIRouter(prefix="/api/households/{household_id}/lists", tags=["lists"])
@@ -90,6 +94,32 @@ async def get_suggestions(
     if shopping_list.kind != "groceries":
         raise HTTPException(status_code=400, detail="Suggestions are only available for grocery lists")
     return await list_suggestion_service.suggest_items(db, household_id, list_id)
+
+
+@router.post("/{list_id}/recipes/extract", response_model=RecipeExtractResponse)
+async def extract_recipe(
+    household_id: str,
+    list_id: str,
+    body: RecipeExtractRequest,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    await get_household(db, household_id, user_id)
+    shopping_list = await svc._get_list_or_404(db, list_id, household_id)
+    if shopping_list.kind != "groceries":
+        raise HTTPException(status_code=400, detail="Recipes can only be added to grocery lists")
+    if shopping_list.status != "active":
+        raise HTTPException(status_code=409, detail="List is archived")
+    api_key, model = await settings_service.get_key_and_model(db, household_id)
+    rate_limit.check_and_count(household_id, user_id)
+    try:
+        _, html = await safe_fetch_html(body.url)
+    except FetchError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    title, ingredients = await recipe_extract.extract_recipe(body.url, html, api_key, model)
+    if not ingredients:
+        raise HTTPException(status_code=422, detail="Couldn't find ingredients on that page")
+    return RecipeExtractResponse(url=body.url, title=title, ingredients=ingredients)
 
 
 # --- Item endpoints ---

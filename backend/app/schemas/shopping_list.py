@@ -69,21 +69,25 @@ class ShoppingItemResponse(BaseModel):
 
 # --- Bulk items and recipes ---
 
+def _http_url_only(v: str) -> str:
+    try:
+        parts = urlsplit(v)
+        host = parts.hostname
+    except ValueError as exc:
+        raise ValueError("Invalid URL") from exc
+    if parts.scheme not in ("http", "https") or not host:
+        raise ValueError("URL must be http or https with a host")
+    return v
+
+
 class RecipeRef(BaseModel):
     url: str = Field(min_length=1, max_length=2000)
     title: str = Field(min_length=1, max_length=300)
 
     @field_validator("url")
     @classmethod
-    def _http_url_only(cls, v: str) -> str:
-        try:
-            parts = urlsplit(v)
-            host = parts.hostname
-        except ValueError as exc:
-            raise ValueError("Invalid URL") from exc
-        if parts.scheme not in ("http", "https") or not host:
-            raise ValueError("URL must be http or https with a host")
-        return v
+    def _check_url(cls, v: str) -> str:
+        return _http_url_only(v)
 
 
 class BulkItemsCreate(BaseModel):
@@ -111,3 +115,24 @@ class SuggestedItem(BaseModel):
 class SuggestionResponse(BaseModel):
     enough_history: bool
     items: list[SuggestedItem]
+
+
+class ExtractedIngredient(BaseModel):
+    name: str
+    quantity: str
+    staple: bool
+
+
+class RecipeExtractRequest(BaseModel):
+    url: str = Field(max_length=2000)
+
+    @field_validator("url")
+    @classmethod
+    def _check_url(cls, v: str) -> str:
+        return _http_url_only(v)
+
+
+class RecipeExtractResponse(BaseModel):
+    url: str
+    title: str
+    ingredients: list[ExtractedIngredient]
