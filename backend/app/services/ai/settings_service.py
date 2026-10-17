@@ -56,6 +56,9 @@ async def save_settings(
 ) -> AiSettingsView:
     if model is not None and not is_valid_model(model):
         raise HTTPException(400, "Unknown model")
+    if api_key is not None and len(api_key) > 200:
+        # Plain 400 (not a 422) so the submitted key is never echoed back.
+        raise HTTPException(400, "That doesn't look like an OpenRouter key")
     row = await _get_row(db, household_id)
     if api_key is None and row is None:
         raise HTTPException(400, "Add an API key first")

@@ -14,7 +14,7 @@ class AiSettingsView(BaseModel):
 
 
 class AiSettingsUpdate(BaseModel):
-    api_key: str | None = Field(default=None, min_length=1, max_length=200)
+    api_key: str | None = Field(default=None, min_length=1)
     model: str | None = Field(default=None, max_length=200)
 
 

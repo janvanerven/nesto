@@ -162,3 +162,10 @@ def test_burst_cap():
     with pytest.raises(HTTPException) as exc:
         rate_limit.check_and_count("h1", "u1")
     assert exc.value.status_code == 429 and "Slow down" in exc.value.detail
+
+
+async def test_overlong_key_rejected_without_echo(client):
+    key = "sk-or-" + "x" * 195  # 201 chars
+    r = await client.put(URL, json={"api_key": key})
+    assert r.status_code == 400
+    assert key not in r.text
