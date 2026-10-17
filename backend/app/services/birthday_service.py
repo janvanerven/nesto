@@ -17,7 +17,7 @@ _FIELD_TO_COLUMN = {"person_name": "name"}
 _CONTACT_FIELDS = ("phone", "email", "notes")
 
 
-def _compute_age(birth_year: int | None, birth_month: int, birth_day: int) -> int | None:
+def compute_age(birth_year: int | None, birth_month: int, birth_day: int) -> int | None:
     """Compute current age. Returns None if birth_year is unknown or in the future."""
     if birth_year is None:
         return None
@@ -39,7 +39,7 @@ def _birthday_to_response(birthday: Person) -> BirthdayResponse:
         birth_month=birthday.birth_month,
         birth_day=birthday.birth_day,
         birth_year=birthday.birth_year,
-        age=_compute_age(birthday.birth_year, birthday.birth_month, birthday.birth_day),
+        age=compute_age(birthday.birth_year, birthday.birth_month, birthday.birth_day),
         created_by=birthday.created_by,
         created_at=birthday.created_at,
         updated_at=birthday.updated_at,

@@ -15,7 +15,7 @@ from app.schemas.contact import (
     PersonResponse,
     PersonUpdate,
 )
-from app.services.birthday_service import _compute_age
+from app.services.birthday_service import compute_age
 
 _ADDRESS_UPDATABLE_FIELDS = {"label", "street", "postcode", "city", "country", "notes"}
 _PERSON_UPDATABLE_FIELDS = {
@@ -30,7 +30,7 @@ _NOT_NULLABLE = {
 def _person_to_response(person: Person) -> PersonResponse:
     age = None
     if person.birth_month is not None and person.birth_day is not None:
-        age = _compute_age(person.birth_year, person.birth_month, person.birth_day)
+        age = compute_age(person.birth_year, person.birth_month, person.birth_day)
     return PersonResponse(
         id=person.id,
         household_id=person.household_id,
@@ -86,8 +86,9 @@ async def _get_person_or_404(db: AsyncSession, person_id: str, household_id: str
     return person
 
 
-async def _people_of(db: AsyncSession, address_id: str) -> list[Person]:
-    result = await db.execute(select(Person).where(Person.address_id == address_id))
+async def _people_of(db: AsyncSession, household_id: str, address_id: str) -> list[Person]:
+    result = await db.execute(select(Person).where(Person.address_id == address_id, Person.household_id == household_id)
+    )
     return list(result.scalars().all())
 
 
@@ -158,7 +159,7 @@ async def create_address(
         person.address_id = address.id
     await db.commit()
     await db.refresh(address)
-    return _address_to_response(address, await _people_of(db, address.id))
+    return _address_to_response(address, await _people_of(db, household_id, address.id))
 
 
 async def update_address(
@@ -170,7 +171,7 @@ async def update_address(
             setattr(address, key, value)
     await db.commit()
     await db.refresh(address)
-    return _address_to_response(address, await _people_of(db, address.id))
+    return _address_to_response(address, await _people_of(db, household_id, address.id))
 
 
 async def delete_address(
@@ -178,10 +179,12 @@ async def delete_address(
 ) -> None:
     address = await _get_address_or_404(db, address_id, household_id)
     if delete_people:
-        await db.execute(delete(Person).where(Person.address_id == address.id))
+        await db.execute(delete(Person).where(Person.address_id == address.id, Person.household_id == household_id))
     else:
         # Don't rely on ON DELETE SET NULL (SQLite foreign keys may be off)
-        await db.execute(update(Person).where(Person.address_id == address.id).values(address_id=None))
+        await db.execute(update(Person)
+            .where(Person.address_id == address.id, Person.household_id == household_id)
+            .values(address_id=None))
     await db.delete(address)
     await db.commit()
 
@@ -189,7 +192,7 @@ async def delete_address(
 async def create_person(
     db: AsyncSession, household_id: str, user_id: str, data: PersonCreate
 ) -> PersonResponse:
-    if data.address_id:
+    if data.address_id is not None:
         await _get_address_or_404(db, data.address_id, household_id)
     person = _new_person(household_id, user_id, data, data.address_id)
     db.add(person)
@@ -218,7 +221,7 @@ async def update_person(
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc))
 
-    if updates.get("address_id"):
+    if updates.get("address_id") is not None:
         await _get_address_or_404(db, updates["address_id"], household_id)
 
     for key, value in updates.items():

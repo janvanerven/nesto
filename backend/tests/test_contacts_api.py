@@ -149,9 +149,33 @@ async def test_other_household_404(client, method, path):
     body = {"label": "L", "name": "N"} if method in ("POST", "PATCH") else None
     r = await client.request(method, OTHER + path, json=body)
     assert r.status_code == 404
+    assert r.json()["detail"] == "Household not found"
 
 
 async def test_cross_household_ids_in_own_household_404(client):
-    for path in ("/people/p-foreign", "/addresses/a-foreign"):
-        assert (await client.delete(BASE + path)).status_code == 404
-        assert (await client.patch(BASE + path, json={})).status_code == 404
+    for path, detail in (("/people/p-foreign", "Person not found"), ("/addresses/a-foreign", "Address not found")):
+        for r in (await client.delete(BASE + path), await client.patch(BASE + path, json={})):
+            assert r.status_code == 404
+            assert r.json()["detail"] == detail
+
+
+async def test_empty_address_id_normalised_to_none(client, db_session):
+    r = await client.post(f"{BASE}/people", json={"name": "E", "address_id": ""})
+    assert r.status_code == 201 and r.json()["address_id"] is None
+    a = await _address(client, people=[{"name": "P"}])
+    pid = a["people"][0]["id"]
+    r = await client.patch(f"{BASE}/people/{pid}", json={"address_id": ""})
+    assert r.status_code == 200 and r.json()["address_id"] is None
+    ids = [p["id"] for p in (await client.get(BASE)).json()["people_without_address"]]
+    assert pid in ids
+
+
+async def test_delete_address_leaves_other_household_people(client, db_session):
+    db_session.add(Person(id="p-stray", household_id=OTHER_HOUSEHOLD_ID, created_by=USER_ID,
+                          name="Stray", address_id="a-mine"))
+    a = await _address(client)
+    await db_session.execute(
+        Person.__table__.update().where(Person.id == "p-stray").values(address_id=a["id"]))
+    await db_session.commit()
+    assert (await client.delete(f"{BASE}/addresses/{a['id']}?delete_people=true")).status_code == 204
+    assert (await db_session.get(Person, "p-stray")) is not None
