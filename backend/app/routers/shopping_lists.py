@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import get_current_user_id
 from app.database import get_db
 from app.schemas.shopping_list import (
+    BulkItemsCreate,
+    RecipeResponse,
     ShoppingItemCreate,
     ShoppingItemResponse,
     ShoppingItemUpdate,
@@ -123,3 +125,41 @@ async def delete_item(
 ):
     await get_household(db, household_id, user_id)
     await svc.delete_item(db, item_id, list_id, household_id)
+
+
+@router.post("/{list_id}/items/bulk", response_model=list[ShoppingItemResponse], status_code=201)
+async def create_items_bulk(
+    household_id: str,
+    list_id: str,
+    body: BulkItemsCreate,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    await get_household(db, household_id, user_id)
+    return await svc.create_items_bulk(db, list_id, household_id, user_id, body)
+
+
+# --- Recipe endpoints ---
+
+@router.get("/{list_id}/recipes", response_model=list[RecipeResponse])
+async def get_recipes(
+    household_id: str,
+    list_id: str,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    await get_household(db, household_id, user_id)
+    return await svc.list_recipes(db, list_id, household_id)
+
+
+@router.delete("/{list_id}/recipes/{recipe_id}", status_code=204)
+async def delete_recipe(
+    household_id: str,
+    list_id: str,
+    recipe_id: str,
+    remove_items: bool = Query(False),
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    await get_household(db, household_id, user_id)
+    await svc.delete_recipe(db, list_id, household_id, recipe_id, remove_items)

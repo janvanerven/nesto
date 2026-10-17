@@ -1,8 +1,9 @@
 # backend/app/schemas/shopping_list.py
 from datetime import datetime
 from typing import Literal
+from urllib.parse import urlsplit
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 ListKind = Literal["groceries", "wishlist", "packing", "other"]
@@ -61,6 +62,41 @@ class ShoppingItemResponse(BaseModel):
     added_by: str | None
     position: int
     recipe_id: str | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# --- Bulk items and recipes ---
+
+class RecipeRef(BaseModel):
+    url: str = Field(min_length=1, max_length=2000)
+    title: str = Field(min_length=1, max_length=300)
+
+    @field_validator("url")
+    @classmethod
+    def _http_url_only(cls, v: str) -> str:
+        try:
+            parts = urlsplit(v)
+            host = parts.hostname
+        except ValueError as exc:
+            raise ValueError("Invalid URL") from exc
+        if parts.scheme not in ("http", "https") or not host:
+            raise ValueError("URL must be http or https with a host")
+        return v
+
+
+class BulkItemsCreate(BaseModel):
+    items: list[ShoppingItemCreate] = Field(min_length=1, max_length=100)
+    recipe: RecipeRef | None = None
+
+
+class RecipeResponse(BaseModel):
+    id: str
+    list_id: str
+    url: str
+    title: str
+    created_by: str
     created_at: datetime
 
     model_config = {"from_attributes": True}

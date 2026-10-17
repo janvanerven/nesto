@@ -1,11 +1,12 @@
 import uuid
 
 from fastapi import HTTPException
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.shopping_list import ShoppingItem, ShoppingList
+from app.models.shopping_list import ShoppingItem, ShoppingList, ShoppingListRecipe
 from app.schemas.shopping_list import (
+    BulkItemsCreate,
     ShoppingItemCreate,
     ShoppingItemUpdate,
     ShoppingListCreate,
@@ -172,6 +173,83 @@ async def create_item(
     await db.commit()
     await db.refresh(item)
     return item
+
+
+async def create_items_bulk(
+    db: AsyncSession, list_id: str, household_id: str, user_id: str, data: BulkItemsCreate
+) -> list[ShoppingItem]:
+    sl = await _get_list_or_404(db, list_id, household_id)
+    if sl.status != "active":
+        raise HTTPException(status_code=409, detail="List is archived")
+
+    recipe_id = None
+    if data.recipe:
+        recipe_id = str(uuid.uuid4())
+        db.add(ShoppingListRecipe(
+            id=recipe_id,
+            list_id=list_id,
+            url=data.recipe.url,
+            title=data.recipe.title,
+            created_by=user_id,
+        ))
+
+    max_pos = await db.execute(
+        select(func.coalesce(func.max(ShoppingItem.position), -1)).where(ShoppingItem.list_id == list_id)
+    )
+    start = max_pos.scalar() + 1
+    items = [
+        ShoppingItem(
+            id=str(uuid.uuid4()),
+            list_id=list_id,
+            added_by=user_id,
+            position=start + i,
+            recipe_id=recipe_id,
+            **item.model_dump(),
+        )
+        for i, item in enumerate(data.items)
+    ]
+    db.add_all(items)
+    await db.commit()
+    for item in items:
+        await db.refresh(item)
+    return items
+
+
+async def list_recipes(db: AsyncSession, list_id: str, household_id: str) -> list[ShoppingListRecipe]:
+    await _get_list_or_404(db, list_id, household_id)
+    result = await db.execute(
+        select(ShoppingListRecipe)
+        .where(ShoppingListRecipe.list_id == list_id)
+        .order_by(ShoppingListRecipe.created_at.asc(), ShoppingListRecipe.id.asc())
+    )
+    return list(result.scalars().all())
+
+
+async def delete_recipe(
+    db: AsyncSession, list_id: str, household_id: str, recipe_id: str, remove_items: bool
+) -> None:
+    await _get_list_or_404(db, list_id, household_id)
+    result = await db.execute(
+        select(ShoppingListRecipe).where(
+            ShoppingListRecipe.id == recipe_id, ShoppingListRecipe.list_id == list_id
+        )
+    )
+    recipe = result.scalar_one_or_none()
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+    if remove_items:
+        await db.execute(
+            delete(ShoppingItem).where(
+                ShoppingItem.recipe_id == recipe_id, ShoppingItem.checked == False  # noqa: E712
+            )
+        )
+    # Detach remaining items explicitly (does not rely on SQLite FK enforcement)
+    await db.execute(
+        update(ShoppingItem).where(ShoppingItem.recipe_id == recipe_id).values(recipe_id=None)
+    )
+    await db.delete(recipe)
+    await db.commit()
 
 
 async def update_item(
