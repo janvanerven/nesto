@@ -214,6 +214,7 @@ async def test_invalid_args_twice_no_card(client, monkeypatch):
 async def test_empty_reply_retries(client, monkeypatch):
     seen = _script(monkeypatch, [_reply(None), _reply("When is the birthday?")])
     r = await client.post(URL, json=_body("Oma's birthday"))
+    assert r.status_code == 200, r.text
     assert len(seen) == 2
     assert r.json()["reply"] == "When is the birthday?"
     assert r.json()["proposals"] == []
@@ -240,6 +241,7 @@ async def test_assignee_resolved(client, monkeypatch):
         _tc("propose_task", {"title": "Buy present", "due_date": "2027-02-24", "assignee_name": "lisa"}),
     ])])
     r = await client.post(URL, json=_body("remind Lisa to buy a present on 24 Feb"))
+    assert r.status_code == 200, r.text
     [p] = r.json()["proposals"]
     assert p["payload"]["assigned_to"] == LISA_ID
     assert p["payload"]["title"] == "Buy present"
@@ -301,6 +303,35 @@ async def test_event_and_grocery_list_payloads(client, monkeypatch):
     assert event["summary"] == "Event · Dentist · Wed 21 Oct 14:00–15:00"
     assert glist["payload"] == {"name": "Week 43", "priority": 3, "kind": "groceries"}
     assert glist["summary"] == "New grocery list · Week 43"
+
+
+async def test_assistant_content_fits_message_limit(client, monkeypatch):
+    calls = [_tc("propose_task", {"title": f"{i} " + "t" * 498}, f"c{i}") for i in range(10)]
+    _script(monkeypatch, [_reply("r" * 4000, calls), _reply("ok")])
+    r = await client.post(URL, json=_body("lots"))
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert len(body["proposals"]) == 10
+    content = body["assistant_content"]
+    assert len(content) <= 4000
+    assert all(p["id"] in content for p in body["proposals"])
+    # The transcript round-trips: a follow-up request carrying it validates.
+    history = [{"role": "user", "content": "lots"}, {"role": "assistant", "content": content}]
+    r = await client.post(URL, json=_body("thanks", history=history))
+    assert r.status_code == 200, r.text
+
+
+async def test_malformed_json_arguments(client, monkeypatch):
+    bad = {"id": "call_1", "type": "function", "function": {"name": "propose_birthday", "arguments": "{not json"}}
+    seen = _script(monkeypatch, [_reply(None, [bad]), _reply("Which date?")])
+    r = await client.post(URL, json=_body("Oma"))
+    assert r.status_code == 200, r.text
+    assert len(seen) == 2
+    msgs = seen[1]["messages"]
+    replayed = msgs[-2]["tool_calls"][0]["function"]["arguments"]
+    assert isinstance(json.loads(replayed), dict)
+    assert msgs[-1]["role"] == "tool"
+    assert "not valid JSON" in msgs[-1]["content"]
 
 
 async def test_rejects_system_role(client):

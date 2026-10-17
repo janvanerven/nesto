@@ -20,7 +20,7 @@ from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
-from app.schemas.assistant import AssistantRequest, AssistantResponse, Proposal
+from app.schemas.assistant import MAX_MESSAGE_CHARS, AssistantRequest, AssistantResponse, Proposal
 from app.schemas.birthday import BirthdayCreate
 from app.schemas.event import EventCreate
 from app.schemas.shopping_list import BulkItemsCreate, ShoppingListCreate
@@ -36,6 +36,8 @@ _transport: httpx.AsyncBaseTransport | None = None
 MAX_CALLS = 3
 MAX_TOKENS = 1000
 MAX_REPLACES = 64
+NOTE_SUMMARY_CHARS = 60
+MAX_NOTE_CHARS = 3000
 
 FALLBACK_WITH_PROPOSALS = "Here's what I'd add:"
 FALLBACK_EMPTY = "Sorry, I couldn't work that out."
@@ -377,6 +379,24 @@ def _make_proposal(tc: ToolCall, ctx: _Context) -> Proposal:
     )
 
 
+def _has_valid_json_args(tc: ToolCall) -> bool:
+    """True when the raw arguments are empty or parse to a JSON object."""
+    raw = tc.raw_arguments
+    if not raw.strip():
+        return True
+    try:
+        return isinstance(json.loads(raw), dict)
+    except ValueError:
+        return False
+
+
+def _replay_arguments(tc: ToolCall) -> str:
+    # Replay only valid JSON: some providers reject the whole request otherwise.
+    if tc.raw_arguments.strip() and _has_valid_json_args(tc):
+        return tc.raw_arguments
+    return json.dumps(tc.arguments)
+
+
 def _assistant_message(result: ChatResult) -> dict:
     return {
         "role": "assistant",
@@ -385,7 +405,7 @@ def _assistant_message(result: ChatResult) -> dict:
             {
                 "id": tc.id,
                 "type": "function",
-                "function": {"name": tc.name, "arguments": tc.raw_arguments or json.dumps(tc.arguments)},
+                "function": {"name": tc.name, "arguments": _replay_arguments(tc)},
             }
             for tc in result.tool_calls
         ],
@@ -434,6 +454,8 @@ async def run_assistant(
             had_error = False
             for tc in result.tool_calls:
                 try:
+                    if not _has_valid_json_args(tc):
+                        raise ToolError("arguments were not valid JSON")
                     proposal = _make_proposal(tc, ctx)
                 except ToolError as exc:
                     had_error = True
@@ -446,8 +468,23 @@ async def run_assistant(
                 break
 
     reply = text or (FALLBACK_WITH_PROPOSALS if proposals else FALLBACK_EMPTY)
-    assistant_content = reply
-    if proposals:
-        note = "; ".join(f"{p.id} {p.type} {p.summary}" for p in proposals)
-        assistant_content = f"{reply}\n\n[proposals: {note}]"
-    return AssistantResponse(reply=reply, assistant_content=assistant_content, proposals=proposals)
+    return AssistantResponse(
+        reply=reply, assistant_content=build_assistant_content(reply, proposals), proposals=proposals
+    )
+
+
+def _clip(text: str, limit: int) -> str:
+    return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
+def build_assistant_content(reply: str, proposals: list[Proposal]) -> str:
+    """Reply plus a compact proposals note, always within the per-message limit.
+
+    The client sends this back as an assistant message, so it must pass
+    ``ChatMessage`` validation on the next turn.
+    """
+    if not proposals:
+        return _clip(reply, MAX_MESSAGE_CHARS)
+    note = "; ".join(f"{p.id} {p.type} {_clip(p.summary, NOTE_SUMMARY_CHARS)}" for p in proposals)
+    suffix = f"\n\n[proposals: {_clip(note, MAX_NOTE_CHARS)}]"
+    return _clip(reply, MAX_MESSAGE_CHARS - len(suffix)) + suffix
