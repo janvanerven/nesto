@@ -26,6 +26,10 @@ const TYPE_META: Record<ProposalType, { label: string; accent: string; chip: str
   event: { label: 'New event', accent: 'bg-secondary', chip: 'bg-secondary/15 text-secondary' },
   list_items: { label: 'Add to list', accent: 'bg-success', chip: 'bg-success/15 text-success' },
   grocery_list: { label: 'New grocery list', accent: 'bg-success', chip: 'bg-success/15 text-success' },
+  address: { label: 'New address', accent: 'bg-birthday', chip: 'bg-birthday/15 text-birthday' },
+  person: { label: 'New contact', accent: 'bg-birthday', chip: 'bg-birthday/15 text-birthday' },
+  person_update: { label: 'Update contact', accent: 'bg-birthday', chip: 'bg-birthday/15 text-birthday' },
+  address_update: { label: 'Update address', accent: 'bg-birthday', chip: 'bg-birthday/15 text-birthday' },
 }
 
 interface ProposalCardProps {
