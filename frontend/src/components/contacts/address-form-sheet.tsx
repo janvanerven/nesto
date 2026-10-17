@@ -10,7 +10,7 @@ import {
 } from '@/api/contacts'
 import { formatBirthday, suggestLabel } from '@/utils/contacts'
 import { useScrollLock } from '@/utils/use-scroll-lock'
-import { draftFrom, draftToPayload, PersonDraftFields, type PersonDraft } from './person-draft'
+import { draftFrom, draftToPayload, isBlankDraft, PersonDraftFields, type PersonDraft } from './person-draft'
 import { errorText, FormError, NotesField, SheetHeader } from './sheet-parts'
 
 interface AddressFormSheetProps {
@@ -25,6 +25,8 @@ interface AddressFormSheetProps {
   /** Edit mode: open the person sheet for a new / existing person. */
   onAddPerson?: () => void
   onEditPerson?: (person: Person) => void
+  /** Opened from another sheet (layers above it). */
+  stacked?: boolean
 }
 
 type AddressFields = Pick<ContactAddress, 'label' | 'street' | 'postcode' | 'city' | 'country' | 'notes'>
@@ -48,17 +50,18 @@ function fieldsFrom(v?: Partial<AddressFields>): AddressFields {
   }
 }
 
-/** Payloads for every draft, or the drafts with their year errors set. */
+/** Payloads for every filled-in draft, or all drafts with their errors set. Blank rows are skipped. */
 function validateDrafts(drafts: KeyedDraft[]): { payloads: PersonCreate[] } | { invalid: KeyedDraft[] } {
-  const results = drafts.map((d) => ({ d, r: draftToPayload(d) }))
+  const results = drafts.filter((d) => !isBlankDraft(d)).map((d) => ({ d, r: draftToPayload(d) }))
   if (results.some(({ r }) => 'invalid' in r)) {
-    return { invalid: results.map(({ d, r }) => ('invalid' in r ? { ...r.invalid, key: d.key } : d)) }
+    const fixed = new Map(results.map(({ d, r }) => [d.key, 'invalid' in r ? { ...r.invalid, key: d.key } : d]))
+    return { invalid: drafts.map((d) => fixed.get(d.key) ?? d) }
   }
   return { payloads: results.flatMap(({ r }) => ('data' in r ? [r.data] : [])) }
 }
 
 export function AddressFormSheet({
-  open, onClose, householdId, address, initialValues, onCreated, onAddPerson, onEditPerson,
+  open, onClose, householdId, address, initialValues, onCreated, onAddPerson, onEditPerson, stacked,
 }: AddressFormSheetProps) {
   const createAddress = useCreateAddress(householdId)
   const updateAddress = useUpdateAddress(householdId)
@@ -99,7 +102,7 @@ export function AddressFormSheet({
       if (address) {
         await updateAddress.mutateAsync({ id: address.id, data: body })
       } else {
-        const checked = validateDrafts(named)
+        const checked = validateDrafts(people)
         if ('invalid' in checked) {
           setPeople(checked.invalid)
           return
@@ -118,7 +121,7 @@ export function AddressFormSheet({
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose}>
+    <BottomSheet open={open} onClose={onClose} stacked={stacked}>
       <SheetHeader title={isEdit ? 'Edit address' : 'New address'} onClose={onClose} />
       <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col gap-4 pb-4">
         <Input

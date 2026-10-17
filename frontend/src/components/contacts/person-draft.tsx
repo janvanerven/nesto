@@ -9,6 +9,7 @@ export interface PersonDraft {
   day: number
   yearStr: string
   yearError: string | null
+  nameError: string | null
 }
 
 type NameAndBirthday = Pick<PersonCreate, 'name' | 'birth_month' | 'birth_day' | 'birth_year'>
@@ -23,12 +24,19 @@ export function draftFrom(v?: Partial<PersonCreate>): PersonDraft {
     day: day ?? 1,
     yearStr: month && day && v?.birth_year != null ? String(v.birth_year) : '',
     yearError: null,
+    nameError: null,
   }
 }
 
-/** Validates the draft; returns the payload, or the draft with its year error set. */
+/** A row the user never filled in (no name, no birthday): safe to skip. */
+export function isBlankDraft(d: PersonDraft): boolean {
+  return !d.name.trim() && !d.hasBirthday
+}
+
+/** Validates the draft; returns the payload, or the draft with its errors set. */
 export function draftToPayload(d: PersonDraft): { data: NameAndBirthday } | { invalid: PersonDraft } {
   const name = d.name.trim()
+  if (!name) return { invalid: { ...d, nameError: 'Name required' } }
   if (!d.hasBirthday) {
     return { data: { name, birth_month: null, birth_day: null, birth_year: null } }
   }
@@ -55,7 +63,7 @@ export function PersonDraftFields({ draft, update }: PersonDraftFieldsProps) {
     <>
       <BirthdayFormFields
         personName={draft.name}
-        setPersonName={set('name')}
+        setPersonName={(v) => update((d) => ({ ...d, name: v, nameError: null }))}
         birthMonth={draft.month}
         setBirthMonth={set('month')}
         birthDay={draft.day}
@@ -65,6 +73,7 @@ export function PersonDraftFields({ draft, update }: PersonDraftFieldsProps) {
         yearError={draft.yearError}
         showDate={draft.hasBirthday}
       />
+      {draft.nameError && <p role="alert" className="text-sm text-accent -mt-2">{draft.nameError}</p>}
       <button
         type="button"
         onClick={() => update((d) => ({ ...d, hasBirthday: !d.hasBirthday, yearError: null }))}

@@ -87,18 +87,23 @@ export function useContacts(householdId: string) {
 }
 
 // Contact changes can alter birthdays (people carry them), so refresh both.
+// awaitRefresh=false resolves as soon as the request succeeds (refetch continues in the
+// background), e.g. so a deleted address's page can navigate away before it re-renders.
 function useContactMutation<TVars, TResult>(
   householdId: string,
   fn: (vars: TVars) => Promise<TResult>,
+  awaitRefresh = true,
 ) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: fn,
     onSuccess: async () => {
-      await Promise.all([
+      const refresh = Promise.all([
         qc.invalidateQueries({ queryKey: ['contacts', householdId] }),
         qc.invalidateQueries({ queryKey: ['birthdays', householdId] }),
       ])
+      if (awaitRefresh) await refresh
+      else refresh.catch(() => undefined)
     },
   })
 }
@@ -130,6 +135,7 @@ export function useDeleteAddress(householdId: string) {
       apiFetch<void>(`${base(householdId)}/addresses/${id}?delete_people=${deletePeople}`, {
         method: 'DELETE',
       }),
+    false,
   )
 }
 

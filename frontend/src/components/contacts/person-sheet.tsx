@@ -21,6 +21,8 @@ interface PersonSheetProps {
   /** Create-mode prefill, read when the sheet opens. */
   initialValues?: Partial<PersonCreate>
   defaultAddressId?: string
+  /** Opened from another sheet (layers above it). */
+  stacked?: boolean
 }
 
 interface ContactFields {
@@ -30,7 +32,9 @@ interface ContactFields {
   addressId: string | null
 }
 
-export function PersonSheet({ open, onClose, householdId, person, initialValues, defaultAddressId }: PersonSheetProps) {
+export function PersonSheet({
+  open, onClose, householdId, person, initialValues, defaultAddressId, stacked,
+}: PersonSheetProps) {
   const createPerson = useCreatePerson(householdId)
   const updatePerson = useUpdatePerson(householdId)
   const deletePerson = useDeletePerson(householdId)
@@ -54,7 +58,7 @@ export function PersonSheet({ open, onClose, householdId, person, initialValues,
     })
     setConfirmDelete(false)
     setError(null)
-  }, [open])
+  }, [open, person?.id])
 
   const isPending = createPerson.isPending || updatePerson.isPending || deletePerson.isPending
   // Only people who aren't living somewhere get the picker; others use "Remove from address".
@@ -78,7 +82,6 @@ export function PersonSheet({ open, onClose, householdId, person, initialValues,
       setDraft(checked.invalid)
       return
     }
-    if (!checked.data.name) return
     const data = {
       ...checked.data,
       phone: fields.phone.trim(),
@@ -99,7 +102,7 @@ export function PersonSheet({ open, onClose, householdId, person, initialValues,
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose}>
+    <BottomSheet open={open} onClose={onClose} stacked={stacked}>
       <SheetHeader title={person ? 'Edit person' : 'Add person'} onClose={onClose} />
       {/* The picker can open another sheet with its own form, so it stays outside this one. */}
       <div className="flex flex-col gap-4 pb-4">

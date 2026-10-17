@@ -192,6 +192,7 @@ function AddressDetailContent({ householdId, addressId }: { householdId: string;
         householdId={householdId}
         person={personSheet.person}
         defaultAddressId={address.id}
+        stacked={editing}
       />
     </div>
   )
