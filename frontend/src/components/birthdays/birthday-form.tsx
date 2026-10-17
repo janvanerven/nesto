@@ -22,6 +22,8 @@ interface BirthdayFormFieldsProps {
   setBirthYearStr: (v: string) => void
   yearError: string | null
   nameRef?: React.Ref<HTMLInputElement>
+  /** Hide month/day/year (for contacts whose birthday is unknown). */
+  showDate?: boolean
 }
 
 export function BirthdayFormFields({
@@ -31,6 +33,7 @@ export function BirthdayFormFields({
   birthYearStr, setBirthYearStr,
   yearError,
   nameRef,
+  showDate = true,
 }: BirthdayFormFieldsProps) {
   const monthId = useId()
   const dayId = useId()
@@ -50,43 +53,47 @@ export function BirthdayFormFields({
         placeholder="e.g. Grandma, Uncle Bob"
       />
 
-      <div className="flex gap-3">
-        <div className="flex-1">
-          <label htmlFor={monthId} className="text-sm font-medium text-text-muted mb-1.5 block">Month</label>
-          <select
-            id={monthId}
-            value={birthMonth}
-            onChange={(e) => handleMonthChange(Number(e.target.value))}
-            className="w-full h-12 px-3 rounded-[var(--radius-input)] border-2 border-text/10 bg-surface text-text text-base focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-all"
-          >
-            {MONTHS.map((m, i) => (
-              <option key={i + 1} value={i + 1}>{m}</option>
-            ))}
-          </select>
-        </div>
-        <div className="w-[112px]">
-          <label htmlFor={dayId} className="text-sm font-medium text-text-muted mb-1.5 block">Day</label>
-          <select
-            id={dayId}
-            value={birthDay}
-            onChange={(e) => setBirthDay(Number(e.target.value))}
-            className="w-full h-12 px-3 rounded-[var(--radius-input)] border-2 border-text/10 bg-surface text-text text-base focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-all"
-          >
-            {Array.from({ length: MAX_DAYS[birthMonth] }, (_, i) => i + 1).map((d) => (
-              <option key={d} value={d}>{d}</option>
-            ))}
-          </select>
-        </div>
-      </div>
+      {showDate && (
+        <>
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label htmlFor={monthId} className="text-sm font-medium text-text-muted mb-1.5 block">Month</label>
+              <select
+                id={monthId}
+                value={birthMonth}
+                onChange={(e) => handleMonthChange(Number(e.target.value))}
+                className="w-full h-12 px-3 rounded-[var(--radius-input)] border-2 border-text/10 bg-surface text-text text-base focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-all"
+              >
+                {MONTHS.map((m, i) => (
+                  <option key={i + 1} value={i + 1}>{m}</option>
+                ))}
+              </select>
+            </div>
+            <div className="w-[112px]">
+              <label htmlFor={dayId} className="text-sm font-medium text-text-muted mb-1.5 block">Day</label>
+              <select
+                id={dayId}
+                value={birthDay}
+                onChange={(e) => setBirthDay(Number(e.target.value))}
+                className="w-full h-12 px-3 rounded-[var(--radius-input)] border-2 border-text/10 bg-surface text-text text-base focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-all"
+              >
+                {Array.from({ length: MAX_DAYS[birthMonth] }, (_, i) => i + 1).map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
+          </div>
 
-      <Input
-        label="Year of birth (optional)"
-        type="number"
-        value={birthYearStr}
-        onChange={(e) => setBirthYearStr(e.target.value)}
-        placeholder="e.g. 1985"
-        error={yearError ?? undefined}
-      />
+          <Input
+            label="Year of birth (optional)"
+            type="number"
+            value={birthYearStr}
+            onChange={(e) => setBirthYearStr(e.target.value)}
+            placeholder="e.g. 1985"
+            error={yearError ?? undefined}
+          />
+        </>
+      )}
     </>
   )
 }

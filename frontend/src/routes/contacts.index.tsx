@@ -2,8 +2,10 @@ import { createFileRoute, Navigate } from '@tanstack/react-router'
 import { useAuth } from 'react-oidc-context'
 import { useMemo, useState } from 'react'
 import { useHouseholds } from '@/api/households'
-import { useContacts } from '@/api/contacts'
+import { useContacts, type Person } from '@/api/contacts'
 import { AddressCard, PersonChip } from '@/components/contacts/address-card'
+import { AddressFormSheet } from '@/components/contacts/address-form-sheet'
+import { PersonSheet } from '@/components/contacts/person-sheet'
 import { Fab, Card, Input } from '@/components/ui'
 import { matchesContactSearch } from '@/utils/contacts'
 
@@ -21,10 +23,11 @@ function ContactsPage() {
   return <ContactsContent householdId={households[0].id} />
 }
 
-// onAdd is wired to the address form in the next task.
-function ContactsContent({ householdId, onAdd }: { householdId: string; onAdd?: () => void }) {
+function ContactsContent({ householdId }: { householdId: string }) {
   const { data, isLoading } = useContacts(householdId)
   const [query, setQuery] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [personSheet, setPersonSheet] = useState<{ open: boolean; person?: Person }>({ open: false })
 
   const addresses = useMemo(
     () => (data?.addresses ?? []).filter((a) => matchesContactSearch(query, a, a.people)),
@@ -74,7 +77,7 @@ function ContactsContent({ householdId, onAdd }: { householdId: string; onAdd?: 
                 No address yet
               </h2>
               {loose.map((p) => (
-                <Card key={p.id}>
+                <Card key={p.id} interactive onClick={() => setPersonSheet({ open: true, person: p })}>
                   <div className="flex flex-wrap items-center gap-1.5">
                     <PersonChip person={p} />
                   </div>
@@ -85,9 +88,17 @@ function ContactsContent({ householdId, onAdd }: { householdId: string; onAdd?: 
         </div>
       )}
 
-      <Fab pulse={isEmpty && !isLoading} onClick={onAdd}>
+      <Fab pulse={isEmpty && !isLoading} onClick={() => setAdding(true)}>
         +
       </Fab>
+
+      <AddressFormSheet open={adding} onClose={() => setAdding(false)} householdId={householdId} />
+      <PersonSheet
+        open={personSheet.open}
+        onClose={() => setPersonSheet((s) => ({ ...s, open: false }))}
+        householdId={householdId}
+        person={personSheet.person}
+      />
     </div>
   )
 }

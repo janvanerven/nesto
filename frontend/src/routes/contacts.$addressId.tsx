@@ -1,9 +1,12 @@
 import { createFileRoute, Link, Navigate, useNavigate } from '@tanstack/react-router'
 import { useAuth } from 'react-oidc-context'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useHouseholds } from '@/api/households'
-import { useContacts } from '@/api/contacts'
+import { useContacts, type Person } from '@/api/contacts'
 import { PersonRow } from '@/components/contacts/person-row'
+import { AddressFormSheet } from '@/components/contacts/address-form-sheet'
+import { PersonSheet } from '@/components/contacts/person-sheet'
+import { DeleteAddress } from '@/components/contacts/delete-address'
 import { Button, Card } from '@/components/ui'
 import { envelopeText, mapUrl } from '@/utils/contacts'
 
@@ -22,7 +25,7 @@ function AddressDetailPage() {
   return <AddressDetailContent householdId={households[0].id} addressId={addressId} />
 }
 
-function BackHeader({ title, onBack }: { title: string; onBack: () => void }) {
+function BackHeader({ title, onBack, action }: { title: string; onBack: () => void; action?: ReactNode }) {
   return (
     <div className="flex items-center gap-3 mt-2 mb-4">
       <button
@@ -35,13 +38,17 @@ function BackHeader({ title, onBack }: { title: string; onBack: () => void }) {
         </svg>
       </button>
       <h1 className="text-2xl font-extrabold text-text flex-1 truncate">{title}</h1>
+      {action}
     </div>
   )
 }
 
 function AddressDetailContent({ householdId, addressId }: { householdId: string; addressId: string }) {
   const navigate = useNavigate()
-  const { data, isLoading } = useContacts(householdId)
+  const { data, isLoading, isError, refetch } = useContacts(householdId)
+  const [editing, setEditing] = useState(false)
+  // person undefined = adding a new person to this address
+  const [personSheet, setPersonSheet] = useState<{ open: boolean; person?: Person }>({ open: false })
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle')
   const resetTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
@@ -55,6 +62,20 @@ function AddressDetailContent({ householdId, addressId }: { householdId: string;
       <div className="pb-4">
         <div className="h-10 bg-surface rounded-xl animate-pulse mt-2 mb-4" />
         <div className="h-40 bg-surface rounded-2xl animate-pulse" />
+      </div>
+    )
+  }
+
+  if (isError && !data) {
+    return (
+      <div className="pb-4">
+        <BackHeader title="Contacts" onBack={back} />
+        <Card className="text-center py-8">
+          <p className="font-semibold text-text">Couldn't load this address</p>
+          <Button variant="ghost" size="sm" className="mt-3" onClick={() => void refetch()}>
+            Try again
+          </Button>
+        </Card>
       </div>
     )
   }
@@ -81,7 +102,13 @@ function AddressDetailContent({ householdId, addressId }: { householdId: string;
   }
 
   const copyEnvelope = () => {
-    void navigator.clipboard
+    // Undefined outside secure contexts (plain HTTP on the LAN)
+    const clipboard = navigator.clipboard as Clipboard | undefined
+    if (!clipboard) {
+      flash('failed')
+      return
+    }
+    void clipboard
       .writeText(envelopeText(address))
       .then(() => flash('copied'))
       .catch(() => flash('failed'))
@@ -91,7 +118,15 @@ function AddressDetailContent({ householdId, addressId }: { householdId: string;
 
   return (
     <div className="pb-4">
-      <BackHeader title={address.label} onBack={back} />
+      <BackHeader
+        title={address.label}
+        onBack={back}
+        action={
+          <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
+            Edit
+          </Button>
+        }
+      />
 
       <Card className="mb-3">
         <p className="text-xs font-extrabold uppercase tracking-wide text-text-muted">Address</p>
@@ -123,11 +158,41 @@ function AddressDetailContent({ householdId, addressId }: { householdId: string;
       <Card>
         <p className="text-xs font-extrabold uppercase tracking-wide text-text-muted mb-3">Living here</p>
         {address.people.length ? (
-          address.people.map((p) => <PersonRow key={p.id} person={p} />)
+          address.people.map((p) => (
+            <PersonRow key={p.id} person={p} onEdit={() => setPersonSheet({ open: true, person: p })} />
+          ))
         ) : (
           <p className="text-sm text-text-muted">Nobody lives here yet.</p>
         )}
+        <button
+          type="button"
+          onClick={() => setPersonSheet({ open: true })}
+          className="mt-3 text-sm font-semibold text-primary"
+        >
+          + Add person
+        </button>
       </Card>
+
+      <div className="mt-6">
+        <DeleteAddress householdId={householdId} address={address} onDeleted={back} />
+      </div>
+
+      <AddressFormSheet
+        open={editing}
+        onClose={() => setEditing(false)}
+        householdId={householdId}
+        address={address}
+        onAddPerson={() => setPersonSheet({ open: true })}
+        onEditPerson={(p) => setPersonSheet({ open: true, person: p })}
+      />
+      {/* After the address sheet so it stacks on top when opened from it */}
+      <PersonSheet
+        open={personSheet.open}
+        onClose={() => setPersonSheet((s) => ({ ...s, open: false }))}
+        householdId={householdId}
+        person={personSheet.person}
+        defaultAddressId={address.id}
+      />
     </div>
   )
 }
