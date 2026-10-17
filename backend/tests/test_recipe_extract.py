@@ -241,3 +241,34 @@ async def test_llm_request_has_no_tools(client, monkeypatch):
     _mock_llm(monkeypatch, '{"ingredients":[{"name":"x","quantity":"","staple":false}]}', seen)
     await client.post(_url(), json={"url": RECIPE_URL})
     assert "tools" not in seen[0]
+
+
+def test_valueless_script_type_does_not_crash():
+    html = "<script type>x</script><p>hi</p>"
+    assert parse(html) is None
+    assert recipe_extract.visible_text(html) == "hi"
+
+
+def test_deeply_nested_jsonld_does_not_crash():
+    html = '<script type="application/ld+json">' + "[" * 100000 + "</script>"
+    assert parse(html) is None
+    graph = '{"@graph":[' * 900 + "{}" + "]}" * 900
+    assert parse(f'<script type="application/ld+json">{graph}</script>') is None
+
+
+async def test_huge_jsonld_lines_are_capped(client, monkeypatch):
+    data = {"@type": "Recipe", "name": "Big", "recipeIngredient": ["x" * 1000] * 1000}
+    _mock_page(monkeypatch, f'<script type="application/ld+json">{json.dumps(data)}</script>')
+    seen = []
+    _mock_llm(monkeypatch, '{"ingredients":[{"name":"x","quantity":"","staple":false}]}', seen)
+    r = await client.post(_url(), json={"url": RECIPE_URL})
+    assert r.status_code == 200
+    assert len(seen[0]["messages"][-1]["content"]) <= 15000 + 500
+
+
+async def test_llm_request_has_privacy_pin(client, monkeypatch):
+    _mock_page(monkeypatch, JSONLD_PAGE)
+    seen = []
+    _mock_llm(monkeypatch, '{"ingredients":[{"name":"x","quantity":"","staple":false}]}', seen)
+    await client.post(_url(), json={"url": RECIPE_URL})
+    assert seen[0]["provider"] == {"data_collection": "deny"}

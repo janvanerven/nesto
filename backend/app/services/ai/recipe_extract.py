@@ -20,6 +20,8 @@ MAX_NAME = 500
 MAX_QUANTITY = 100
 MAX_TITLE = 300
 MAX_TEXT = 15000
+MAX_LINE = 300
+MAX_LINES = 200
 
 SYSTEM_PROMPT = (
     "You convert recipe ingredient text into a shopping list. Return JSON only, in the form "
@@ -48,7 +50,7 @@ class _PageParser(HTMLParser):
         self._buf: list[str] = []
 
     def handle_starttag(self, tag, attrs):
-        if tag == "script" and dict(attrs).get("type", "").lower().split(";")[0].strip() == "application/ld+json":
+        if tag == "script" and (dict(attrs).get("type") or "").lower().split(";")[0].strip() == "application/ld+json":
             self._in_jsonld = True
             self._buf = []
             return
@@ -115,9 +117,12 @@ def parse_jsonld_recipe(html: str) -> tuple[str, list[str]] | None:
     for raw in _parse(html).jsonld:
         try:
             data = json.loads(raw)
-        except ValueError:
+        except (ValueError, RecursionError):
             continue
-        recipe = _find_recipe(data)
+        try:
+            recipe = _find_recipe(data)
+        except RecursionError:
+            continue
         if not recipe:
             continue
         ingredients = recipe.get("recipeIngredient")
@@ -161,7 +166,8 @@ async def split_ingredients(
 ) -> tuple[str, list[ExtractedIngredient]]:
     """Ask the LLM to split ingredient text. Returns (llm_title, ingredients)."""
     if lines:
-        content = "\n".join(f"{i}. {line}" for i, line in enumerate(lines, 1))
+        capped = [line[:MAX_LINE] for line in lines[:MAX_LINES]]
+        content = "\n".join(f"{i}. {line}" for i, line in enumerate(capped, 1))[:MAX_TEXT]
     else:
         content = page_text or ""
     user = (
