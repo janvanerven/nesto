@@ -112,18 +112,34 @@ async def test_agent_never_writes(client, db_session, monkeypatch):
         _tc("propose_event", {"title": "Dentist", "start": "2026-10-21T14:00:00"}, "c3"),
         _tc("propose_list_items", {"list_id": GROCERY_ID, "items": [{"name": "milk"}]}, "c4"),
         _tc("propose_grocery_list", {"name": "Week 43"}, "c5"),
+        _tc("propose_address", {
+            "label": "Sam & Kim", "street": "Kerkstraat 9", "postcode": "", "city": "Utrecht",
+            "people": [{"name": "Kim"}], "move_person_ids": [NOOR_ID],
+        }, "c6"),
+        _tc("propose_person", {"name": "Sam", "address_id": OMA_HOME_ID}, "c7"),
+        _tc("propose_person_update", {"person_id": MARK_ID, "address_id": OMA_HOME_ID, "phone": "06 1"}, "c8"),
+        _tc("propose_address_update", {"address_id": HOME_ID, "street": "Kerkstraat 7"}, "c9"),
     ]
     _script(monkeypatch, [_reply(None, calls)])
     r = await client.post(URL, json=_body("lots of things"))
     assert r.status_code == 200, r.text
     body = r.json()
-    assert [p["type"] for p in body["proposals"]] == ["birthday", "task", "event", "list_items", "grocery_list"]
+    assert [p["type"] for p in body["proposals"]] == [
+        "birthday", "task", "event", "list_items", "grocery_list",
+        "address", "person", "person_update", "address_update",
+    ]
     assert body["reply"] == "Here's what I'd add:"
     for model in (Task, Event, ShoppingItem):
         count = (await db_session.execute(select(func.count()).select_from(model))).scalar_one()
         assert count == 0, model.__tablename__
     people = (await db_session.execute(select(func.count()).select_from(Person))).scalar_one()
     assert people == 3
+    addresses = (await db_session.execute(select(func.count()).select_from(ContactAddress))).scalar_one()
+    assert addresses == 2
+    mark = await db_session.get(Person, MARK_ID)
+    noor = await db_session.get(Person, NOOR_ID)
+    home = await db_session.get(ContactAddress, HOME_ID)
+    assert (mark.address_id, mark.phone, noor.address_id, home.street) == (HOME_ID, "", None, "Dorpsstraat 1")
     lists = (await db_session.execute(select(func.count()).select_from(ShoppingList))).scalar_one()
     assert lists == 2
 
@@ -478,7 +494,7 @@ async def test_propose_address_with_new_and_moved_people(client, monkeypatch):
         "move_person_ids": [NOOR_ID],
     })
     assert p["type"] == "address"
-    assert p["summary"] == "New address · Mark & Lisa · Utrecht"
+    assert p["summary"] == "New address · Mark & Lisa · Utrecht · with Lisa · Noor moves in"
     assert p["target_id"] is None
     assert p["payload"]["move_people"] == [NOOR_ID]
     assert p["payload"]["street"] == "Kerkstraat 9"
@@ -498,9 +514,81 @@ async def test_propose_person(client, monkeypatch):
         "name": "Sam", "address_id": OMA_HOME_ID, "phone": "06 1234",
     })
     assert p["type"] == "person"
-    assert p["summary"] == "New contact · Sam"
+    assert p["summary"] == "Add Sam to Oma"
     assert p["target_id"] is None
     assert p["payload"]["address_id"] == OMA_HOME_ID and p["payload"]["phone"] == "06 1234"
+
+
+async def test_propose_person_summary_shows_birthday(client, monkeypatch):
+    p = await _one_proposal(client, monkeypatch, "propose_person", {
+        "name": "Sam", "birth_month": 10, "birth_day": 12, "birth_year": 2026,
+    })
+    assert p["summary"] == "New contact · Sam · 🎂 12 Oct 2026"
+    p = await _one_proposal(client, monkeypatch, "propose_person", {
+        "name": "Sam", "birth_month": 10, "birth_day": 12, "address_id": HOME_ID,
+    })
+    assert p["summary"] == "Add Sam (🎂 12 Oct) to Mark & Lisa"
+
+
+async def test_propose_address_summary_lists_multiple_movers(client, monkeypatch):
+    p = await _one_proposal(client, monkeypatch, "propose_address", {
+        "label": "Ours", "street": "", "postcode": "", "city": "",
+        "people": [{"name": "Kim"}, {"name": "Sam"}], "move_person_ids": [MARK_ID, NOOR_ID],
+    })
+    assert p["summary"] == "New address · Ours · with Kim, Sam · Mark, Noor move in"
+
+
+DUPLICATE = "is already in contacts (person_id {id}); use propose_person_update, or ask the user if this is a different person"
+
+
+async def test_birthday_for_known_person_is_error(client, monkeypatch):
+    content = await _tool_error(client, monkeypatch, "propose_birthday", {"person_name": " mark ", "birth_month": 1, "birth_day": 2})
+    assert content == "error: mark " + DUPLICATE.format(id=MARK_ID)
+
+
+async def test_person_with_known_name_is_error(client, monkeypatch):
+    content = await _tool_error(client, monkeypatch, "propose_person", {"name": "NOOR"})
+    assert content == "error: NOOR " + DUPLICATE.format(id=NOOR_ID)
+
+
+async def test_address_with_known_new_person_is_error(client, monkeypatch):
+    content = await _tool_error(client, monkeypatch, "propose_address", {
+        "label": "X", "street": "", "postcode": "", "city": "", "people": [{"name": "Kim"}, {"name": "Mark"}],
+    })
+    assert content == "error: Mark " + DUPLICATE.format(id=MARK_ID)
+
+
+async def test_other_household_name_is_not_a_duplicate(client, monkeypatch):
+    p = await _one_proposal(client, monkeypatch, "propose_person", {"name": "Stranger"})
+    assert p["payload"]["name"] == "Stranger"
+
+
+def test_tool_schemas_have_no_union_types():
+    def walk(node):
+        if isinstance(node, dict):
+            assert not isinstance(node.get("type"), list), node
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v)
+
+    walk(assistant.TOOLS)
+
+
+async def test_person_update_unlink_address_with_empty_string(client, monkeypatch):
+    p = await _one_proposal(client, monkeypatch, "propose_person_update", {"person_id": MARK_ID, "address_id": ""})
+    assert p["payload"] == {"address_id": None}
+    assert p["summary"] == "Mark: no longer at an address"
+
+
+def test_contacts_section_sanitises_text():
+    section = assistant.build_contacts_section(
+        [("p1", "Kim |\nSam", "a1", (None, None, None))],
+        [("a1", "Kim\r\n| Sam", "Main 1", "Utr|echt\n")],
+    )
+    assert "p1 | Kim Sam | a1 | -\n" in section
+    assert "a1 | Kim Sam | Utr echt\n" in section
 
 
 async def test_propose_person_unknown_address_is_error(client, monkeypatch):

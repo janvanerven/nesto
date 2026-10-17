@@ -189,9 +189,13 @@ TOOLS: list[dict] = [
     ),
     _tool(
         "propose_person_update",
-        "Propose changes to a known person. Give only the fields that change; "
-        "address_id null means they no longer live at an address.",
-        {"person_id": _PERSON_ID, **_PERSON_PROPS, "address_id": {**_ADDRESS_ID, "type": ["string", "null"]}},
+        "Propose changes to a known person. Give only the fields that change.",
+        {
+            "person_id": _PERSON_ID,
+            **_PERSON_PROPS,
+            "address_id": {**_ADDRESS_ID, "description": _ADDRESS_ID["description"]
+                           + " An empty string means they no longer live at an address."},
+        },
         ["person_id"],
     ),
     _tool(
@@ -291,14 +295,19 @@ PersonRow = tuple[str, str, str | None, tuple[int | None, int | None, int | None
 AddressRow = tuple[str, str, str, str]
 
 
+def _one_line(text: str) -> str:
+    """Contact text for a ``|``-separated prompt line: no pipes, no line breaks."""
+    return " ".join(text.replace("|", " ").split())
+
+
 def build_contacts_section(people: list[PersonRow], addresses: list[AddressRow], truncated: bool = False) -> str:
     person_lines = [
-        f"{pid} | {name} | {aid or '-'} | {_birth_text(*birth) if birth[0] and birth[1] else '-'}"
+        f"{pid} | {_one_line(name)} | {aid or '-'} | {_birth_text(*birth) if birth[0] and birth[1] else '-'}"
         for pid, name, aid, birth in people
     ]
     if truncated:
         person_lines.append(f"(only the first {MAX_CONTACTS} people are listed)")
-    address_lines = [f"{aid} | {label} | {city}" for aid, label, _, city in addresses]
+    address_lines = [f"{aid} | {_one_line(label)} | {_one_line(city)}" for aid, label, _, city in addresses]
     return (
         "Contacts, people (id | name | address_id | birthday):\n"
         + ("\n".join(person_lines) or "none")
@@ -400,6 +409,16 @@ class _Context:
             raise ToolError(f"unknown address_id {address_id}")
         return self.addresses[address_id]
 
+    def reject_known_name(self, name: str) -> None:
+        """Refuse to create a person whose name matches exactly one known person."""
+        wanted = name.strip().casefold()
+        matches = [pid for pid, (pname, _, _) in self.people.items() if pname.strip().casefold() == wanted]
+        if len(matches) == 1:
+            raise ToolError(
+                f"{name.strip()} is already in contacts (person_id {matches[0]}); use propose_person_update, "
+                "or ask the user if this is a different person"
+            )
+
     def resolve_member(self, name: Any) -> str | None:
         if name is None or (isinstance(name, str) and not name.strip()):
             return None
@@ -413,6 +432,7 @@ class _Context:
 
 def _birthday(args: dict, ctx: _Context) -> tuple[dict, str, str | None]:
     b = BirthdayCreate(**_pick(args, "person_name", "birth_month", "birth_day", "birth_year"))
+    ctx.reject_known_name(b.person_name)
     summary = f"Birthday · {b.person_name} · {b.birth_day} {_MONTHS[b.birth_month - 1]}"
     if b.birth_year:
         summary += f" {b.birth_year}"
@@ -495,8 +515,15 @@ def _address(args: dict, ctx: _Context) -> tuple[dict, str, str | None]:
     if isinstance(people, list):
         people = [_pick(p, *_PERSON_KEYS) if isinstance(p, dict) else p for p in people]
     a = AddressCreate(**_pick(args, *_ADDRESS_KEYS), people=people, move_people=move)
-    summary = " · ".join(part for part in ("New address", a.label, a.city) if part)
-    return a.model_dump(mode="json", exclude_none=True), summary, None
+    for person in a.people:
+        ctx.reject_known_name(person.name)
+    parts = [part for part in ("New address", a.label, a.city) if part]
+    if a.people:
+        parts.append("with " + ", ".join(person.name for person in a.people))
+    if a.move_people:
+        movers = [ctx.person(person_id)[0] for person_id in a.move_people]
+        parts.append(", ".join(movers) + (" moves in" if len(movers) == 1 else " move in"))
+    return a.model_dump(mode="json", exclude_none=True), " · ".join(parts), None
 
 
 def _person(args: dict, ctx: _Context) -> tuple[dict, str, str | None]:
@@ -504,7 +531,14 @@ def _person(args: dict, ctx: _Context) -> tuple[dict, str, str | None]:
     if data.get("address_id"):
         ctx.address(data["address_id"])
     p = PersonCreate(**data)
-    return p.model_dump(mode="json", exclude_none=True), f"New contact · {p.name}", None
+    ctx.reject_known_name(p.name)
+    birthday = f"🎂 {_birth_text(p.birth_month, p.birth_day, p.birth_year)}" if p.birth_month and p.birth_day else ""
+    if p.address_id:
+        label = ctx.address(p.address_id)[0]
+        summary = f"Add {p.name}{f' ({birthday})' if birthday else ''} to {label}"
+    else:
+        summary = " · ".join(part for part in ("New contact", p.name, birthday) if part)
+    return p.model_dump(mode="json", exclude_none=True), summary, None
 
 
 def _person_update(args: dict, ctx: _Context) -> tuple[dict, str, str | None]:
@@ -512,7 +546,7 @@ def _person_update(args: dict, ctx: _Context) -> tuple[dict, str, str | None]:
     name, _, birth = ctx.person(person_id)
     data = _pick(args, *_PERSON_KEYS)
     if "address_id" in args:
-        data["address_id"] = args["address_id"]  # explicit null unlinks the address
+        data["address_id"] = args["address_id"]  # "" (or null) unlinks; PersonUpdate stores it as None
     payload = PersonUpdate(**data).model_dump(mode="json", exclude_unset=True)
 
     parts: list[str] = []
