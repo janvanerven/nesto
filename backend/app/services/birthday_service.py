@@ -6,13 +6,18 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.birthday import Birthday
+from app.models.contact import Person
 from app.schemas.birthday import BirthdayCreate, BirthdayResponse, BirthdayUpdate
 
 _UPDATABLE_FIELDS = {"person_name", "birth_month", "birth_day", "birth_year"}
+# BirthdayCreate/BirthdayUpdate field -> Person column
+_FIELD_TO_COLUMN = {"person_name": "name"}
+# Any of these being set means the person is a contact in their own right,
+# so deleting their birthday must not delete them.
+_CONTACT_FIELDS = ("phone", "email", "notes")
 
 
-def _compute_age(birth_year: int | None, birth_month: int, birth_day: int) -> int | None:
+def compute_age(birth_year: int | None, birth_month: int, birth_day: int) -> int | None:
     """Compute current age. Returns None if birth_year is unknown or in the future."""
     if birth_year is None:
         return None
@@ -26,15 +31,15 @@ def _compute_age(birth_year: int | None, birth_month: int, birth_day: int) -> in
     return age
 
 
-def _birthday_to_response(birthday: Birthday) -> BirthdayResponse:
+def _birthday_to_response(birthday: Person) -> BirthdayResponse:
     return BirthdayResponse(
         id=birthday.id,
         household_id=birthday.household_id,
-        person_name=birthday.person_name,
+        person_name=birthday.name,
         birth_month=birthday.birth_month,
         birth_day=birthday.birth_day,
         birth_year=birthday.birth_year,
-        age=_compute_age(birthday.birth_year, birthday.birth_month, birthday.birth_day),
+        age=compute_age(birthday.birth_year, birthday.birth_month, birthday.birth_day),
         created_by=birthday.created_by,
         created_at=birthday.created_at,
         updated_at=birthday.updated_at,
@@ -65,9 +70,9 @@ async def list_birthdays(
     db: AsyncSession, household_id: str
 ) -> list[BirthdayResponse]:
     result = await db.execute(
-        select(Birthday)
-        .where(Birthday.household_id == household_id)
-        .order_by(Birthday.birth_month.asc(), Birthday.birth_day.asc())
+        select(Person)
+        .where(Person.household_id == household_id, Person.birth_month.is_not(None))
+        .order_by(Person.birth_month.asc(), Person.birth_day.asc())
     )
     return [_birthday_to_response(b) for b in result.scalars().all()]
 
@@ -75,11 +80,14 @@ async def list_birthdays(
 async def create_birthday(
     db: AsyncSession, household_id: str, user_id: str, data: BirthdayCreate
 ) -> BirthdayResponse:
-    birthday = Birthday(
+    birthday = Person(
         id=str(uuid.uuid4()),
         household_id=household_id,
         created_by=user_id,
-        **data.model_dump(),
+        name=data.person_name,
+        birth_month=data.birth_month,
+        birth_day=data.birth_day,
+        birth_year=data.birth_year,
     )
     db.add(birthday)
     await db.commit()
@@ -98,6 +106,10 @@ async def update_birthday(
     effective_day = updates.get("birth_day", birthday.birth_day)
     effective_year = updates.get("birth_year", birthday.birth_year)
 
+    # Only birth_year may be cleared here; removing a birthday goes through DELETE
+    if effective_month is None or effective_day is None or updates.get("person_name", "") is None:
+        raise HTTPException(status_code=422, detail="person_name, birth_month and birth_day cannot be null")
+
     # Reject future birth years (parity with BirthdayCreate validator)
     if effective_year is not None and effective_year > date.today().year:
         raise HTTPException(status_code=422, detail="Birth year cannot be in the future")
@@ -107,7 +119,7 @@ async def update_birthday(
 
     for key, value in updates.items():
         if key in _UPDATABLE_FIELDS:
-            setattr(birthday, key, value)
+            setattr(birthday, _FIELD_TO_COLUMN.get(key, key), value)
     await db.commit()
     await db.refresh(birthday)
     return _birthday_to_response(birthday)
@@ -116,28 +128,35 @@ async def update_birthday(
 async def delete_birthday(
     db: AsyncSession, birthday_id: str, household_id: str
 ) -> None:
+    """Clear the birthday of a person who has other contact details; otherwise delete the person."""
     birthday = await _get_birthday_or_404(db, birthday_id, household_id)
-    await db.delete(birthday)
+    if birthday.address_id or any(getattr(birthday, f) for f in _CONTACT_FIELDS):
+        birthday.birth_month = None
+        birthday.birth_day = None
+        birthday.birth_year = None
+    else:
+        await db.delete(birthday)
     await db.commit()
 
 
 async def get_birthdays_for_feed(
     db: AsyncSession, household_id: str
-) -> list[Birthday]:
-    """Raw Birthday objects for ICS feed generation."""
+) -> list[Person]:
+    """People with a birthday, for ICS feed generation."""
     result = await db.execute(
-        select(Birthday).where(Birthday.household_id == household_id)
+        select(Person).where(Person.household_id == household_id, Person.birth_month.is_not(None))
     )
     return list(result.scalars().all())
 
 
 async def _get_birthday_or_404(
     db: AsyncSession, birthday_id: str, household_id: str
-) -> Birthday:
+) -> Person:
     result = await db.execute(
-        select(Birthday).where(
-            Birthday.id == birthday_id,
-            Birthday.household_id == household_id,
+        select(Person).where(
+            Person.id == birthday_id,
+            Person.household_id == household_id,
+            Person.birth_month.is_not(None),
         )
     )
     birthday = result.scalar_one_or_none()

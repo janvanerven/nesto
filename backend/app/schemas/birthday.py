@@ -4,6 +4,24 @@ from datetime import datetime
 from pydantic import BaseModel, Field, model_validator
 
 
+def validate_birth_date(month: int, day: int, year: int | None) -> None:
+    """Shared birthday-date validation. Raises ValueError on an impossible date."""
+    # Cap birth_year at current year
+    if year is not None and year > datetime.now().year:
+        raise ValueError("Birth year cannot be in the future")
+    if year is not None:
+        # Real calendar validation
+        max_day = cal_mod.monthrange(year, month)[1]
+        if day > max_day:
+            raise ValueError(f"Day {day} is invalid for {cal_mod.month_name[month]} {year}")
+    else:
+        # Year unknown: allow Feb 29 (leap day birthdays exist)
+        max_days = {1: 31, 2: 29, 3: 31, 4: 30, 5: 31, 6: 30,
+                    7: 31, 8: 31, 9: 30, 10: 31, 11: 30, 12: 31}
+        if day > max_days.get(month, 31):
+            raise ValueError(f"Day {day} is invalid for month {month}")
+
+
 class BirthdayCreate(BaseModel):
     person_name: str = Field(min_length=1, max_length=200)
     birth_month: int = Field(ge=1, le=12)
@@ -12,26 +30,7 @@ class BirthdayCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_date(self) -> "BirthdayCreate":
-        # Cap birth_year at current year
-        if self.birth_year is not None and self.birth_year > datetime.now().year:
-            raise ValueError(f"Birth year cannot be in the future")
-        # Validate day for month, accounting for leap year when birth_year is known
-        if self.birth_year is not None:
-            # Use real calendar validation
-            max_day = cal_mod.monthrange(self.birth_year, self.birth_month)[1]
-            if self.birth_day > max_day:
-                raise ValueError(
-                    f"Day {self.birth_day} is invalid for "
-                    f"{cal_mod.month_name[self.birth_month]} {self.birth_year}"
-                )
-        else:
-            # Year unknown — allow Feb 29 (leap day birthdays exist)
-            max_days = {1: 31, 2: 29, 3: 31, 4: 30, 5: 31, 6: 30,
-                        7: 31, 8: 31, 9: 30, 10: 31, 11: 30, 12: 31}
-            if self.birth_day > max_days.get(self.birth_month, 31):
-                raise ValueError(
-                    f"Day {self.birth_day} is invalid for month {self.birth_month}"
-                )
+        validate_birth_date(self.birth_month, self.birth_day, self.birth_year)
         return self
 
 

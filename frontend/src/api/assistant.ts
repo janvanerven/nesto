@@ -7,6 +7,10 @@ export interface ChatMessage {
 }
 
 export type ProposalType = 'birthday' | 'task' | 'event' | 'list_items' | 'grocery_list'
+  | 'address'
+  | 'person'
+  | 'person_update'
+  | 'address_update'
 
 export interface Proposal {
   id: string
@@ -14,6 +18,7 @@ export interface Proposal {
   summary: string
   payload: Record<string, unknown>
   list_id?: string | null
+  target_id?: string | null
   replaces?: string | null
 }
 

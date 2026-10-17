@@ -9,14 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as NoticesRouteImport } from './routes/notices'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as NoticesRouteImport } from './routes/notices'
 import { Route as MoreRouteImport } from './routes/more'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ListsRouteImport } from './routes/lists'
 import { Route as DocumentsRouteImport } from './routes/documents'
+import { Route as ContactsRouteImport } from './routes/contacts'
 import { Route as CardsRouteImport } from './routes/cards'
 import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as CalendarRouteImport } from './routes/calendar'
@@ -24,18 +25,15 @@ import { Route as BirthdaysRouteImport } from './routes/birthdays'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ListsIndexRouteImport } from './routes/lists.index'
 import { Route as DocumentsIndexRouteImport } from './routes/documents.index'
+import { Route as ContactsIndexRouteImport } from './routes/contacts.index'
 import { Route as CardsIndexRouteImport } from './routes/cards.index'
 import { Route as BirthdaysIndexRouteImport } from './routes/birthdays.index'
 import { Route as ListsListIdRouteImport } from './routes/lists.$listId'
+import { Route as ContactsAddressIdRouteImport } from './routes/contacts.$addressId'
 import { Route as CardsCardIdRouteImport } from './routes/cards.$cardId'
 import { Route as DocumentsFolderFolderIdRouteImport } from './routes/documents.folder.$folderId'
 import { Route as DocumentsFileFileIdRouteImport } from './routes/documents.file.$fileId'
 
-const NoticesRoute = NoticesRouteImport.update({
-  id: '/notices',
-  path: '/notices',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const TasksRoute = TasksRouteImport.update({
   id: '/tasks',
   path: '/tasks',
@@ -49,6 +47,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NoticesRoute = NoticesRouteImport.update({
+  id: '/notices',
+  path: '/notices',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MoreRoute = MoreRouteImport.update({
@@ -69,6 +72,11 @@ const ListsRoute = ListsRouteImport.update({
 const DocumentsRoute = DocumentsRouteImport.update({
   id: '/documents',
   path: '/documents',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactsRoute = ContactsRouteImport.update({
+  id: '/contacts',
+  path: '/contacts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CardsRoute = CardsRouteImport.update({
@@ -106,6 +114,11 @@ const DocumentsIndexRoute = DocumentsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => DocumentsRoute,
 } as any)
+const ContactsIndexRoute = ContactsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ContactsRoute,
+} as any)
 const CardsIndexRoute = CardsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -120,6 +133,11 @@ const ListsListIdRoute = ListsListIdRouteImport.update({
   id: '/$listId',
   path: '/$listId',
   getParentRoute: () => ListsRoute,
+} as any)
+const ContactsAddressIdRoute = ContactsAddressIdRouteImport.update({
+  id: '/$addressId',
+  path: '/$addressId',
+  getParentRoute: () => ContactsRoute,
 } as any)
 const CardsCardIdRoute = CardsCardIdRouteImport.update({
   id: '/$cardId',
@@ -143,6 +161,7 @@ export interface FileRoutesByFullPath {
   '/calendar': typeof CalendarRoute
   '/callback': typeof CallbackRoute
   '/cards': typeof CardsRouteWithChildren
+  '/contacts': typeof ContactsRouteWithChildren
   '/documents': typeof DocumentsRouteWithChildren
   '/lists': typeof ListsRouteWithChildren
   '/login': typeof LoginRoute
@@ -152,9 +171,11 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
   '/cards/$cardId': typeof CardsCardIdRoute
+  '/contacts/$addressId': typeof ContactsAddressIdRoute
   '/lists/$listId': typeof ListsListIdRoute
   '/birthdays/': typeof BirthdaysIndexRoute
   '/cards/': typeof CardsIndexRoute
+  '/contacts/': typeof ContactsIndexRoute
   '/documents/': typeof DocumentsIndexRoute
   '/lists/': typeof ListsIndexRoute
   '/documents/file/$fileId': typeof DocumentsFileFileIdRoute
@@ -171,9 +192,11 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
   '/cards/$cardId': typeof CardsCardIdRoute
+  '/contacts/$addressId': typeof ContactsAddressIdRoute
   '/lists/$listId': typeof ListsListIdRoute
   '/birthdays': typeof BirthdaysIndexRoute
   '/cards': typeof CardsIndexRoute
+  '/contacts': typeof ContactsIndexRoute
   '/documents': typeof DocumentsIndexRoute
   '/lists': typeof ListsIndexRoute
   '/documents/file/$fileId': typeof DocumentsFileFileIdRoute
@@ -186,6 +209,7 @@ export interface FileRoutesById {
   '/calendar': typeof CalendarRoute
   '/callback': typeof CallbackRoute
   '/cards': typeof CardsRouteWithChildren
+  '/contacts': typeof ContactsRouteWithChildren
   '/documents': typeof DocumentsRouteWithChildren
   '/lists': typeof ListsRouteWithChildren
   '/login': typeof LoginRoute
@@ -195,9 +219,11 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
   '/cards/$cardId': typeof CardsCardIdRoute
+  '/contacts/$addressId': typeof ContactsAddressIdRoute
   '/lists/$listId': typeof ListsListIdRoute
   '/birthdays/': typeof BirthdaysIndexRoute
   '/cards/': typeof CardsIndexRoute
+  '/contacts/': typeof ContactsIndexRoute
   '/documents/': typeof DocumentsIndexRoute
   '/lists/': typeof ListsIndexRoute
   '/documents/file/$fileId': typeof DocumentsFileFileIdRoute
@@ -211,6 +237,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/callback'
     | '/cards'
+    | '/contacts'
     | '/documents'
     | '/lists'
     | '/login'
@@ -220,9 +247,11 @@ export interface FileRouteTypes {
     | '/settings'
     | '/tasks'
     | '/cards/$cardId'
+    | '/contacts/$addressId'
     | '/lists/$listId'
     | '/birthdays/'
     | '/cards/'
+    | '/contacts/'
     | '/documents/'
     | '/lists/'
     | '/documents/file/$fileId'
@@ -239,9 +268,11 @@ export interface FileRouteTypes {
     | '/settings'
     | '/tasks'
     | '/cards/$cardId'
+    | '/contacts/$addressId'
     | '/lists/$listId'
     | '/birthdays'
     | '/cards'
+    | '/contacts'
     | '/documents'
     | '/lists'
     | '/documents/file/$fileId'
@@ -253,6 +284,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/callback'
     | '/cards'
+    | '/contacts'
     | '/documents'
     | '/lists'
     | '/login'
@@ -262,9 +294,11 @@ export interface FileRouteTypes {
     | '/settings'
     | '/tasks'
     | '/cards/$cardId'
+    | '/contacts/$addressId'
     | '/lists/$listId'
     | '/birthdays/'
     | '/cards/'
+    | '/contacts/'
     | '/documents/'
     | '/lists/'
     | '/documents/file/$fileId'
@@ -277,6 +311,7 @@ export interface RootRouteChildren {
   CalendarRoute: typeof CalendarRoute
   CallbackRoute: typeof CallbackRoute
   CardsRoute: typeof CardsRouteWithChildren
+  ContactsRoute: typeof ContactsRouteWithChildren
   DocumentsRoute: typeof DocumentsRouteWithChildren
   ListsRoute: typeof ListsRouteWithChildren
   LoginRoute: typeof LoginRoute
@@ -310,18 +345,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/more': {
-      id: '/more'
-      path: '/more'
-      fullPath: '/more'
-      preLoaderRoute: typeof MoreRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/notices': {
       id: '/notices'
       path: '/notices'
       fullPath: '/notices'
       preLoaderRoute: typeof NoticesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/more': {
+      id: '/more'
+      path: '/more'
+      fullPath: '/more'
+      preLoaderRoute: typeof MoreRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -343,6 +378,13 @@ declare module '@tanstack/react-router' {
       path: '/documents'
       fullPath: '/documents'
       preLoaderRoute: typeof DocumentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contacts': {
+      id: '/contacts'
+      path: '/contacts'
+      fullPath: '/contacts'
+      preLoaderRoute: typeof ContactsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cards': {
@@ -394,6 +436,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocumentsIndexRouteImport
       parentRoute: typeof DocumentsRoute
     }
+    '/contacts/': {
+      id: '/contacts/'
+      path: '/'
+      fullPath: '/contacts/'
+      preLoaderRoute: typeof ContactsIndexRouteImport
+      parentRoute: typeof ContactsRoute
+    }
     '/cards/': {
       id: '/cards/'
       path: '/'
@@ -414,6 +463,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/lists/$listId'
       preLoaderRoute: typeof ListsListIdRouteImport
       parentRoute: typeof ListsRoute
+    }
+    '/contacts/$addressId': {
+      id: '/contacts/$addressId'
+      path: '/$addressId'
+      fullPath: '/contacts/$addressId'
+      preLoaderRoute: typeof ContactsAddressIdRouteImport
+      parentRoute: typeof ContactsRoute
     }
     '/cards/$cardId': {
       id: '/cards/$cardId'
@@ -463,6 +519,20 @@ const CardsRouteChildren: CardsRouteChildren = {
 
 const CardsRouteWithChildren = CardsRoute._addFileChildren(CardsRouteChildren)
 
+interface ContactsRouteChildren {
+  ContactsAddressIdRoute: typeof ContactsAddressIdRoute
+  ContactsIndexRoute: typeof ContactsIndexRoute
+}
+
+const ContactsRouteChildren: ContactsRouteChildren = {
+  ContactsAddressIdRoute: ContactsAddressIdRoute,
+  ContactsIndexRoute: ContactsIndexRoute,
+}
+
+const ContactsRouteWithChildren = ContactsRoute._addFileChildren(
+  ContactsRouteChildren,
+)
+
 interface DocumentsRouteChildren {
   DocumentsIndexRoute: typeof DocumentsIndexRoute
   DocumentsFileFileIdRoute: typeof DocumentsFileFileIdRoute
@@ -497,6 +567,7 @@ const rootRouteChildren: RootRouteChildren = {
   CalendarRoute: CalendarRoute,
   CallbackRoute: CallbackRoute,
   CardsRoute: CardsRouteWithChildren,
+  ContactsRoute: ContactsRouteWithChildren,
   DocumentsRoute: DocumentsRouteWithChildren,
   ListsRoute: ListsRouteWithChildren,
   LoginRoute: LoginRoute,

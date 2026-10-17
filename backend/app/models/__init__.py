@@ -1,6 +1,6 @@
 from app.models.ai_settings import HouseholdAiSettings
 from app.models.calendar_sync import CalendarConnection, ExternalEvent
-from app.models.birthday import Birthday
+from app.models.contact import ContactAddress, Person
 from app.models.comment import Comment
 from app.models.event import Event
 from app.models.household import Household, HouseholdInvite, HouseholdMember
@@ -23,7 +23,8 @@ __all__ = [
     "ShoppingListRecipe",
     "HouseholdAiSettings",
     "LoyaltyCard",
-    "Birthday",
+    "ContactAddress",
+    "Person",
     "CalendarConnection",
     "ExternalEvent",
     "SekuraConnection",

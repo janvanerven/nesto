@@ -9,7 +9,7 @@ export const Route = createFileRoute('/more')({
 })
 
 type MoreItem = {
-  to: '/cards' | '/documents' | '/birthdays' | '/settings'
+  to: '/cards' | '/documents' | '/contacts' | '/birthdays' | '/settings'
   label: string
   description: string
   icon: () => ReactNode
@@ -18,6 +18,7 @@ type MoreItem = {
 const allItems: MoreItem[] = [
   { to: '/cards', label: 'Loyalty Cards', description: 'Store and scan your loyalty cards', icon: CardIcon },
   { to: '/documents', label: 'Documents', description: 'Browse files and folders via Sekura', icon: DocIcon },
+  { to: '/contacts', label: 'Contacts', description: 'Addresses and the people who live there', icon: ContactsIcon },
   { to: '/birthdays', label: 'Birthdays', description: 'Never forget a birthday', icon: BirthdayIcon },
   { to: '/settings', label: 'Settings', description: 'Profile, household, and preferences', icon: GearIcon },
 ]
@@ -92,6 +93,15 @@ function BirthdayIcon() {
       <path d="M12 7V4" /><path d="M8 7V5" /><path d="M16 7V5" />
       <circle cx="12" cy="3" r="1" /><circle cx="8" cy="4" r="1" /><circle cx="16" cy="4" r="1" />
       <path d="M6 11h12" />
+    </svg>
+  )
+}
+
+function ContactsIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0">
+      <path d="M3 10.5L12 3l9 7.5V21H3z" />
+      <circle cx="12" cy="13" r="2.5" /><path d="M7.5 20c.5-2.5 2.3-4 4.5-4s4 1.5 4.5 4" />
     </svg>
   )
 }

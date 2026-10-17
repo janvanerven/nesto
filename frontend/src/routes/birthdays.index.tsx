@@ -5,6 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useHouseholds } from '@/api/households'
 import { useBirthdays, useCreateBirthday, useUpdateBirthday, useDeleteBirthday } from '@/api/birthdays'
 import type { Birthday } from '@/api/birthdays'
+import { useContacts, type Person } from '@/api/contacts'
+import { findPerson } from '@/utils/contacts'
+import { PersonSheet } from '@/components/contacts/person-sheet'
 import { BirthdayCard } from '@/components/birthdays/birthday-card'
 import { CreateBirthdaySheet } from '@/components/birthdays/create-birthday-sheet'
 import { EditBirthdaySheet } from '@/components/birthdays/edit-birthday-sheet'
@@ -72,6 +75,9 @@ function BirthdaysContent({
   const createMutation = useCreateBirthday(householdId)
   const updateMutation = useUpdateBirthday(householdId)
   const deleteMutation = useDeleteBirthday(householdId)
+  // People ids equal birthday ids; undefined while contacts load, which hides the link.
+  const { data: contacts } = useContacts(householdId)
+  const [personSheet, setPersonSheet] = useState<{ open: boolean; person?: Person }>({ open: false })
 
   const sorted = useMemo(
     () => (birthdays ? sortByUpcoming(birthdays) : []),
@@ -108,6 +114,8 @@ function BirthdaysContent({
                 <BirthdayCard
                   birthday={birthday}
                   onClick={() => setEditBirthday(birthday)}
+                  contact={contacts && findPerson(contacts, birthday.id)}
+                  onOpenPerson={(person) => setPersonSheet({ open: true, person })}
                 />
               </motion.div>
             ))}
@@ -142,6 +150,13 @@ function BirthdaysContent({
           setEditBirthday(null)
         }}
         isPending={updateMutation.isPending || deleteMutation.isPending}
+      />
+
+      <PersonSheet
+        open={personSheet.open}
+        onClose={() => setPersonSheet((s) => ({ ...s, open: false }))}
+        householdId={householdId}
+        person={personSheet.person}
       />
     </div>
   )

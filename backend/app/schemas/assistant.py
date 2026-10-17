@@ -50,10 +50,14 @@ class AssistantRequest(BaseModel):
 
 class Proposal(BaseModel):
     id: str
-    type: Literal["birthday", "task", "event", "list_items", "grocery_list"]
+    type: Literal[
+        "birthday", "task", "event", "list_items", "grocery_list",
+        "address", "person", "person_update", "address_update",
+    ]
     summary: str
     payload: dict
     list_id: str | None = None
+    target_id: str | None = None  # person or address id for person_update/address_update
     replaces: str | None = None
 
 

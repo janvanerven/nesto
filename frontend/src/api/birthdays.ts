@@ -44,7 +44,12 @@ export function useCreateBirthday(householdId: string) {
         method: 'POST',
         body: JSON.stringify(birthday),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['birthdays', householdId] }),
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['birthdays', householdId] }),
+        qc.invalidateQueries({ queryKey: ['contacts', householdId] }),
+      ])
+    },
   })
 }
 
@@ -56,7 +61,12 @@ export function useUpdateBirthday(householdId: string) {
         method: 'PATCH',
         body: JSON.stringify(update),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['birthdays', householdId] }),
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['birthdays', householdId] }),
+        qc.invalidateQueries({ queryKey: ['contacts', householdId] }),
+      ])
+    },
   })
 }
 
@@ -65,6 +75,11 @@ export function useDeleteBirthday(householdId: string) {
   return useMutation({
     mutationFn: (birthdayId: string) =>
       apiFetch<void>(`/households/${householdId}/birthdays/${birthdayId}`, { method: 'DELETE' }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['birthdays', householdId] }),
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['birthdays', householdId] }),
+        qc.invalidateQueries({ queryKey: ['contacts', householdId] }),
+      ])
+    },
   })
 }

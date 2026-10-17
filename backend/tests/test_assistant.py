@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy import func, select
 
 from app.models.ai_settings import HouseholdAiSettings
-from app.models.birthday import Birthday
+from app.models.contact import ContactAddress, Person
 from app.models.event import Event
 from app.models.household import HouseholdMember
 from app.models.shopping_list import ShoppingItem, ShoppingList
@@ -17,6 +17,11 @@ from tests.conftest import HOUSEHOLD_ID, OTHER_HOUSEHOLD_ID, USER_ID, add_ai_set
 LISA_ID = "test-user-lisa"
 GROCERY_ID = "list-groceries"
 ARCHIVED_ID = "list-archived"
+HOME_ID = "addr-home"
+OMA_HOME_ID = "addr-oma"
+MARK_ID = "person-mark"
+NOOR_ID = "person-noor"
+OTHER_PERSON_ID = "person-other"
 URL = f"/api/households/{HOUSEHOLD_ID}/assistant"
 
 
@@ -28,6 +33,11 @@ def extra_seed():
         add_ai_settings(session)
         session.add(ShoppingList(id=GROCERY_ID, household_id=HOUSEHOLD_ID, name="Groceries", kind="groceries", created_by=USER_ID))
         session.add(ShoppingList(id=ARCHIVED_ID, household_id=HOUSEHOLD_ID, name="Old", kind="groceries", status="archived", created_by=USER_ID))
+        session.add(ContactAddress(id=HOME_ID, household_id=HOUSEHOLD_ID, label="Mark & Lisa", street="Dorpsstraat 1", postcode="1234 AB", city="Utrecht", created_by=USER_ID))
+        session.add(ContactAddress(id=OMA_HOME_ID, household_id=HOUSEHOLD_ID, label="Oma", street="Kerkstraat 5", city="Utrecht", created_by=USER_ID))
+        session.add(Person(id=MARK_ID, household_id=HOUSEHOLD_ID, address_id=HOME_ID, name="Mark", birth_month=10, birth_day=12, created_by=USER_ID))
+        session.add(Person(id=NOOR_ID, household_id=HOUSEHOLD_ID, name="Noor", created_by=USER_ID))
+        session.add(Person(id=OTHER_PERSON_ID, household_id=OTHER_HOUSEHOLD_ID, name="Stranger", created_by=USER_ID))
     return seed
 
 
@@ -102,16 +112,34 @@ async def test_agent_never_writes(client, db_session, monkeypatch):
         _tc("propose_event", {"title": "Dentist", "start": "2026-10-21T14:00:00"}, "c3"),
         _tc("propose_list_items", {"list_id": GROCERY_ID, "items": [{"name": "milk"}]}, "c4"),
         _tc("propose_grocery_list", {"name": "Week 43"}, "c5"),
+        _tc("propose_address", {
+            "label": "Sam & Kim", "street": "Kerkstraat 9", "postcode": "", "city": "Utrecht",
+            "people": [{"name": "Kim"}], "move_person_ids": [NOOR_ID],
+        }, "c6"),
+        _tc("propose_person", {"name": "Sam", "address_id": OMA_HOME_ID}, "c7"),
+        _tc("propose_person_update", {"person_id": MARK_ID, "address_id": OMA_HOME_ID, "phone": "06 1"}, "c8"),
+        _tc("propose_address_update", {"address_id": HOME_ID, "street": "Kerkstraat 7"}, "c9"),
     ]
     _script(monkeypatch, [_reply(None, calls)])
     r = await client.post(URL, json=_body("lots of things"))
     assert r.status_code == 200, r.text
     body = r.json()
-    assert [p["type"] for p in body["proposals"]] == ["birthday", "task", "event", "list_items", "grocery_list"]
+    assert [p["type"] for p in body["proposals"]] == [
+        "birthday", "task", "event", "list_items", "grocery_list",
+        "address", "person", "person_update", "address_update",
+    ]
     assert body["reply"] == "Here's what I'd add:"
-    for model in (Birthday, Task, Event, ShoppingItem):
+    for model in (Task, Event, ShoppingItem):
         count = (await db_session.execute(select(func.count()).select_from(model))).scalar_one()
         assert count == 0, model.__tablename__
+    people = (await db_session.execute(select(func.count()).select_from(Person))).scalar_one()
+    assert people == 3
+    addresses = (await db_session.execute(select(func.count()).select_from(ContactAddress))).scalar_one()
+    assert addresses == 2
+    mark = await db_session.get(Person, MARK_ID)
+    noor = await db_session.get(Person, NOOR_ID)
+    home = await db_session.get(ContactAddress, HOME_ID)
+    assert (mark.address_id, mark.phone, noor.address_id, home.street) == (HOME_ID, "", None, "Dorpsstraat 1")
     lists = (await db_session.execute(select(func.count()).select_from(ShoppingList))).scalar_one()
     assert lists == 2
 
@@ -345,6 +373,7 @@ async def test_privacy_pin_on_every_call(client, monkeypatch):
         assert req["max_tokens"] == 1000
         assert {t["function"]["name"] for t in req["tools"]} == {
             "propose_birthday", "propose_task", "propose_event", "propose_list_items", "propose_grocery_list",
+            "propose_address", "propose_person", "propose_person_update", "propose_address_update",
         }
         assert req["model"] == "m/x"
 
@@ -435,3 +464,209 @@ async def test_turn_timeout_is_504(client, monkeypatch):
     r = await client.post(URL, json=_body("hi"))
     assert r.status_code == 504
     assert r.json()["detail"] == "The assistant took too long — try again."
+
+
+# ---------------------------------------------------------------------------
+# Contact tools
+# ---------------------------------------------------------------------------
+
+
+async def _one_proposal(client, monkeypatch, name: str, args: dict) -> dict:
+    _script(monkeypatch, [_reply("Ok.", [_tc(name, args)])])
+    r = await client.post(URL, json=_body("contacts"))
+    assert r.status_code == 200, r.text
+    [p] = r.json()["proposals"]
+    return p
+
+
+async def _tool_error(client, monkeypatch, name: str, args: dict) -> str:
+    seen = _script(monkeypatch, [_reply(None, [_tc(name, args)]), _reply("Who?")])
+    r = await client.post(URL, json=_body("contacts"))
+    assert r.status_code == 200, r.text
+    assert r.json()["proposals"] == []
+    return seen[1]["messages"][-1]["content"]
+
+
+async def test_propose_address_with_new_and_moved_people(client, monkeypatch):
+    p = await _one_proposal(client, monkeypatch, "propose_address", {
+        "label": "Mark & Lisa", "street": "Kerkstraat 9", "postcode": "3511 AB", "city": "Utrecht",
+        "people": [{"name": "Lisa", "birth_month": 3, "birth_day": 4}],
+        "move_person_ids": [NOOR_ID],
+    })
+    assert p["type"] == "address"
+    assert p["summary"] == "New address · Mark & Lisa · Utrecht · with Lisa · Noor moves in"
+    assert p["target_id"] is None
+    assert p["payload"]["move_people"] == [NOOR_ID]
+    assert p["payload"]["street"] == "Kerkstraat 9"
+    [lisa] = p["payload"]["people"]
+    assert lisa["name"] == "Lisa" and lisa["birth_month"] == 3 and lisa["birth_day"] == 4
+
+
+async def test_propose_address_unknown_move_person_is_error(client, monkeypatch):
+    content = await _tool_error(client, monkeypatch, "propose_address", {
+        "label": "X", "street": "", "postcode": "", "city": "", "move_person_ids": [OTHER_PERSON_ID],
+    })
+    assert content.startswith(f"error: unknown person_id {OTHER_PERSON_ID}")
+
+
+async def test_propose_person(client, monkeypatch):
+    p = await _one_proposal(client, monkeypatch, "propose_person", {
+        "name": "Sam", "address_id": OMA_HOME_ID, "phone": "06 1234",
+    })
+    assert p["type"] == "person"
+    assert p["summary"] == "Add Sam to Oma"
+    assert p["target_id"] is None
+    assert p["payload"]["address_id"] == OMA_HOME_ID and p["payload"]["phone"] == "06 1234"
+
+
+async def test_propose_person_summary_shows_birthday(client, monkeypatch):
+    p = await _one_proposal(client, monkeypatch, "propose_person", {
+        "name": "Sam", "birth_month": 10, "birth_day": 12, "birth_year": 2026,
+    })
+    assert p["summary"] == "New contact · Sam · 🎂 12 Oct 2026"
+    p = await _one_proposal(client, monkeypatch, "propose_person", {
+        "name": "Sam", "birth_month": 10, "birth_day": 12, "address_id": HOME_ID,
+    })
+    assert p["summary"] == "Add Sam (🎂 12 Oct) to Mark & Lisa"
+
+
+async def test_propose_address_summary_lists_multiple_movers(client, monkeypatch):
+    p = await _one_proposal(client, monkeypatch, "propose_address", {
+        "label": "Ours", "street": "", "postcode": "", "city": "",
+        "people": [{"name": "Kim"}, {"name": "Sam"}], "move_person_ids": [MARK_ID, NOOR_ID],
+    })
+    assert p["summary"] == "New address · Ours · with Kim, Sam · Mark, Noor move in"
+
+
+DUPLICATE = "is already in contacts (person_id {id}); use propose_person_update, or ask the user if this is a different person"
+
+
+async def test_birthday_for_known_person_is_error(client, monkeypatch):
+    content = await _tool_error(client, monkeypatch, "propose_birthday", {"person_name": " mark ", "birth_month": 1, "birth_day": 2})
+    assert content == "error: mark " + DUPLICATE.format(id=MARK_ID)
+
+
+async def test_person_with_known_name_is_error(client, monkeypatch):
+    content = await _tool_error(client, monkeypatch, "propose_person", {"name": "NOOR"})
+    assert content == "error: NOOR " + DUPLICATE.format(id=NOOR_ID)
+
+
+async def test_address_with_known_new_person_is_error(client, monkeypatch):
+    content = await _tool_error(client, monkeypatch, "propose_address", {
+        "label": "X", "street": "", "postcode": "", "city": "", "people": [{"name": "Kim"}, {"name": "Mark"}],
+    })
+    assert content == "error: Mark " + DUPLICATE.format(id=MARK_ID)
+
+
+async def test_other_household_name_is_not_a_duplicate(client, monkeypatch):
+    p = await _one_proposal(client, monkeypatch, "propose_person", {"name": "Stranger"})
+    assert p["payload"]["name"] == "Stranger"
+
+
+def test_tool_schemas_have_no_union_types():
+    def walk(node):
+        if isinstance(node, dict):
+            assert not isinstance(node.get("type"), list), node
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v)
+
+    walk(assistant.TOOLS)
+
+
+async def test_person_update_unlink_address_with_empty_string(client, monkeypatch):
+    p = await _one_proposal(client, monkeypatch, "propose_person_update", {"person_id": MARK_ID, "address_id": ""})
+    assert p["payload"] == {"address_id": None}
+    assert p["summary"] == "Mark: no longer at an address"
+
+
+def test_contacts_section_sanitises_text():
+    section = assistant.build_contacts_section(
+        [("p1", "Kim |\nSam", "a1", (None, None, None))],
+        [("a1", "Kim\r\n| Sam", "Main 1", "Utr|echt\n")],
+    )
+    assert "p1 | Kim Sam | a1 | -\n" in section
+    assert "a1 | Kim Sam | Utr echt\n" in section
+
+
+async def test_propose_person_unknown_address_is_error(client, monkeypatch):
+    content = await _tool_error(client, monkeypatch, "propose_person", {"name": "Sam", "address_id": "nope"})
+    assert content.startswith("error: unknown address_id nope")
+
+
+async def test_person_update_unknown_id_is_tool_error(client, monkeypatch):
+    content = await _tool_error(client, monkeypatch, "propose_person_update", {"person_id": "nope", "phone": "1"})
+    assert content.startswith("error: unknown person_id")
+
+
+async def test_person_update_other_household_is_tool_error(client, monkeypatch):
+    content = await _tool_error(client, monkeypatch, "propose_person_update", {"person_id": OTHER_PERSON_ID, "phone": "1"})
+    assert content.startswith(f"error: unknown person_id {OTHER_PERSON_ID}")
+
+
+async def test_person_update_move_summary(client, monkeypatch):
+    p = await _one_proposal(client, monkeypatch, "propose_person_update", {"person_id": MARK_ID, "address_id": OMA_HOME_ID})
+    assert p["type"] == "person_update"
+    assert p["target_id"] == MARK_ID
+    assert p["payload"] == {"address_id": OMA_HOME_ID}
+    assert p["summary"] == "Mark: moves to Kerkstraat 5, Utrecht"
+
+
+async def test_person_update_birthday_and_fields_summary(client, monkeypatch):
+    p = await _one_proposal(client, monkeypatch, "propose_person_update", {
+        "person_id": MARK_ID, "birth_year": 1990, "phone": "06 1", "email": "mark@example.com",
+    })
+    assert p["payload"] == {"birth_year": 1990, "phone": "06 1", "email": "mark@example.com"}
+    assert p["summary"] == "Mark: 🎂 12 Oct 1990 · updates phone, email"
+
+
+async def test_person_update_invalid_merged_birthday_is_error(client, monkeypatch):
+    content = await _tool_error(client, monkeypatch, "propose_person_update", {"person_id": NOOR_ID, "birth_month": 5})
+    assert content.startswith("error: birth_month and birth_day must be set together")
+
+
+async def test_person_update_unlink_address(client, monkeypatch):
+    p = await _one_proposal(client, monkeypatch, "propose_person_update", {"person_id": MARK_ID, "address_id": None})
+    assert p["payload"] == {"address_id": None}
+    assert p["summary"] == "Mark: no longer at an address"
+
+
+async def test_person_update_without_changes_is_error(client, monkeypatch):
+    content = await _tool_error(client, monkeypatch, "propose_person_update", {"person_id": MARK_ID})
+    assert content.startswith("error: nothing to change")
+
+
+async def test_address_update_payload_exclude_unset(client, monkeypatch):
+    p = await _one_proposal(client, monkeypatch, "propose_address_update", {
+        "address_id": HOME_ID, "street": "Kerkstraat 7", "notes": None,
+    })
+    assert p["type"] == "address_update"
+    assert p["target_id"] == HOME_ID
+    assert p["payload"] == {"street": "Kerkstraat 7"}
+    assert p["summary"] == "Mark & Lisa: moves to Kerkstraat 7, Utrecht"
+
+
+async def test_address_update_unknown_id_is_error(client, monkeypatch):
+    content = await _tool_error(client, monkeypatch, "propose_address_update", {"address_id": "nope", "city": "X"})
+    assert content.startswith("error: unknown address_id nope")
+
+
+async def test_contacts_in_prompt_and_capped(client, db_session, monkeypatch):
+    for i in range(305):
+        db_session.add(Person(id=f"bulk-{i:03}", household_id=HOUSEHOLD_ID, name=f"Zz {i:03}", created_by=USER_ID))
+    await db_session.commit()
+    seen = _script(monkeypatch, [_reply("Hello.")])
+    r = await client.post(URL, json=_body("hi"))
+    assert r.status_code == 200, r.text
+    system = seen[0]["messages"][0]["content"]
+    assert f"{MARK_ID} | Mark | {HOME_ID} | 12 Oct" in system
+    assert f"{NOOR_ID} | Noor | - | -" in system
+    assert f"{HOME_ID} | Mark & Lisa | Utrecht" in system
+    assert f"{OMA_HOME_ID} | Oma | Utrecht" in system
+    assert OTHER_PERSON_ID not in system
+    assert system.count("bulk-") == 298
+    assert "bulk-297" in system and "bulk-298" not in system
+    assert "only the first 300 people are listed" in system
+    assert "Prefer updating a known person or address over creating a new one" in system
