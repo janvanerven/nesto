@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { BottomSheet, Button, Input } from '@/components/ui'
 import {
+  useContacts,
   useCreateAddress,
   useUpdateAddress,
   type AddressCreate,
@@ -8,7 +9,7 @@ import {
   type Person,
   type PersonCreate,
 } from '@/api/contacts'
-import { formatBirthday, suggestLabel } from '@/utils/contacts'
+import { findPerson, formatBirthday, suggestLabel } from '@/utils/contacts'
 import { useScrollLock } from '@/utils/use-scroll-lock'
 import { draftFrom, draftToPayload, isBlankDraft, PersonDraftFields, type PersonDraft } from './person-draft'
 import { errorText, FormError, NotesField, SheetHeader } from './sheet-parts'
@@ -66,6 +67,7 @@ export function AddressFormSheet({
 }: AddressFormSheetProps) {
   const createAddress = useCreateAddress(householdId)
   const updateAddress = useUpdateAddress(householdId)
+  const { data: contacts } = useContacts(householdId)
   const [fields, setFields] = useState<AddressFields>(fieldsFrom())
   const [labelTouched, setLabelTouched] = useState(false)
   const [people, setPeople] = useState<KeyedDraft[]>([])
@@ -86,6 +88,8 @@ export function AddressFormSheet({
   }, [open])
 
   const isEdit = !!address
+  const moveIds = isEdit ? [] : (initialValues?.move_people ?? [])
+  const movingIn = moveIds.map((id) => (contacts ? (findPerson(contacts, id)?.name ?? 'Unknown contact') : '…'))
   const isPending = createAddress.isPending || updateAddress.isPending
   const named = people.filter((p) => p.name.trim())
   const label = labelTouched ? fields.label : suggestLabel(named.map((p) => ({ name: p.name.trim() }))) || fields.label
@@ -169,6 +173,12 @@ export function AddressFormSheet({
                 </button>
               </div>
             ))}
+
+        {movingIn.length > 0 && (
+          <p className="rounded-xl bg-text/5 px-4 py-3 text-sm text-text-muted">
+            Moving in: <span className="font-semibold text-text">{movingIn.join(', ')}</span>
+          </p>
+        )}
 
         <FormError error={error} />
         <div className="flex gap-3">

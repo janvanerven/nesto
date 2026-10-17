@@ -1,6 +1,8 @@
 import { BirthdayFormFields, MAX_DAYS } from '@/components/birthdays/birthday-form'
 import type { PersonCreate } from '@/api/contacts'
 
+type ContactExtras = Partial<Pick<PersonCreate, 'phone' | 'email' | 'notes'>>
+
 /** Editable name + birthday of one person, shared by the person and address sheets. */
 export interface PersonDraft {
   name: string
@@ -10,9 +12,11 @@ export interface PersonDraft {
   yearStr: string
   yearError: string | null
   nameError: string | null
+  /** Phone / email / notes from the prefill, carried through unchanged (the address sheet has no fields for them). */
+  extras: ContactExtras
 }
 
-type NameAndBirthday = Pick<PersonCreate, 'name' | 'birth_month' | 'birth_day' | 'birth_year'>
+type NameAndBirthday = Pick<PersonCreate, 'name' | 'birth_month' | 'birth_day' | 'birth_year'> & ContactExtras
 
 export function draftFrom(v?: Partial<PersonCreate>): PersonDraft {
   const month = v?.birth_month && v.birth_month >= 1 && v.birth_month <= 12 ? v.birth_month : null
@@ -25,6 +29,11 @@ export function draftFrom(v?: Partial<PersonCreate>): PersonDraft {
     yearStr: month && day && v?.birth_year != null ? String(v.birth_year) : '',
     yearError: null,
     nameError: null,
+    extras: {
+      ...(v?.phone != null && { phone: v.phone }),
+      ...(v?.email != null && { email: v.email }),
+      ...(v?.notes != null && { notes: v.notes }),
+    },
   }
 }
 
@@ -38,7 +47,7 @@ export function draftToPayload(d: PersonDraft): { data: NameAndBirthday } | { in
   const name = d.name.trim()
   if (!name) return { invalid: { ...d, nameError: 'Name required' } }
   if (!d.hasBirthday) {
-    return { data: { name, birth_month: null, birth_day: null, birth_year: null } }
+    return { data: { ...d.extras, name, birth_month: null, birth_day: null, birth_year: null } }
   }
   const yearText = d.yearStr.trim()
   const year = yearText ? Number.parseInt(yearText, 10) : null
@@ -46,7 +55,7 @@ export function draftToPayload(d: PersonDraft): { data: NameAndBirthday } | { in
   if (year !== null && (Number.isNaN(year) || year < 1900 || year > thisYear)) {
     return { invalid: { ...d, yearError: `Enter a year between 1900 and ${thisYear}` } }
   }
-  return { data: { name, birth_month: d.month, birth_day: d.day, birth_year: year } }
+  return { data: { ...d.extras, name, birth_month: d.month, birth_day: d.day, birth_year: year } }
 }
 
 interface PersonDraftFieldsProps {
