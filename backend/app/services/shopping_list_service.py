@@ -12,7 +12,7 @@ from app.schemas.shopping_list import (
     ShoppingListUpdate,
 )
 
-_LIST_UPDATABLE_FIELDS = {"name", "priority", "status"}
+_LIST_UPDATABLE_FIELDS = {"name", "priority", "status", "kind"}
 _ITEM_UPDATABLE_FIELDS = {"name", "quantity", "checked"}
 
 
@@ -54,6 +54,7 @@ async def list_shopping_lists(
             "name": sl.name,
             "priority": sl.priority,
             "status": sl.status,
+            "kind": sl.kind,
             "created_by": sl.created_by,
             "created_at": sl.created_at,
             "updated_at": sl.updated_at,

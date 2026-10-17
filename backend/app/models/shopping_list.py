@@ -14,9 +14,23 @@ class ShoppingList(Base):
     name: Mapped[str] = mapped_column(Text, nullable=False, default="")
     priority: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
     status: Mapped[str] = mapped_column(Text, nullable=False, default="active")
+    kind: Mapped[str] = mapped_column(Text, nullable=False, default="other", server_default="other")
     created_by: Mapped[str] = mapped_column(Text, ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+class ShoppingListRecipe(Base):
+    __tablename__ = "shopping_list_recipes"
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    list_id: Mapped[str] = mapped_column(
+        Text, ForeignKey("shopping_lists.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    created_by: Mapped[str] = mapped_column(Text, ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
 class ShoppingItem(Base):
@@ -29,4 +43,7 @@ class ShoppingItem(Base):
     checked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     added_by: Mapped[str | None] = mapped_column(Text, ForeignKey("users.id"), nullable=True)
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    recipe_id: Mapped[str | None] = mapped_column(
+        Text, ForeignKey("shopping_list_recipes.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

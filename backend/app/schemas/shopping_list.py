@@ -5,17 +5,22 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
+ListKind = Literal["groceries", "wishlist", "packing", "other"]
+
+
 # --- Shopping List schemas ---
 
 class ShoppingListCreate(BaseModel):
     name: str = Field(default="", max_length=200)
     priority: int = Field(default=3, ge=1, le=4)
+    kind: ListKind = "other"
 
 
 class ShoppingListUpdate(BaseModel):
     name: str | None = Field(default=None, max_length=200)
     priority: int | None = Field(default=None, ge=1, le=4)
     status: Literal["active", "archived"] | None = None
+    kind: ListKind | None = None
 
 
 class ShoppingListResponse(BaseModel):
@@ -24,6 +29,7 @@ class ShoppingListResponse(BaseModel):
     name: str
     priority: int
     status: str
+    kind: str
     created_by: str
     created_at: datetime
     updated_at: datetime
@@ -54,6 +60,7 @@ class ShoppingItemResponse(BaseModel):
     checked: bool
     added_by: str | None
     position: int
+    recipe_id: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
