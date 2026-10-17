@@ -134,7 +134,11 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({ detail: response.statusText }))
-    throw new ApiError(response.status, body.detail || response.statusText)
+    // FastAPI validation errors (422) carry a list of {msg, ...}; others a string
+    const detail = Array.isArray(body.detail)
+      ? body.detail[0]?.msg || 'Something went wrong'
+      : body.detail
+    throw new ApiError(response.status, detail || response.statusText)
   }
 
   if (response.status === 204) return undefined as T

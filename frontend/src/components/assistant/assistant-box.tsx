@@ -4,6 +4,9 @@ import { useAssistant, type ChatMessage, type Proposal } from '@/api/assistant'
 import { ProposalCard } from './proposal-card'
 
 const MAX_MESSAGE_CHARS = 4000
+// Server-side transcript limits
+const MAX_MESSAGES = 20
+const MAX_TOTAL_CHARS = 24000
 // ~4 lines of text-base (24px line height) plus vertical padding
 const MAX_TEXTAREA_PX = 4 * 24 + 24
 
@@ -18,6 +21,27 @@ function mergeProposals(cards: Proposal[], incoming: Proposal[], savedIds: Set<s
   return next
 }
 
+/**
+ * Drop the oldest turns until the transcript fits the server limits. Removes whole
+ * user/assistant pairs so the transcript always starts with a user message; the
+ * newest (user) message is always kept.
+ */
+function trimTranscript(messages: ChatMessage[]): ChatMessage[] {
+  let start = 0
+  let total = messages.reduce((n, m) => n + m.content.length, 0)
+  const tooBig = () => messages.length - start > MAX_MESSAGES || total > MAX_TOTAL_CHARS
+  while (tooBig() && start < messages.length - 1) {
+    total -= messages[start].content.length
+    start++
+    // Keep dropping until the next message is a user message (completes the pair)
+    while (start < messages.length - 1 && messages[start].role !== 'user') {
+      total -= messages[start].content.length
+      start++
+    }
+  }
+  return start === 0 ? messages : messages.slice(start)
+}
+
 export function AssistantBox({ householdId }: { householdId: string }) {
   const assistant = useAssistant(householdId)
   const [text, setText] = useState('')
@@ -27,6 +51,7 @@ export function AssistantBox({ householdId }: { householdId: string }) {
   const savedIds = useRef<Set<string>>(new Set())
   const [reply, setReply] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [trimmed, setTrimmed] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const pending = assistant.isPending
@@ -44,13 +69,16 @@ export function AssistantBox({ householdId }: { householdId: string }) {
   function send() {
     const content = text.trim()
     if (!content || pending) return
-    // A failed turn leaves its user message in the transcript; retrying the same text reuses it.
+    // A failed turn leaves its user message at the end; the next send replaces it, so
+    // user messages never stack up.
     const last = messages[messages.length - 1]
-    const transcript: ChatMessage[] = last?.role === 'user' && last.content === content
-      ? messages
-      : [...messages, { role: 'user', content }]
+    const base = last?.role === 'user' ? messages.slice(0, -1) : messages
+    const full: ChatMessage[] = [...base, { role: 'user', content }]
+    const transcript = trimTranscript(full)
+    if (transcript !== full) setTrimmed(true)
     setMessages(transcript)
     setError(null)
+    setReply(null)
     assistant.mutate(
       { messages: transcript },
       {
@@ -58,7 +86,8 @@ export function AssistantBox({ householdId }: { householdId: string }) {
           setMessages([...transcript, { role: 'assistant', content: res.assistant_content }])
           setReply(res.reply)
           setCards((prev) => mergeProposals(prev, res.proposals, savedIds.current))
-          setText('')
+          // Keep anything typed while the request was in flight
+          setText((cur) => (cur.trim() === content ? '' : cur))
         },
         onError: (err) => {
           setError(err instanceof Error && err.message ? err.message : 'Something went wrong')
@@ -73,6 +102,7 @@ export function AssistantBox({ householdId }: { householdId: string }) {
     savedIds.current = new Set()
     setReply(null)
     setError(null)
+    setTrimmed(false)
     setText('')
     assistant.reset()
   }
@@ -140,6 +170,9 @@ export function AssistantBox({ householdId }: { householdId: string }) {
             className="overflow-hidden"
           >
             <div className="pt-3 space-y-3">
+              {trimmed && (
+                <p className="text-xs text-text-muted">Older messages were dropped</p>
+              )}
               {pending && (
                 <p className="text-sm font-medium text-text-muted animate-pulse">Thinking…</p>
               )}
