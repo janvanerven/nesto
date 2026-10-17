@@ -1,7 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRef, useState } from 'react'
 import { Button, Input } from '@/components/ui'
-import type { ShoppingListCreate } from '@/api/lists'
+import { KindPicker } from './kind-picker'
+import type { ListKind, ShoppingListCreate } from '@/api/lists'
 import { useScrollLock } from '@/utils/use-scroll-lock'
 
 interface CreateListSheetProps {
@@ -15,14 +16,16 @@ export function CreateListSheet({ open, onClose, onSubmit, isPending }: CreateLi
   const titleRef = useRef<HTMLInputElement>(null)
   const [name, setName] = useState('')
   const [priority, setPriority] = useState(3)
+  const [kind, setKind] = useState<ListKind>('other')
 
   useScrollLock(open)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSubmit({ name: name.trim(), priority })
+    onSubmit({ name: name.trim(), priority, kind })
     setName('')
     setPriority(3)
+    setKind('other')
   }
 
   const priorities = [
@@ -64,6 +67,8 @@ export function CreateListSheet({ open, onClose, onSubmit, isPending }: CreateLi
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Groceries, Birthday wishlist"
               />
+
+              <KindPicker value={kind} onChange={setKind} />
 
               {/* Priority selector */}
               <div>

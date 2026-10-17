@@ -1,0 +1,175 @@
+import { motion, AnimatePresence } from 'framer-motion'
+import { useState } from 'react'
+import { Link } from '@tanstack/react-router'
+import { Button, Input } from '@/components/ui'
+import { useAddItemsBulk, useExtractRecipe } from '@/api/lists'
+import type { RecipeExtract } from '@/api/lists'
+import { useScrollLock } from '@/utils/use-scroll-lock'
+
+interface AddRecipeSheetProps {
+  open: boolean
+  onClose: () => void
+  householdId: string
+  listId: string
+  aiEnabled: boolean
+}
+
+export function AddRecipeSheet({ open, onClose, householdId, listId, aiEnabled }: AddRecipeSheetProps) {
+  const extract = useExtractRecipe(householdId, listId)
+  const addBulk = useAddItemsBulk(householdId, listId)
+  const [url, setUrl] = useState('')
+  const [result, setResult] = useState<RecipeExtract | null>(null)
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+
+  useScrollLock(open)
+
+  function reset(): void {
+    setUrl('')
+    setResult(null)
+    setSelected(new Set())
+    extract.reset()
+    addBulk.reset()
+  }
+
+  function handleClose(): void {
+    onClose()
+    reset()
+  }
+
+  async function handleFind(e: React.FormEvent): Promise<void> {
+    e.preventDefault()
+    const trimmed = url.trim()
+    if (!trimmed) return
+    try {
+      const data = await extract.mutateAsync(trimmed)
+      setResult(data)
+      // Staples start unticked
+      setSelected(new Set(data.ingredients.flatMap((ing, i) => (ing.staple ? [] : [i]))))
+    } catch {
+      // error rendered from extract.error
+    }
+  }
+
+  function toggle(index: number): void {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(index)) next.delete(index)
+      else next.add(index)
+      return next
+    })
+  }
+
+  async function handleAdd(): Promise<void> {
+    if (!result) return
+    const items = result.ingredients
+      .filter((_, i) => selected.has(i))
+      .map((ing) => ({ name: ing.name, quantity: ing.quantity }))
+    if (!items.length) return
+    try {
+      await addBulk.mutateAsync({ items, recipe: { url: result.url, title: result.title } })
+      handleClose()
+    } catch {
+      // error rendered from addBulk.error
+    }
+  }
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/30 z-40"
+            onClick={handleClose}
+          />
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-3xl p-6 pb-[env(safe-area-inset-bottom)] z-50 max-w-lg mx-auto max-h-[85vh] overflow-y-auto"
+          >
+            <div className="w-12 h-1.5 bg-text/10 rounded-full mx-auto mb-6" />
+            <h2 className="text-xl font-bold text-text mb-4">Add recipe</h2>
+
+            {!aiEnabled ? (
+              <div className="flex flex-col gap-4 pb-4">
+                <p className="text-sm text-text-muted">Set up the assistant in Settings to read recipes</p>
+                <Link
+                  to="/settings"
+                  onClick={handleClose}
+                  className="text-sm font-semibold text-primary underline"
+                >
+                  Open Settings
+                </Link>
+              </div>
+            ) : !result ? (
+              <form onSubmit={handleFind} className="flex flex-col gap-4 pb-4">
+                <Input
+                  label="Recipe link"
+                  type="url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://..."
+                  disabled={extract.isPending}
+                />
+                {extract.isError && (
+                  <p className="text-sm text-accent">{extract.error.message}</p>
+                )}
+                <Button type="submit" disabled={!url.trim() || extract.isPending}>
+                  {extract.isPending ? 'Reading recipe…' : 'Find ingredients'}
+                </Button>
+              </form>
+            ) : (
+              <div className="flex flex-col gap-3 pb-4">
+                <p className="text-sm font-semibold text-text">{result.title}</p>
+                {result.ingredients.length === 0 ? (
+                  <p className="text-sm text-text-muted">No ingredients found.</p>
+                ) : (
+                  <ul className="flex flex-col gap-1">
+                    {result.ingredients.map((ing, i) => (
+                      <li key={`${ing.name}-${i}`}>
+                        <label className="flex items-center gap-3 py-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selected.has(i)}
+                            onChange={() => toggle(i)}
+                            className="w-5 h-5 accent-primary"
+                          />
+                          <span className="flex-1 min-w-0 text-sm font-medium text-text">
+                            {ing.name}
+                            {ing.staple && (
+                              <span className="ml-2 text-xs font-normal text-text-muted">pantry staple</span>
+                            )}
+                          </span>
+                          {ing.quantity && <span className="text-xs text-text-muted">{ing.quantity}</span>}
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {addBulk.isError && (
+                  <p className="text-sm text-accent">Could not add items. Try again.</p>
+                )}
+                <div className="flex gap-3">
+                  <Button
+                    onClick={handleAdd}
+                    disabled={selected.size === 0 || addBulk.isPending}
+                    className="flex-1"
+                  >
+                    {addBulk.isPending ? 'Adding...' : 'Add'}
+                  </Button>
+                  <Button variant="ghost" onClick={reset} disabled={addBulk.isPending}>
+                    Back
+                  </Button>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  )
+}
