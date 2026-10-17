@@ -8,6 +8,8 @@ import { useTasks } from '@/api/tasks'
 import { useEvents } from '@/api/events'
 import { useShoppingLists } from '@/api/lists'
 import { useBirthdays } from '@/api/birthdays'
+import { useAiSettings } from '@/api/assistant'
+import { AssistantBox } from '@/components/assistant/assistant-box'
 import { Avatar, Card, PriorityDot } from '@/components/ui'
 import { expandRecurrences } from '@/utils/recurrence'
 import { formatDateISO } from '@/utils/dates'
@@ -53,6 +55,8 @@ function DashboardPage() {
         <Avatar name={user?.display_name || '?'} src={user?.avatar_url} />
       </div>
 
+      <DashboardAssistant householdId={household.id} />
+
       <div className="space-y-6">
         <RemindersSummary householdId={household.id} />
         <UpcomingSummary householdId={household.id} />
@@ -60,6 +64,12 @@ function DashboardPage() {
       </div>
     </div>
   )
+}
+
+function DashboardAssistant({ householdId }: { householdId: string }) {
+  const { data: aiSettings } = useAiSettings(householdId)
+  if (!aiSettings?.has_key) return null
+  return <AssistantBox householdId={householdId} />
 }
 
 function RemindersSummary({ householdId }: { householdId: string }) {

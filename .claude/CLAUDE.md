@@ -17,18 +17,18 @@ backend/app/
   config.py        # Pydantic Settings with validators
   database.py      # Async SQLAlchemy engine, session, SQLite pragmas
   auth.py          # JWT decode via PyJWKClient, user auto-upsert
-  models/          # SQLAlchemy ORM (user, household, task, event, shopping_list, loyalty_card, calendar_sync, sekura, birthday)
+  models/          # SQLAlchemy ORM (user, household, task, event, shopping_list, loyalty_card, calendar_sync, sekura, birthday, ai_settings)
   schemas/         # Pydantic request/response models with validation
-  routers/         # API routes: /api/auth, /api/households, /api/households/{id}/tasks, /api/households/{id}/events, /api/households/{id}/members, /api/households/{id}/lists, /api/households/{id}/cards, /api/households/{id}/documents (Sekura proxy), /api/households/{id}/birthdays, /api/calendar/*
-  services/        # Business logic (user_service, household_service, task_service, event_service, shopping_list_service, loyalty_card_service, digest_service, calendar_connection_service, calendar_sync_service, feed_service, external_event_service, crypto_service, sekura_service, sekura_connection_service, birthday_service)
+  routers/         # API routes: /api/auth, /api/households, /api/households/{id}/tasks, /api/households/{id}/events, /api/households/{id}/members, /api/households/{id}/lists, /api/households/{id}/cards, /api/households/{id}/documents (Sekura proxy), /api/households/{id}/birthdays, /api/households/{id}/assistant, /api/calendar/*
+  services/        # Business logic (user_service, household_service, task_service, event_service, shopping_list_service, loyalty_card_service, digest_service, calendar_connection_service, calendar_sync_service, feed_service, external_event_service, crypto_service, sekura_service, sekura_connection_service, birthday_service, list_suggestion_service, safe_fetch; ai/ = assistant, openrouter, recipe_extract, settings_service, rate_limit, models)
 backend/alembic/   # Async migrations
 backend/tests/     # pytest-asyncio tests
 
 frontend/src/
   routes/          # TanStack Router file-based routes (__root, index, login, callback, tasks, onboarding, settings, calendar, lists, lists.$listId, cards, cards.$cardId, documents, documents.index, documents.folder.$folderId, documents.file.$fileId, birthdays, birthdays.index, more)
-  api/             # apiFetch client with token refresh + session expiry, React Query hooks per domain (calendar-sync.ts for CalDAV connections + external events, sekura.ts for Sekura document vault, birthdays.ts for birthday CRUD)
+  api/             # apiFetch client with token refresh + session expiry, React Query hooks per domain (calendar-sync.ts for CalDAV connections + external events, sekura.ts for Sekura document vault, birthdays.ts for birthday CRUD, assistant.ts for AI assistant + settings)
   auth/            # OIDC config and provider
-  components/      # ui/ (Button, Card, Input, Avatar, Fab, PriorityDot), layout/ (bottom-nav), tasks/ (task-card, create-task-sheet, edit-task-sheet), calendar/ (week-strip, event-card, external-event-card, birthday-card, create-event-sheet, edit-event-sheet, add-calendar-sheet), lists/ (list-card, create-list-sheet, edit-list-sheet), cards/ (loyalty-card-card, create-card-sheet, edit-card-sheet, barcode-display), documents/ (folder-contents, breadcrumbs, folder-card, file-card, upload-file-sheet, create-folder-sheet, rename-sheet), birthdays/ (birthday-form, birthday-card, create-birthday-sheet, edit-birthday-sheet)
+  components/      # ui/ (Button, Card, Input, Avatar, Fab, PriorityDot), layout/ (bottom-nav), tasks/ (task-card, create-task-sheet, edit-task-sheet), calendar/ (week-strip, event-card, external-event-card, birthday-card, create-event-sheet, edit-event-sheet, add-calendar-sheet), lists/ (list-card, create-list-sheet, edit-list-sheet, kind-picker, suggestions-sheet, add-recipe-sheet, recipe-group), cards/ (loyalty-card-card, create-card-sheet, edit-card-sheet, barcode-display), documents/ (folder-contents, breadcrumbs, folder-card, file-card, upload-file-sheet, create-folder-sheet, rename-sheet), birthdays/ (birthday-form, birthday-card, create-birthday-sheet, edit-birthday-sheet), assistant/ (assistant-box, proposal-card), settings/ (assistant-settings)
   stores/          # Zustand stores (auth-store, theme-store)
   utils/           # recurrence.ts (client-side recurring event expansion)
   styles/          # Tailwind CSS v4 theme with light/dark mode
@@ -67,6 +67,7 @@ OIDC config is injected at runtime via `window.__NESTO_CONFIG__` (set by `/confi
 - **Font:** Outfit (Google Fonts, variable weight 300-700)
 - **Dark mode:** System preference by default, manual toggle in settings, stored in localStorage (`nesto-theme`)
 - **Onboarding:** First name step → household create/join. First name stored on user model.
+- **AI assistant:** Home-page box proposes cards (birthday/task/event/list items/grocery list); nothing is written until the user taps Save, which calls the normal create/bulk endpoints. Transcript is client-side only. OpenRouter key + model live in per-household settings (`household_ai_settings`, key encrypted), not env vars. In-memory cap of 200 AI calls/household/day.
 - **Navigation:** Bottom nav uses a "More" tab that groups Cards, Documents, Birthdays, and Settings into a secondary hub page.
 
 ## Testing
@@ -87,7 +88,7 @@ cd backend && pytest tests/  # asyncio_mode = "auto"
 
 ## Database
 
-SQLite with WAL mode, async via aiosqlite. Tables: users, households, household_members (+ feed_token), household_invites, tasks, events, shopping_lists, shopping_items, loyalty_cards, calendar_connections, external_events, sekura_connections, birthdays. Alembic for migrations. Indexes on all FK/filter columns.
+SQLite with WAL mode, async via aiosqlite. Tables: users, households, household_members (+ feed_token), household_invites, tasks, events, shopping_lists, shopping_items, loyalty_cards, calendar_connections, external_events, sekura_connections, birthdays, household_ai_settings, shopping_list_recipes. `shopping_lists.kind` (groceries/wishlist/packing/other), `shopping_items.recipe_id`. Alembic for migrations. Indexes on all FK/filter columns.
 
 User model includes: id, email, display_name, first_name (nullable), avatar_url, created_at, last_login, email_digest_daily, email_digest_weekly.
 
@@ -109,6 +110,13 @@ Automated daily backup service copies DB to `./backups/` with 7-day retention.
 - `POST /api/households/{id}/lists/{listId}/complete` — Archive list + check all items
 - `GET/POST /api/households/{id}/lists/{listId}/items` — List/add items
 - `PATCH/DELETE /api/households/{id}/lists/{listId}/items/{itemId}` — Update/delete item
+- `POST /api/households/{id}/lists/{listId}/items/bulk` — Add many items (optional recipe ref)
+- `GET /api/households/{id}/lists/{listId}/suggestions` — Grocery suggestions from archived history
+- `GET /api/households/{id}/lists/{listId}/recipes`, `DELETE …/recipes/{recipeId}?remove_items=` — List / remove recipe links
+- `POST /api/households/{id}/lists/{listId}/recipes/extract` — Fetch recipe URL + LLM ingredient extraction
+- `POST /api/households/{id}/assistant` — Assistant turn → `{reply, assistant_content, proposals}` (no DB writes)
+- `GET/PUT/DELETE /api/households/{id}/assistant/settings` — AI key/model (key never returned)
+- `POST /api/households/{id}/assistant/settings/test` — Test the saved key
 - `GET/POST /api/households/{id}/cards` — List/create loyalty cards
 - `PATCH/DELETE /api/households/{id}/cards/{cardId}` — Update/delete loyalty card
 - `GET/POST /api/households/{id}/documents/folders` — Root folder listing / create folder (Sekura proxy)
