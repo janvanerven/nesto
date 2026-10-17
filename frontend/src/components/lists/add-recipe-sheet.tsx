@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Button, Input } from '@/components/ui'
 import { useAddItemsBulk, useExtractRecipe } from '@/api/lists'
@@ -21,9 +21,12 @@ export function AddRecipeSheet({ open, onClose, householdId, listId, aiEnabled }
   const [result, setResult] = useState<RecipeExtract | null>(null)
   const [selected, setSelected] = useState<Set<number>>(new Set())
 
+  const requestId = useRef(0)
+
   useScrollLock(open)
 
   function reset(): void {
+    requestId.current += 1 // invalidate any in-flight extraction
     setUrl('')
     setResult(null)
     setSelected(new Set())
@@ -40,8 +43,10 @@ export function AddRecipeSheet({ open, onClose, householdId, listId, aiEnabled }
     e.preventDefault()
     const trimmed = url.trim()
     if (!trimmed) return
+    const myId = ++requestId.current
     try {
       const data = await extract.mutateAsync(trimmed)
+      if (myId !== requestId.current) return
       setResult(data)
       // Staples start unticked
       setSelected(new Set(data.ingredients.flatMap((ing, i) => (ing.staple ? [] : [i]))))

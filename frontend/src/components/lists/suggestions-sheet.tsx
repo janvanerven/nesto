@@ -18,10 +18,15 @@ export function SuggestionsSheet({ open, onClose, householdId, listId }: Suggest
 
   useScrollLock(open)
 
-  // Tick everything whenever a fresh result arrives.
+  // Tick everything whenever a result arrives or the sheet is (re)opened; clear stale errors on close.
+  const resetAdd = addBulk.reset
   useEffect(() => {
+    if (!open) {
+      resetAdd()
+      return
+    }
     if (data) setSelected(new Set(data.items.map((_, i) => i)))
-  }, [data])
+  }, [data, open, resetAdd])
 
   function toggle(index: number): void {
     setSelected((prev) => {

@@ -10,6 +10,15 @@ interface RecipeGroupProps {
   children: ReactNode
 }
 
+function isSafeUrl(url: string): boolean {
+  try {
+    const protocol = new URL(url).protocol
+    return protocol === 'http:' || protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 export function RecipeGroup({ recipe, onDelete, isPending, children }: RecipeGroupProps) {
   const [asking, setAsking] = useState(false)
 
@@ -17,19 +26,21 @@ export function RecipeGroup({ recipe, onDelete, isPending, children }: RecipeGro
     <section className="mt-4">
       <div className="flex items-center gap-2 mb-2">
         <h3 className="flex-1 min-w-0 truncate text-sm font-bold text-text">{recipe.title}</h3>
-        <a
-          href={recipe.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={`Open recipe ${recipe.title}`}
-          className="p-1.5 rounded-full text-text-muted hover:text-primary hover:bg-text/5 transition-colors"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
-            <path d="M15 3h6v6" />
-            <path d="M10 14L21 3" />
-          </svg>
-        </a>
+        {isSafeUrl(recipe.url) && (
+          <a
+            href={recipe.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Open recipe ${recipe.title}`}
+            className="p-1.5 rounded-full text-text-muted hover:text-primary hover:bg-text/5 transition-colors"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
+              <path d="M15 3h6v6" />
+              <path d="M10 14L21 3" />
+            </svg>
+          </a>
+        )}
         <button
           type="button"
           onClick={() => setAsking(true)}
