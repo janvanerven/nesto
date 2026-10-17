@@ -1,4 +1,4 @@
-import type { ContactAddress, Person } from '@/api/contacts'
+import type { ContactAddress, ContactsData, Person } from '@/api/contacts'
 
 type AddressText = Pick<ContactAddress, 'label' | 'street' | 'postcode' | 'city' | 'country'>
 
@@ -52,4 +52,8 @@ export function formatBirthday(
   if (p.birth_month === null || p.birth_day === null) return null
   const base = `${p.birth_day} ${SHORT_MONTHS[p.birth_month - 1]}`
   return withYear && p.birth_year !== null ? `${base} ${p.birth_year}` : base
+}
+
+export function findPerson(contacts: ContactsData, id: string): Person | undefined {
+  return [...contacts.addresses.flatMap((a) => a.people), ...contacts.people_without_address].find((p) => p.id === id)
 }

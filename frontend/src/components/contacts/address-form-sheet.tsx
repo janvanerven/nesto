@@ -19,9 +19,10 @@ interface AddressFormSheetProps {
   householdId: string
   /** Edit mode when set: only the address fields are saved here. */
   address?: ContactAddress
-  /** Create-mode prefill, read when the sheet opens. */
+  /** Prefill read when the sheet opens; in edit mode it overlays the address fields. */
   initialValues?: Partial<AddressCreate>
-  onCreated?: (address: ContactAddress) => void
+  /** Called with the saved address after a create or edit. */
+  onSaved?: (address: ContactAddress) => void
   /** Edit mode: open the person sheet for a new / existing person. */
   onAddPerson?: () => void
   onEditPerson?: (person: Person) => void
@@ -61,7 +62,7 @@ function validateDrafts(drafts: KeyedDraft[]): { payloads: PersonCreate[] } | { 
 }
 
 export function AddressFormSheet({
-  open, onClose, householdId, address, initialValues, onCreated, onAddPerson, onEditPerson, stacked,
+  open, onClose, householdId, address, initialValues, onSaved, onAddPerson, onEditPerson, stacked,
 }: AddressFormSheetProps) {
   const createAddress = useCreateAddress(householdId)
   const updateAddress = useUpdateAddress(householdId)
@@ -77,8 +78,9 @@ export function AddressFormSheet({
 
   useEffect(() => {
     if (!open) return
-    setFields(fieldsFrom(address ?? initialValues))
-    setLabelTouched(!!address)
+    setFields(fieldsFrom(address ? { ...address, ...initialValues } : initialValues))
+    // A given label (existing or proposed) wins over the one suggested from the people's names.
+    setLabelTouched(!!address || !!initialValues?.label)
     setPeople((initialValues?.people ?? []).map((p) => keyed(draftFrom(p))))
     setError(null)
   }, [open])
@@ -100,7 +102,7 @@ export function AddressFormSheet({
     const body = { ...fields, label: label.trim() }
     try {
       if (address) {
-        await updateAddress.mutateAsync({ id: address.id, data: body })
+        onSaved?.(await updateAddress.mutateAsync({ id: address.id, data: body }))
       } else {
         const checked = validateDrafts(people)
         if ('invalid' in checked) {
@@ -112,7 +114,7 @@ export function AddressFormSheet({
           people: checked.payloads,
           move_people: initialValues?.move_people,
         })
-        onCreated?.(created)
+        onSaved?.(created)
       }
       onClose()
     } catch (err) {

@@ -50,7 +50,7 @@ export function AddressPicker({ value, onChange, householdId, personId, personNa
             onClose={() => setCreating(false)}
             householdId={householdId}
             initialValues={{ label: personName, move_people: [personId] }}
-            onCreated={(a) => onChange(a.id)}
+            onSaved={(a) => onChange(a.id)}
             stacked
           />,
           document.body,

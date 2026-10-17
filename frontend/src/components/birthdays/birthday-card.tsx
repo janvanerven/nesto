@@ -1,9 +1,15 @@
+import { Link } from '@tanstack/react-router'
 import { Card } from '@/components/ui'
 import type { Birthday } from '@/api/birthdays'
+import type { Person } from '@/api/contacts'
 
 interface BirthdayCardProps {
   birthday: Birthday
   onClick: () => void
+  /** The contact behind this birthday; the "Open contact" link shows only when set. */
+  contact?: Person
+  /** Opens the person sheet for a contact without an address. */
+  onOpenPerson?: (person: Person) => void
 }
 
 const MONTH_NAMES = [
@@ -11,7 +17,7 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
 
-export function BirthdayCard({ birthday, onClick }: BirthdayCardProps) {
+export function BirthdayCard({ birthday, onClick, contact, onOpenPerson }: BirthdayCardProps) {
   const dateLabel = `${MONTH_NAMES[birthday.birth_month - 1]} ${birthday.birth_day}`
 
   // age from API is current age. On the birthday itself, it's the age they just turned.
@@ -43,6 +49,7 @@ export function BirthdayCard({ birthday, onClick }: BirthdayCardProps) {
               {turnsLabel}
             </span>
           )}
+          {contact && <OpenContactLink contact={contact} onOpenPerson={onOpenPerson} />}
         </div>
         {birthday.age !== null && (
           <span
@@ -54,5 +61,30 @@ export function BirthdayCard({ birthday, onClick }: BirthdayCardProps) {
         )}
       </div>
     </Card>
+  )
+}
+
+function OpenContactLink({ contact, onOpenPerson }: { contact: Person; onOpenPerson?: (person: Person) => void }) {
+  const cls = 'block mt-1.5 text-sm font-semibold text-primary'
+  // The card itself opens the birthday editor, so keep this tap to the link.
+  const stop = (e: React.MouseEvent) => e.stopPropagation()
+  if (contact.address_id) {
+    return (
+      <Link to="/contacts/$addressId" params={{ addressId: contact.address_id }} onClick={stop} className={cls}>
+        Open contact →
+      </Link>
+    )
+  }
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        stop(e)
+        onOpenPerson?.(contact)
+      }}
+      className={cls}
+    >
+      Open contact →
+    </button>
   )
 }

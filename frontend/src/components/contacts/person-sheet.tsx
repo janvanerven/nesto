@@ -18,9 +18,11 @@ interface PersonSheetProps {
   householdId: string
   /** Edit mode when set. */
   person?: Person
-  /** Create-mode prefill, read when the sheet opens. */
+  /** Prefill read when the sheet opens; in edit mode it overlays the person's values. */
   initialValues?: Partial<PersonCreate>
   defaultAddressId?: string
+  /** Called with the saved person after a create or edit (not after delete / remove). */
+  onSaved?: (person: Person) => void
   /** Opened from another sheet (layers above it). */
   stacked?: boolean
 }
@@ -33,7 +35,7 @@ interface ContactFields {
 }
 
 export function PersonSheet({
-  open, onClose, householdId, person, initialValues, defaultAddressId, stacked,
+  open, onClose, householdId, person, initialValues, defaultAddressId, onSaved, stacked,
 }: PersonSheetProps) {
   const createPerson = useCreatePerson(householdId)
   const updatePerson = useUpdatePerson(householdId)
@@ -48,7 +50,7 @@ export function PersonSheet({
 
   useEffect(() => {
     if (!open) return
-    const src = person ?? initialValues
+    const src = person ? { ...person, ...initialValues } : initialValues
     setDraft(draftFrom(src))
     setFields({
       phone: src?.phone ?? '',
@@ -89,7 +91,10 @@ export function PersonSheet({
       notes: fields.notes,
       address_id: fields.addressId,
     }
-    void run(() => (person ? updatePerson.mutateAsync({ id: person.id, data }) : createPerson.mutateAsync(data)))
+    void run(async () => {
+      const saved = await (person ? updatePerson.mutateAsync({ id: person.id, data }) : createPerson.mutateAsync(data))
+      onSaved?.(saved)
+    })
   }
 
   function handleDelete(): void {

@@ -16,6 +16,7 @@ import { useHouseholdMembers, type HouseholdMember } from '@/api/households'
 import { CreateBirthdaySheet } from '@/components/birthdays/create-birthday-sheet'
 import { CreateReminderSheet } from '@/components/tasks/create-task-sheet'
 import { CreateEventSheet } from '@/components/calendar/create-event-sheet'
+import { ContactEditSheet, isContactProposal, useContactProposal } from './contact-proposal'
 
 type Status = 'idle' | 'saving' | 'saved' | 'error'
 type Payload = Record<string, unknown>
@@ -48,7 +49,8 @@ export function ProposalCard({ proposal, householdId, onSaved, onDismiss, hasOth
   // Edited values from a sheet replace the proposed payload, so a retry after a failed sheet save keeps them.
   const [payload, setPayload] = useState<Payload>(proposal.payload)
   const [editing, setEditing] = useState(false)
-  const [createdListId, setCreatedListId] = useState<string | null>(null)
+  // What the saved link opens: the created grocery list, or a saved contact's address.
+  const [savedId, setSavedId] = useState<string | null>(null)
 
   // One card targets at most one list, so the bulk mutation can be keyed here unconditionally.
   const listId = proposal.list_id ?? ''
@@ -58,9 +60,18 @@ export function ProposalCard({ proposal, householdId, onSaved, onDismiss, hasOth
   const createList = useCreateShoppingList(householdId)
   const addItems = useAddItemsBulk(householdId, listId)
   const { data: members = [] } = useHouseholdMembers(householdId)
+  const contact = useContactProposal(householdId, proposal)
 
   const meta = TYPE_META[proposal.type]
-  const canEdit = proposal.type === 'birthday' || proposal.type === 'task' || proposal.type === 'event'
+  const isContact = isContactProposal(proposal.type)
+  const canEdit = isContact
+    ? contact.canEdit
+    : proposal.type === 'birthday' || proposal.type === 'task' || proposal.type === 'event'
+
+  function markSaved() {
+    setStatus('saved')
+    onSaved(proposal.id)
+  }
 
   async function save(data: Payload) {
     setPayload(data)
@@ -83,16 +94,16 @@ export function ProposalCard({ proposal, householdId, onSaved, onDismiss, hasOth
           break
         case 'grocery_list': {
           const list = await createList.mutateAsync(data as unknown as ShoppingListCreate)
-          setStatus('saved')
-          onSaved(proposal.id)
+          markSaved()
           // Navigating away would silently drop the other unsaved cards, so only do it when none remain.
-          if (hasOtherUnsaved(proposal.id)) setCreatedListId(list.id)
+          if (hasOtherUnsaved(proposal.id)) setSavedId(list.id)
           else navigate({ to: '/lists/$listId', params: { listId: list.id }, search: { suggest: 1 } })
           return
         }
+        default:
+          setSavedId(await contact.save(data))
       }
-      setStatus('saved')
-      onSaved(proposal.id)
+      markSaved()
     } catch (err) {
       setStatus('error')
       setError(err instanceof Error && err.message ? err.message : 'Could not save')
@@ -127,7 +138,7 @@ export function ProposalCard({ proposal, householdId, onSaved, onDismiss, hasOth
           {status === 'saved' ? (
             <div className="mt-3 flex items-center justify-between gap-3">
               <span className="text-sm font-bold text-success">✓ Saved</span>
-              <SavedLink type={proposal.type} listId={listId} createdListId={createdListId} />
+              <SavedLink type={proposal.type} listId={listId} savedId={savedId} />
             </div>
           ) : (
             <>
@@ -156,7 +167,22 @@ export function ProposalCard({ proposal, householdId, onSaved, onDismiss, hasOth
       </Card>
 
       {/* Portalled so the fixed-position sheets aren't trapped by the animated card's transform */}
-      {canEdit && createPortal(
+      {isContactProposal(proposal.type) && canEdit && createPortal(
+        <ContactEditSheet
+          type={proposal.type}
+          householdId={householdId}
+          target={contact.target}
+          open={editing}
+          payload={payload}
+          onClose={() => setEditing(false)}
+          onSaved={(addressId) => {
+            setSavedId(addressId)
+            markSaved()
+          }}
+        />,
+        document.body,
+      )}
+      {!isContact && canEdit && createPortal(
         <EditSheet
           type={proposal.type}
           open={editing}
@@ -175,8 +201,13 @@ export function ProposalCard({ proposal, householdId, onSaved, onDismiss, hasOth
   )
 }
 
-function SavedLink({ type, listId, createdListId }: { type: ProposalType; listId: string; createdListId: string | null }) {
+function SavedLink({ type, listId, savedId }: { type: ProposalType; listId: string; savedId: string | null }) {
   const cls = 'text-sm font-semibold text-primary'
+  if (isContactProposal(type)) {
+    return savedId
+      ? <Link to="/contacts/$addressId" params={{ addressId: savedId }} className={cls}>View address →</Link>
+      : <Link to="/contacts" className={cls}>View contacts →</Link>
+  }
   switch (type) {
     case 'birthday':
       return <Link to="/birthdays" className={cls}>View birthdays →</Link>
@@ -185,8 +216,8 @@ function SavedLink({ type, listId, createdListId }: { type: ProposalType; listId
     case 'event':
       return <Link to="/calendar" className={cls}>View calendar →</Link>
     case 'grocery_list':
-      return createdListId
-        ? <Link to="/lists/$listId" params={{ listId: createdListId }} search={{ suggest: 1 }} className={cls}>Open list →</Link>
+      return savedId
+        ? <Link to="/lists/$listId" params={{ listId: savedId }} search={{ suggest: 1 }} className={cls}>Open list →</Link>
         : null
     default:
       return listId
