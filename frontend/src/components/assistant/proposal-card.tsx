@@ -162,7 +162,7 @@ export function ProposalCard({ proposal, householdId, onSaved, onDismiss, hasOth
           onClose={() => setEditing(false)}
           onSubmit={(data) => {
             setEditing(false)
-            save(data)
+            void save(data)
           }}
         />,
         document.body,

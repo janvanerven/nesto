@@ -527,10 +527,10 @@ function BrowserNotificationsToggle() {
       setLoading(false)
       return
     }
-    getCurrentPushSubscription().then((sub) => {
-      setEnabled(sub !== null)
-      setLoading(false)
-    })
+    getCurrentPushSubscription()
+      .then((sub) => setEnabled(sub !== null))
+      .catch((err) => console.warn('Could not read push subscription', err))
+      .finally(() => setLoading(false))
   }, [])
 
   const handleEnable = async () => {
@@ -552,7 +552,7 @@ function BrowserNotificationsToggle() {
 
   const handleToggle = () => {
     if (enabled) {
-      handleDisable()
+      handleDisable().catch((err) => console.warn('Could not disable push notifications', err))
     } else {
       setShowSheet(true)
     }

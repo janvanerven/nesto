@@ -1,61 +1,13 @@
-import os
-
-os.environ.setdefault("SECRET_KEY", "a" * 64)
-os.environ.setdefault("OIDC_ISSUER_URL", "https://auth.example.com")
-os.environ.setdefault("OIDC_CLIENT_ID", "test-client")
-
 import pytest
 from fastapi import HTTPException
-from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.database import Base
 from app.models.ai_settings import HouseholdAiSettings
-from app.models.household import Household, HouseholdMember
-from app.models.user import User
 from app.services.ai import openrouter, rate_limit, settings_service
 from app.services.ai.models import CURATED_MODELS, DEFAULT_MODEL_ID
+from tests.conftest import HOUSEHOLD_ID, OTHER_HOUSEHOLD_ID, USER_ID
 
-USER_ID = "test-user-001"
-HOUSEHOLD_ID = "test-household-001"
-OTHER_HOUSEHOLD_ID = "test-household-002"
 URL = f"/api/households/{HOUSEHOLD_ID}/assistant/settings"
-
-
-@pytest.fixture
-async def db_session():
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    async with session_factory() as session:
-        session.add(User(id=USER_ID, email="test@example.com", display_name="Test User"))
-        session.add(Household(id=HOUSEHOLD_ID, name="Test Home", created_by=USER_ID))
-        session.add(HouseholdMember(household_id=HOUSEHOLD_ID, user_id=USER_ID))
-        session.add(Household(id=OTHER_HOUSEHOLD_ID, name="Other Home", created_by=USER_ID))
-        await session.commit()
-        yield session
-    await engine.dispose()
-
-
-@pytest.fixture
-async def client(db_session: AsyncSession):
-    from app.auth import get_current_user_id
-    from app.database import get_db
-    from app.main import app
-
-    async def override_get_db():
-        yield db_session
-
-    async def override_get_current_user_id():
-        return USER_ID
-
-    app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[get_current_user_id] = override_get_current_user_id
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as ac:
-        yield ac
-    app.dependency_overrides.clear()
 
 
 @pytest.fixture(autouse=True)

@@ -1,28 +1,16 @@
 import json
-import os
 
-os.environ.setdefault("SECRET_KEY", "a" * 64)
-os.environ.setdefault("OIDC_ISSUER_URL", "https://auth.example.com")
-os.environ.setdefault("OIDC_CLIENT_ID", "test-client")
 
 import httpx
 import pytest
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.database import Base
 from app.models.ai_settings import HouseholdAiSettings
-from app.models.household import Household, HouseholdMember
 from app.models.shopping_list import ShoppingList
-from app.models.user import User
 from app.routers import shopping_lists as lists_router
-from app.services import crypto_service
 from app.services.ai import rate_limit, recipe_extract
 from app.services.safe_fetch import FetchError
+from tests.conftest import HOUSEHOLD_ID, OTHER_HOUSEHOLD_ID, USER_ID, add_ai_settings
 
-USER_ID = "test-user-001"
-HOUSEHOLD_ID = "test-household-001"
-OTHER_HOUSEHOLD_ID = "test-household-002"
 GROCERY_ID = "list-groceries"
 OTHER_LIST_ID = "list-other"
 ARCHIVED_ID = "list-archived"
@@ -34,48 +22,13 @@ def _url(list_id=GROCERY_ID):
 
 
 @pytest.fixture
-async def db_session():
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    async with session_factory() as session:
-        session.add(User(id=USER_ID, email="test@example.com", display_name="Test User"))
-        session.add(Household(id=HOUSEHOLD_ID, name="Test Home", created_by=USER_ID))
-        session.add(HouseholdMember(household_id=HOUSEHOLD_ID, user_id=USER_ID))
-        session.add(Household(id=OTHER_HOUSEHOLD_ID, name="Other Home", created_by=USER_ID))
-        session.add(HouseholdAiSettings(
-            household_id=HOUSEHOLD_ID,
-            encrypted_api_key=crypto_service.encrypt_password("sk-or-secret"),
-            key_label="k",
-            model="m/x",
-            updated_by=USER_ID,
-        ))
+def extra_seed():
+    def seed(session):
+        add_ai_settings(session)
         session.add(ShoppingList(id=GROCERY_ID, household_id=HOUSEHOLD_ID, name="Food", kind="groceries", created_by=USER_ID))
         session.add(ShoppingList(id=OTHER_LIST_ID, household_id=HOUSEHOLD_ID, name="Misc", kind="other", created_by=USER_ID))
         session.add(ShoppingList(id=ARCHIVED_ID, household_id=HOUSEHOLD_ID, name="Old", kind="groceries", status="archived", created_by=USER_ID))
-        await session.commit()
-        yield session
-    await engine.dispose()
-
-
-@pytest.fixture
-async def client(db_session: AsyncSession):
-    from app.auth import get_current_user_id
-    from app.database import get_db
-    from app.main import app
-
-    async def override_get_db():
-        yield db_session
-
-    async def override_get_current_user_id():
-        return USER_ID
-
-    app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[get_current_user_id] = override_get_current_user_id
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as ac:
-        yield ac
-    app.dependency_overrides.clear()
+    return seed
 
 
 @pytest.fixture(autouse=True)
