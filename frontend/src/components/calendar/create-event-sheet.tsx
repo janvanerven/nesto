@@ -13,6 +13,8 @@ interface CreateEventSheetProps {
   isPending: boolean
   members: HouseholdMember[]
   defaultDate: Date
+  /** Prefill applied when the sheet opens; changes while open are ignored. */
+  initialValues?: Partial<EventCreate>
 }
 
 const TIME_PRESETS = [
@@ -45,7 +47,14 @@ function addMinutes(timeStr: string, minutes: number): string {
 function recurrenceUnit(rule: string): string {
   if (rule === 'daily') return 'day'
   if (rule === 'weekly') return 'week'
+  if (rule === 'yearly') return 'year'
   return 'month'
+}
+
+/** Split a naive local 'YYYY-MM-DDTHH:MM[:SS]' into date and 'HH:MM'. */
+function splitDateTime(value: string | undefined): { date: string; time: string } | null {
+  const m = value ? /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value) : null
+  return m ? { date: m[1], time: m[2] } : null
 }
 
 export function CreateEventSheet({
@@ -55,6 +64,7 @@ export function CreateEventSheet({
   isPending,
   members,
   defaultDate,
+  initialValues,
 }: CreateEventSheetProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -70,6 +80,8 @@ export function CreateEventSheet({
   const [assignedTo, setAssignedTo] = useState<string | null>(null)
   const [allDay, setAllDay] = useState(false)
   const [endDate, setEndDate] = useState(formatDateISO(defaultDate))
+  // EventCreate fields this sheet doesn't render; carried through to onSubmit
+  const [recurrenceEnd, setRecurrenceEnd] = useState<string | undefined>(undefined)
 
   const titleRef = useRef<HTMLInputElement>(null)
   const timeInputRef = useRef<HTMLInputElement>(null)
@@ -92,11 +104,49 @@ export function CreateEventSheet({
     setAssignedTo(null)
     setAllDay(false)
     setEndDate(formatDateISO(defaultDate))
+    setRecurrenceEnd(undefined)
   }
 
-  // Reset form when sheet opens (handles reopening with different defaultDate)
+  function applyInitialValues(values: Partial<EventCreate>): void {
+    resetForm()
+    const start = splitDateTime(values.start_time)
+    const end = splitDateTime(values.end_time)
+    const description = values.description ?? ''
+    setTitle(values.title ?? '')
+    setDescription(description)
+    setShowDetails(description !== '')
+    setAssignedTo(values.assigned_to || null)
+    if (values.recurrence_rule) {
+      setRecurrence(values.recurrence_rule)
+      const interval = values.recurrence_interval
+      setRecurrenceInterval(interval !== undefined && Number.isInteger(interval) && interval >= 1 ? interval : 1)
+    }
+    if (values.recurrence_end != null) setRecurrenceEnd(values.recurrence_end)
+    if (start) {
+      setEventDate(start.date)
+      setEndDate(start.date)
+    }
+    if (values.all_day) {
+      setAllDay(true)
+      if (end) setEndDate(end.date)
+    } else if (start) {
+      // Custom start + custom end so an arbitrary range round-trips
+      setStartTime(start.time)
+      setCustomStart(true)
+      if (end) {
+        setCustomEndTime(end.time)
+        setCustomDuration(true)
+        setDurationMinutes(null)
+      }
+    }
+  }
+
+  // Reset form when sheet opens (handles reopening with different defaultDate),
+  // or prefill it from initialValues when given
   useEffect(() => {
-    if (open) resetForm()
+    if (!open) return
+    if (initialValues) applyInitialValues(initialValues)
+    else resetForm()
   }, [open])
 
   // Keep endDate >= eventDate
@@ -140,6 +190,7 @@ export function CreateEventSheet({
     if (recurrence) {
       event.recurrence_rule = recurrence
       event.recurrence_interval = recurrenceInterval
+      if (recurrenceEnd !== undefined) event.recurrence_end = recurrenceEnd
     }
 
     onSubmit(event)
