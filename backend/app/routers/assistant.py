@@ -3,12 +3,31 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user_id
 from app.database import get_db
-from app.schemas.assistant import AiKeyTestResult, AiSettingsUpdate, AiSettingsView
-from app.services.ai import openrouter
+from app.schemas.assistant import (
+    AiKeyTestResult,
+    AiSettingsUpdate,
+    AiSettingsView,
+    AssistantRequest,
+    AssistantResponse,
+)
+from app.services.ai import openrouter, rate_limit
+from app.services.ai.assistant import run_assistant
 from app.services.ai import settings_service as svc
 from app.services.household_service import get_household
 
 router = APIRouter(prefix="/api/households/{household_id}/assistant", tags=["assistant"])
+
+
+@router.post("", response_model=AssistantResponse)
+async def ask_assistant(
+    household_id: str,
+    body: AssistantRequest,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    await get_household(db, household_id, user_id)
+    rate_limit.check_and_count(household_id, user_id)  # once per user turn
+    return await run_assistant(db, household_id, user_id, body)
 
 
 @router.get("/settings", response_model=AiSettingsView)
